@@ -968,5 +968,21 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
         return $code >= 200 && $code < 300;
     }
 }
+add_action( 'admin_menu', function() {
+    // IMPORTANT: adjust the slug to match your actual settings page.
+    // Check the URL when you click Settings → LOF Viewer Extras:
+    //   options-general.php?page=YOUR-SLUG
+    $menu_slug = 'lof_viewer_extras';
+
+    add_menu_page(
+        __( 'LOF Extras', 'lights-on-falcon-extras' ),
+        __( 'LOF Extras', 'lights-on-falcon-extras' ),
+        'manage_options',
+        $menu_slug,
+        '',
+        'dashicons-lightbulb',
+        65
+    );
+});
 
 new LOF_Viewer_Extras();
