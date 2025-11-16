@@ -323,6 +323,56 @@ if ($action === 'status') {
         'message'          => $msg,
     ]);
 }
+// ------------------------------------------------------------
+// ACTION: showstatus (FPP "are we actually playing?" signal)
+// ------------------------------------------------------------
+if ($action === 'showstatus') {
+    // We use the same FPP host / API pattern as the speaker helpers.
+    // Goal: give the viewer a lightweight "is FPP playing?" hint.
+
+    // Try the common FPPD status endpoints
+    $status = lof_call_fpp_get_json('/api/fppd/status');
+    if (!$status['ok']) {
+        $fallback = lof_call_fpp_get_json('/fppd/status');
+        if ($fallback['ok']) {
+            $status = $fallback;
+        }
+    }
+
+    $mode     = null;
+    $playlist = null;
+    $isPlaying = null;
+
+    if ($status['ok'] && is_array($status['json'])) {
+        $json = $status['json'];
+
+        // FPP tends to expose something like "mode" or "FPPDMode"
+        if (isset($json['mode']) && is_string($json['mode'])) {
+            $mode = $json['mode'];
+        } elseif (isset($json['FPPDMode']) && is_string($json['FPPDMode'])) {
+            $mode = $json['FPPDMode'];
+        }
+
+        // Try a couple of likely playlist fields
+        if (isset($json['current_playlist']) && is_string($json['current_playlist'])) {
+            $playlist = $json['current_playlist'];
+        } elseif (isset($json['Playlist']) && is_string($json['Playlist'])) {
+            $playlist = $json['Playlist'];
+        }
+
+        if (is_string($mode)) {
+            // Very simple heuristic: modes containing "play" are treated as playing
+            $isPlaying = (stripos($mode, 'play') !== false);
+        }
+    }
+
+    lof_speaker_json_exit($status['ok'] ? 200 : 502, [
+        'success'   => (bool) $status['ok'],
+        'mode'      => $mode,
+        'playlist'  => $playlist,
+        'isPlaying' => (bool) $isPlaying,
+    ]);
+}
 
 // ------------------------------------------------------------
 // ACTION: notify  (confirmation from FPP scripts)

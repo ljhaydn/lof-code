@@ -4,7 +4,7 @@
   // ------------------------------
 
   const LOF_VIEWER_CONFIG = {
-    // Local showtime windows (24h) – overridden by viewer-config if present
+    // Fallback showtime windows (24h) – overridden by viewer-config
     showWindows: [
       { start: "17:00", end: "22:00" } // 5pm–10pm
     ],
@@ -14,6 +14,9 @@
 
     // How often to refresh speaker status (seconds)
     speakerPollSeconds: 5,
+
+    // How often to refresh FPP show status (seconds)
+    fppPollSeconds: 15,
 
     text: {
       showtime: {
@@ -44,8 +47,10 @@
     }
   };
 
+  const PERSONA_STORAGE_KEY = "lofViewerPersona";
+
   // ------------------------------
-  // Remote config (viewer-config from LOF Extras)
+  // Remote config (viewer-config)
   // ------------------------------
 
   let remoteConfig = null;
@@ -69,41 +74,38 @@
       .then(function (data) {
         remoteConfig = data || null;
         remoteConfigLoaded = true;
-        if (typeof window !== "undefined" && window.console && console.log) {
+        if (window.console && console.log) {
           console.log("[LOF Epic Viewer] viewer-config loaded", data);
         }
       })
       .catch(function (err) {
         remoteConfigLoaded = true;
-        if (typeof window !== "undefined" && window.console && console.warn) {
+        if (window.console && console.warn) {
           console.warn("[LOF Epic Viewer] Failed to load viewer-config:", err);
         }
       });
   }
 
   function getEffectiveConfig() {
-    // Start with the local defaults
     const cfg = LOF_VIEWER_CONFIG;
 
-    // If the REST config has showtimes, override local showWindows
+    // Show windows from remoteConfig.showtimes
     if (remoteConfig && Array.isArray(remoteConfig.showtimes)) {
       const mapped = [];
-
       for (let i = 0; i < remoteConfig.showtimes.length; i++) {
         const win = remoteConfig.showtimes[i];
         if (!win || typeof win !== "object") continue;
-
         const start = (win.start || "").trim();
         const end = (win.end || "").trim();
         if (!start || !end) continue;
-
         mapped.push({ start: start, end: end });
       }
-
       if (mapped.length) {
         cfg.showWindows = mapped;
       }
     }
+
+    // Later we can wire cfg.text.showtime/adhoc/offline from remoteConfig.copy if desired
 
     return cfg;
   }
@@ -197,20 +199,18 @@
     return { m: m, s: s, label: label };
   }
 
-  function getSpeakerEndpoint() {
-    // lof-speaker.php lives in the integrations theme
+  function getSpeakerStatusEndpoint() {
     return window.location.origin + "/wp-content/themes/integrations/lof-speaker.php?action=status";
   }
 
   function fetchSpeakerStatus() {
-    const url = getSpeakerEndpoint();
+    const url = getSpeakerStatusEndpoint();
     return fetch(url, { credentials: "same-origin" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();
       })
       .catch(function () {
-        // Fail quietly; we'll just not show status this tick
         return null;
       });
   }
@@ -239,7 +239,6 @@
       return;
     }
 
-    // Speaker ON
     let line = "";
     if (rem > 0 && typeof texts.onWithTime === "function") {
       line = texts.onWithTime(mm.m, rem);
@@ -259,6 +258,216 @@
   function pollSpeakerStatus() {
     fetchSpeakerStatus().then(function (data) {
       updateSpeakerIndicator(data);
+    });
+  }
+
+  // ------------------------------
+  // FPP show-status helpers
+  // ------------------------------
+
+  let fppState = {
+    isPlaying: null,
+    mode: null,
+    playlist: null,
+    lastUpdated: null
+  };
+
+  function getFppStatusEndpoint() {
+    return window.location.origin + "/wp-content/themes/integrations/lof-speaker.php?action=showstatus";
+  }
+
+  function fetchFppStatus() {
+    const url = getFppStatusEndpoint();
+    return fetch(url, { credentials: "same-origin" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        if (!data || typeof data !== "object") return null;
+        fppState.isPlaying = !!data.isPlaying;
+        fppState.mode = data.mode || null;
+        fppState.playlist = data.playlist || null;
+        fppState.lastUpdated = new Date();
+        return data;
+      })
+      .catch(function () {
+        return null;
+      });
+  }
+
+  function pollFppStatus() {
+    fetchFppStatus();
+  }
+
+  // ------------------------------
+  // Persona / badge helpers
+  // ------------------------------
+
+  let personaState = null;
+
+  function loadPersona() {
+    if (personaState) return personaState;
+
+    let base = {
+      firstVisit: null,
+      lastVisit: null,
+      visitCount: 0,
+      totalInteractions: 0 // roughly "requests/votes" via card button clicks
+    };
+
+    try {
+      if (typeof window.localStorage === "undefined") {
+        personaState = base;
+        return base;
+      }
+      const raw = window.localStorage.getItem(PERSONA_STORAGE_KEY);
+      if (!raw) {
+        personaState = base;
+        return base;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") {
+        base = Object.assign(base, parsed);
+      }
+    } catch (e) {
+      // ignore
+    }
+    personaState = base;
+    return base;
+  }
+
+  function savePersona() {
+    if (!personaState) return;
+    try {
+      if (typeof window.localStorage === "undefined") return;
+      window.localStorage.setItem(PERSONA_STORAGE_KEY, JSON.stringify(personaState));
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  function touchVisit() {
+    const now = Date.now();
+    const p = loadPersona();
+    if (!p.firstVisit) {
+      p.firstVisit = now;
+    }
+    p.lastVisit = now;
+    p.visitCount = (p.visitCount || 0) + 1;
+    personaState = p;
+    savePersona();
+  }
+
+  function recordInteraction() {
+    const p = loadPersona();
+    p.totalInteractions = (p.totalInteractions || 0) + 1;
+    personaState = p;
+    savePersona();
+  }
+
+  function getPersonaSummary() {
+    const p = loadPersona();
+    const visits = p.visitCount || 0;
+    const actions = p.totalInteractions || 0;
+
+    let title = "";
+    let detail = "";
+
+    if (visits <= 1) {
+      title = "First time at Falcon 💫";
+      detail = actions > 0
+        ? "You’re already poking at the controls. Respect."
+        : "Take your time, explore the chaos. The lights are friendly.";
+    } else if (visits <= 5) {
+      title = "Returning neighbor 👋";
+      detail = actions >= 3
+        ? "You’ve already helped steer the show multiple times."
+        : "You know the drill. Pick a favorite or let Surprise Me do the work.";
+    } else {
+      title = "Regular on the block 🌈";
+      if (actions >= 10) {
+        detail = "Chaos captain: you’ve been nudging the playlist all season.";
+      } else if (actions >= 3) {
+        detail = "You’ve shaped the soundtrack more than once. Keep going.";
+      } else {
+        detail = "Thanks for coming back again. The lights missed you.";
+      }
+    }
+
+    // Little extra nod for 3+ interactions milestone
+    let badge = null;
+    if (actions >= 3 && actions < 10) {
+      badge = "Song selector (3+ picks)";
+    } else if (actions >= 10) {
+      badge = "Chaos captain (10+ picks)";
+    }
+
+    return { title: title, detail: detail, badge: badge };
+  }
+
+  function getPersonaRoot() {
+    let root = document.getElementById("lof-persona-badge");
+    if (root) return root;
+
+    const banner = document.getElementById("lof-epic-banner");
+    root = document.createElement("div");
+    root.id = "lof-persona-badge";
+    root.className = "lof-persona-badge";
+
+    // Keep it visually tied to the epic banner if possible
+    if (banner && banner.parentNode) {
+      banner.parentNode.insertBefore(root, banner.nextSibling);
+    } else {
+      document.body.appendChild(root);
+    }
+
+    const label = document.createElement("div");
+    label.className = "lof-persona-title";
+    root.appendChild(label);
+
+    const detail = document.createElement("div");
+    detail.className = "lof-persona-detail";
+    root.appendChild(detail);
+
+    const badge = document.createElement("div");
+    badge.className = "lof-persona-chip";
+    root.appendChild(badge);
+
+    return root;
+  }
+
+  function updatePersonaUI() {
+    const root = getPersonaRoot();
+    const summary = getPersonaSummary();
+
+    const titleEl = root.querySelector(".lof-persona-title");
+    const detailEl = root.querySelector(".lof-persona-detail");
+    const chipEl = root.querySelector(".lof-persona-chip");
+
+    if (titleEl) titleEl.textContent = summary.title || "";
+    if (detailEl) detailEl.textContent = summary.detail || "";
+
+    if (summary.badge) {
+      chipEl.textContent = summary.badge;
+      chipEl.style.display = "inline-flex";
+    } else {
+      chipEl.textContent = "";
+      chipEl.style.display = "none";
+    }
+  }
+
+  function initPersonaListeners() {
+    const grid = document.getElementById("rf-grid");
+    if (!grid) return;
+
+    // Delegate clicks on RF card buttons as "interactions" (requests/votes)
+    grid.addEventListener("click", function (evt) {
+      if (!evt.target) return;
+      const btn = evt.target.closest(".rf-card-btn");
+      if (!btn) return;
+      recordInteraction();
+      updatePersonaUI();
     });
   }
 
@@ -294,7 +503,7 @@
   }
 
   // ------------------------------
-  // Banner logic
+  // Banner logic (schedule + RF mode + FPP state)
   // ------------------------------
 
   function updateEpicBanner() {
@@ -339,19 +548,41 @@
       }
     }
 
-    // Refine message based on RF mode, if we know it
-    if (mode === "OFF") {
-      kicker = texts.offline && texts.offline.kicker;
-      title = texts.offline && texts.offline.title;
-      body = texts.offline && texts.offline.body;
-    } else if (mode === "INTERACTIVE") {
-      kicker = texts.adhoc && texts.adhoc.kicker;
-      title = texts.adhoc && texts.adhoc.title;
-      body = texts.adhoc && texts.adhoc.body;
-    } else if (mode === "SHOW") {
-      kicker = texts.showtime && texts.showtime.kicker;
-      title = texts.showtime && texts.showtime.title;
-      body = texts.showtime && texts.showtime.body;
+    // Layer 2: FPP truth (if we know it)
+    const fppKnown = typeof fppState.isPlaying === "boolean";
+    const fppPlaying = fppKnown && fppState.isPlaying;
+
+    if (fppKnown) {
+      if (!fppPlaying) {
+        // FPP says we're not playing anything – treat as offline, even in a window
+        kicker = texts.offline && texts.offline.kicker;
+        title = texts.offline && texts.offline.title;
+        body = texts.offline && texts.offline.body;
+        minutesUntilNext = minutesUntilNext; // unchanged
+      } else {
+        // FPP is actively playing – treat as showtime regardless of the static window
+        kicker = texts.showtime && texts.showtime.kicker;
+        title = texts.showtime && texts.showtime.title;
+        body = texts.showtime && texts.showtime.body;
+        minutesUntilNext = null; // you’re already in the thick of it
+      }
+    }
+
+    // Layer 3: RF mode nuance (only if FPP state is unknown)
+    if (!fppKnown && mode) {
+      if (mode === "OFF") {
+        kicker = texts.offline && texts.offline.kicker;
+        title = texts.offline && texts.offline.title;
+        body = texts.offline && texts.offline.body;
+      } else if (mode === "INTERACTIVE") {
+        kicker = texts.adhoc && texts.adhoc.kicker;
+        title = texts.adhoc && texts.adhoc.title;
+        body = texts.adhoc && texts.adhoc.body;
+      } else if (mode === "SHOW") {
+        kicker = texts.showtime && texts.showtime.kicker;
+        title = texts.showtime && texts.showtime.title;
+        body = texts.showtime && texts.showtime.body;
+      }
     }
 
     setText("lof-banner-kicker", kicker || "");
@@ -375,15 +606,27 @@
 
   function initEpicViewer() {
     loadViewerConfigFromREST();
+
+    // Personas: track visit & wire up request/vote clicks
+    touchVisit();
+    updatePersonaUI();
+    initPersonaListeners();
+
+    // Initial pulls
     updateEpicBanner();
     pollSpeakerStatus();
+    pollFppStatus();
 
     // Poll banner state (showtime/ad-hoc) every 30s
     setInterval(updateEpicBanner, 30000);
 
     // Poll speaker status more frequently
-    const intervalMs = Math.max(3, LOF_VIEWER_CONFIG.speakerPollSeconds || 5) * 1000;
-    setInterval(pollSpeakerStatus, intervalMs);
+    const speakerIntervalMs = Math.max(3, LOF_VIEWER_CONFIG.speakerPollSeconds || 5) * 1000;
+    setInterval(pollSpeakerStatus, speakerIntervalMs);
+
+    // Poll FPP show status
+    const fppIntervalMs = Math.max(5, LOF_VIEWER_CONFIG.fppPollSeconds || 15) * 1000;
+    setInterval(pollFppStatus, fppIntervalMs);
   }
 
   if (document.readyState === "loading") {
