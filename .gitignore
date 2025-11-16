@@ -1,0 +1,15 @@
+# Ignore everything by default in plugins and themes
+plugins/*
+themes/*
+
+# But keep our custom plugins
+!plugins/lights-on-falcon-extras/
+!plugins/remote-falcon-viewer/
+
+# And keep our integrations theme
+!themes/integrations/
+
+# Ignore uploads & other noisy dirs
+uploads/
+cache/
+upgrade/
