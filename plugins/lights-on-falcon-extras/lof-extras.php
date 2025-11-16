@@ -1,25 +1,17 @@
 <?php
-/*
-Plugin Name: Lights On Falcon - Extras
-Description: Core logic, APIs, settings, and viewer enhancements for the the Lights on Falcon experience.
-Version: 1.0.0
-Author: Lights on Falcon
-*/
+/**
+ * Lights On Falcon - Extras Loader (Phase A)
+ */
 
-if (!defined('ABSPATH')) {
-    exit;
+if (!defined('ABSPATH')) exit;
+
+require_once __DIR__ . '/includes/class-lof-settings.php';
+require_once __DIR__ . '/includes/class-lof-api.php';
+
+class LOF_Extras {
+    public function __construct() {
+        // Future: register filters, hooks, and viewer-config injection
+    }
 }
 
-// Includes
-require_once plugin_dir_path(__FILE__) . 'includes/class-lof-settings.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-lof-api.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-lof-speaker.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-lof-glow.php';
-
-// Bootstrap
-add_action('plugins_loaded', function () {
-    LOF_Settings::init();
-    LOF_API::init();
-    LOF_Speaker::init();
-    LOF_Glow::init();
-});
+new LOF_Extras();

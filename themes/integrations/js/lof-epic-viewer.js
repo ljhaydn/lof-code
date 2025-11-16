@@ -1,742 +1,746 @@
-(function () {
-  // ------------------------------
-  // CONFIG – local defaults
-  // ------------------------------
+/**
+ * Lights On Falcon — Epic Viewer vNEXT (Cinematic Edition)
+ * This file replaces: /themes/integrations/js/lof-epic-viewer.js
+ *
+ * Responsibilities:
+ * - Phase Engine (Showtime, Intermission, Drop-By, Off-Season, etc.)
+ * - Persona Engine v3 (XP, levels, streaks, badges, achievements)
+ * - Vibe Engine v3 (energy scoring, multi-event inputs)
+ * - Tonight Panel Engine (reactive: persona + vibe + show)
+ * - Theme Loader (season + phase → dynamic tokens)
+ * - RF Integration Enhancements (events, cues, cooldowns)
+ * - Micro Interactions & Season Delight (toasts, pulses, easter egg hooks)
+ * - Fail-soft FPP + RF handling
+ */
 
-  const LOF_VIEWER_CONFIG = {
-    // Fallback showtime windows (24h) – overridden by viewer-config
-    showWindows: [
-      { start: "17:00", end: "22:00" } // 5pm–10pm
-    ],
+// -------------------------------------------
+// GLOBAL STATE
+// -------------------------------------------
 
-    // Within this many minutes of next show, show a countdown
-    countdownThresholdMinutes: 60,
+const LOF = {
+    config: null,              // viewer-config from backend (text, season, etc.)
+    show: null,                // /show-status result
+    phase: "loading",          // current show phase
+    lastPhase: null,           // previous phase
+    persona: null,             // persona engine instance
+    vibe: null,                // vibe engine instance
+    tonight: null,             // tonight panel engine instance
+    eggs: null,                // easter egg engine instance
 
-    // How often to refresh speaker status (seconds)
-    speakerPollSeconds: 5,
+    rf: {                      // remote falcon reactive state
+        mode: null,            // jukebox / voting / disabled (if we wire RF)
+        queue: [],
+        nowPlaying: null,
+        cooldown: false,
+        lastPickAt: null
+    },
 
-    // How often to refresh FPP show status (seconds)
-    fppPollSeconds: 15,
+    timers: {
+        statusPoll: null,
+        vibeTick: null
+    },
 
-    // How often to recompute the energy meter (seconds)
-    energyPollSeconds: 10,
+    ui: {},                    // DOM refs
+    debug: false               // set true to log
+};
 
-    text: {
-      showtime: {
-        kicker: "It’s showtime ✨",
-        title: "You made it for the full experience.",
-        body: "Lights, music, neighbors, chaos – this is when Falcon really hums."
-      },
-      adhoc: {
-        kicker: "Choose-your-own-chaos mode 🎛️",
-        title: "We’re between sets, but the lights are still listening.",
-        body: "Request a song, hit Surprise Me, or just let the lights vibe while you hang out."
-      },
-      offline: {
-        kicker: "Off-hours 💤",
-        title: "Falcon’s resting up for the next show.",
-        body: "We’re not running a full show right now, but check back during posted showtimes for the full synced experience."
-      },
-      speaker: {
-        off: "Sound nearby is currently OFF. If you’re here in person, tap the sound button to bring the music outside for a bit.",
-        onNoTime: "Sound is ON near the show.",
-        onWithTime: function (mins, _seconds) {
-          if (mins <= 0) {
-            return "Sound is ON near the show – under a minute left.";
-          }
-          return "Sound is ON near the show – about " + mins + " minute" + (mins === 1 ? "" : "s") + " left.";
-        }
-      }
+// Quick logger
+function lofLog(...args) {
+    if (LOF.debug) console.log("%c[LOF]", "color:#7f5eff;font-weight:bold;", ...args);
+}
+
+// -------------------------------------------
+// DOM READY HELPER
+// -------------------------------------------
+function lofReady(fn) {
+    if (document.readyState !== "loading") return fn();
+    document.addEventListener("DOMContentLoaded", fn);
+}
+
+// -------------------------------------------
+// LOCAL STORAGE WRAPPER
+// -------------------------------------------
+const store = {
+    get(key, fallback = null) {
+        try {
+            const v = localStorage.getItem(key);
+            return v ? JSON.parse(v) : fallback;
+        } catch (e) { return fallback; }
+    },
+    set(key, val) {
+        try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {}
     }
-  };
+};
 
-  const PERSONA_STORAGE_KEY = "lofViewerPersona";
+// -------------------------------------------
+// INITIALIZE EVERYTHING
+// -------------------------------------------
 
-  // ------------------------------
-  // Remote config (viewer-config)
-  // ------------------------------
+lofReady(() => {
+    lofLog("Epic Viewer vNEXT — bootstrapping…");
 
-  let remoteConfig = null;
-  let remoteConfigLoaded = false;
+    initializeUIRefs();
 
-  function loadViewerConfigFromREST() {
-    if (remoteConfigLoaded) return;
-    if (typeof fetch !== "function") {
-      remoteConfigLoaded = true;
-      return;
+    LOF.persona = PersonaEngine();
+    LOF.vibe    = VibeEngine();
+    LOF.tonight = TonightPanelEngine();
+    LOF.eggs    = EasterEggEngine();
+
+    fetchViewerConfig().then(() => {
+        applyInitialTheme();
+        startShowStatusPolling();
+        startVibeTicking();
+        hookRemoteFalconEvents();
+        hookRFCardClicks(); // local click glue in case RF doesn’t emit custom events
+        LOF.tonight.updateAll(); // initial render
+        LOF.eggs.checkInitial();
+    });
+});
+
+// -------------------------------------------
+// Fetch viewer-config from LOF Extras API
+// -------------------------------------------
+async function fetchViewerConfig() {
+    try {
+        const res = await fetch('/wp-json/lof-extras/v1/viewer-config');
+        if (!res.ok) throw new Error("viewer-config HTTP " + res.status);
+        const json = await res.json();
+        LOF.config = json || {};
+        lofLog("Config loaded:", LOF.config);
+    } catch (err) {
+        lofLog("Config fetch failed:", err);
+        LOF.config = {};
+    }
+}
+
+// -------------------------------------------
+// Poll /show-status every 5s
+// -------------------------------------------
+function startShowStatusPolling() {
+    updateShowStatus();
+    LOF.timers.statusPoll = setInterval(updateShowStatus, 5000);
+}
+
+async function updateShowStatus() {
+    try {
+        const res = await fetch('/wp-json/lof-extras/v1/show-status');
+        if (!res.ok) throw new Error("show-status HTTP " + res.status);
+        const json = await res.json();
+        if (!json || !json.show) throw new Error("Invalid show-status payload");
+
+        LOF.show = json.show;
+        updatePhase(json.show.phase);
+        LOF.tonight.updateAll();
+        LOF.eggs.checkOnStatus();
+    } catch (err) {
+        lofLog("Show-status fetch failed:", err);
+        updatePhase("maintenance");
+    }
+}
+
+// -------------------------------------------
+// PHASE ENGINE — The heart of the UX
+// -------------------------------------------
+
+function updatePhase(newPhase) {
+    if (!newPhase) newPhase = "off_hours";
+    if (LOF.phase === newPhase) return; // no-op if unchanged
+
+    LOF.lastPhase = LOF.phase;
+    LOF.phase = newPhase;
+    lofLog("Phase change:", LOF.lastPhase, "→", LOF.phase);
+
+    document.documentElement.setAttribute("data-lof-phase", LOF.phase);
+
+    // Clear phase body classes
+    document.body.classList.remove(
+        "lof-phase-showtime",
+        "lof-phase-intermission",
+        "lof-phase-dropby",
+        "lof-phase-preshow",
+        "lof-phase-aftershow",
+        "lof-phase-offhours",
+        "lof-phase-offseason",
+        "lof-phase-maintenance"
+    );
+
+    switch (newPhase) {
+        case "showtime":
+        case "force_showtime":
+            showShowtimeUI();
+            LOF.persona.addXP(5, "phase_showtime");
+            LOF.eggs.trigger("showtime");
+            break;
+
+        case "intermission":
+        case "force_intermission":
+            showIntermissionUI();
+            LOF.persona.addXP(2, "phase_intermission");
+            LOF.eggs.trigger("intermission");
+            break;
+
+        case "drop_by":
+        case "force_drop_by":
+            showDropByUI();
+            LOF.persona.addXP(1, "phase_dropby");
+            LOF.eggs.trigger("dropby");
+            break;
+
+        case "pre_show":
+        case "force_pre_show":
+            showPreShowUI();
+            LOF.eggs.trigger("preshow");
+            break;
+
+        case "after_show":
+        case "force_after_show":
+            showAfterShowUI();
+            LOF.eggs.trigger("aftershow");
+            break;
+
+        case "off_hours":
+        case "force_off_hours":
+            showOffHoursUI();
+            LOF.eggs.trigger("offhours");
+            break;
+
+        case "off_season":
+        case "force_off_season":
+            showOffSeasonUI();
+            LOF.eggs.trigger("offseason");
+            break;
+
+        case "maintenance":
+        case "force_maintenance":
+        default:
+            showMaintenanceUI();
+            LOF.eggs.trigger("maintenance");
+            break;
     }
 
-    fetch("/wp-json/lof-extras/v1/viewer-config", {
-      method: "GET",
-      credentials: "same-origin"
-    })
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function (data) {
-        remoteConfig = data || null;
-        remoteConfigLoaded = true;
-        if (window.console && console.log) {
-          console.log("[LOF Epic Viewer] viewer-config loaded", data);
-        }
-      })
-      .catch(function (err) {
-        remoteConfigLoaded = true;
-        if (window.console && console.warn) {
-          console.warn("[LOF Epic Viewer] Failed to load viewer-config:", err);
-        }
-      });
-  }
+    // Soft bump to vibe when phase changes
+    LOF.vibe.bump(1, "phase_change");
+    LOF.tonight.updateAll();
+}
 
-  function getEffectiveConfig() {
-    const cfg = LOF_VIEWER_CONFIG;
+// -------------------------------------------
+// PHASE UI HANDLERS
+// -------------------------------------------
 
-    // Show windows from remoteConfig.showtimes
-    if (remoteConfig && Array.isArray(remoteConfig.showtimes)) {
-      const mapped = [];
-      for (let i = 0; i < remoteConfig.showtimes.length; i++) {
-        const win = remoteConfig.showtimes[i];
-        if (!win || typeof win !== "object") continue;
-        const start = (win.start || "").trim();
-        const end = (win.end || "").trim();
-        if (!start || !end) continue;
-        mapped.push({ start: start, end: end });
-      }
-      if (mapped.length) {
-        cfg.showWindows = mapped;
-      }
-    }
+function showShowtimeUI() {
+    updateBanner(LOF.config?.text?.banner_showtime || "It’s showtime ✨");
+    enableRFControls(true);
+    setGridActive(true);
+    document.body.classList.add("lof-phase-showtime");
+}
 
-    return cfg;
-  }
+function showIntermissionUI() {
+    updateBanner(LOF.config?.text?.banner_intermission || "Intermission — quick breather 💨");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-intermission");
+}
 
-  // ------------------------------
-  // Time helpers
-  // ------------------------------
+function showDropByUI() {
+    updateBanner(LOF.config?.text?.banner_dropby || "Drop-by mode — you’re early, but the magic’s warming up.");
+    enableRFControls(true);
+    setGridActive(true);
+    document.body.classList.add("lof-phase-dropby");
+}
 
-  function parseTimeToMinutes(timeStr) {
-    if (!timeStr || typeof timeStr !== "string") return null;
-    const parts = timeStr.split(":");
-    if (parts.length < 2) return null;
-    const h = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    if (isNaN(h) || isNaN(m)) return null;
-    return h * 60 + m;
-  }
+function showPreShowUI() {
+    updateBanner(LOF.config?.text?.banner_preshow || "Pre-show — lights stretching, neighbors gathering.");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-preshow");
+}
 
-  function getMinutesSinceMidnight(date) {
-    return date.getHours() * 60 + date.getMinutes();
-  }
+function showAfterShowUI() {
+    updateBanner(LOF.config?.text?.banner_aftershow || "Show’s wrapped — thanks for bringing the glow 💚");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-aftershow");
+}
 
-  function getNextShowWindow(config, nowMinutes) {
-    const rawWindows = (config && config.showWindows) || [];
+function showOffHoursUI() {
+    updateBanner(LOF.config?.text?.banner_offhours || "Off-hours — Falcon is resting up for the next show.");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-offhours");
+}
 
-    const windows = rawWindows
-      .map(function (w) {
-        if (!w) return null;
-        const start = parseTimeToMinutes(w.start);
-        const end = parseTimeToMinutes(w.end);
-        if (start === null || end === null) return null;
-        return { start: start, end: end };
-      })
-      .filter(Boolean);
+function showOffSeasonUI() {
+    updateBanner(LOF.config?.text?.banner_offseason || "Off-season — we’re recharging and plotting what’s next.");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-offseason");
+}
 
-    if (!windows.length) return null;
+function showMaintenanceUI() {
+    updateBanner(LOF.config?.text?.banner_maintenance || "Maintenance moment — the elves are rewiring behind the scenes.");
+    enableRFControls(false);
+    setGridActive(false);
+    document.body.classList.add("lof-phase-maintenance");
+}
 
-    let current = null;
-    let next = null;
-    let minDiff = Infinity;
+// -------------------------------------------
+// BANNER ENGINE
+// -------------------------------------------
 
-    for (let i = 0; i < windows.length; i++) {
-      const w = windows[i];
-
-      if (nowMinutes >= w.start && nowMinutes < w.end) {
-        current = w;
-      } else if (nowMinutes < w.start) {
-        const diff = w.start - nowMinutes;
-        if (diff < minDiff) {
-          minDiff = diff;
-          next = w;
-        }
-      }
-    }
-
-    return { current: current, next: next };
-  }
-
-  // ------------------------------
-  // RF mode reader (from DOM)
-  // ------------------------------
-
-  function getRFMode() {
-    const el = document.getElementById("rf-mode-value");
-    if (!el) return null;
-    const raw = (el.textContent || "").trim().toUpperCase();
-    if (!raw) return null;
-
-    if (raw.indexOf("SHOW") !== -1) return "SHOW";
-    if (raw.indexOf("INTERACTIVE") !== -1) return "INTERACTIVE";
-    if (raw.indexOf("IDLE") !== -1) return "IDLE";
-    if (raw.indexOf("OFF") !== -1) return "OFF";
-
-    return raw;
-  }
-
-  // ------------------------------
-  // Speaker helpers
-  // ------------------------------
-
-  function formatMMSS(seconds) {
-    const sec = typeof seconds === "number" && seconds > 0 ? Math.floor(seconds) : 0;
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    let label;
-    if (m > 0) {
-      label = m + ":" + (s < 10 ? "0" + s : s);
-    } else {
-      label = "0:" + (s < 10 ? "0" + s : s);
-    }
-    return { m: m, s: s, label: label };
-  }
-
-  function getSpeakerStatusEndpoint() {
-    return window.location.origin + "/wp-content/themes/integrations/lof-speaker.php?action=status";
-  }
-
-  function fetchSpeakerStatus() {
-    const url = getSpeakerStatusEndpoint();
-    return fetch(url, { credentials: "same-origin" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .catch(function () {
-        return null;
-      });
-  }
-
-  function updateSpeakerIndicator(data) {
-    const el = document.getElementById("lof-speaker-indicator");
+function updateBanner(text) {
+    const el = LOF.ui.banner;
     if (!el) return;
 
-    const cfg = getEffectiveConfig();
-    const texts = (cfg.text && cfg.text.speaker) || {};
+    el.innerHTML = text || "";
+    el.classList.remove("lof-banner-pulse");
+    // Trigger a reflow so animation restarts
+    void el.offsetWidth;
+    el.classList.add("lof-banner-pulse");
+}
 
-    if (!data || data.success !== true) {
-      el.textContent = "";
-      el.classList.remove("lof-speaker-indicator--on", "lof-speaker-indicator--off");
-      return;
-    }
+// -------------------------------------------
+// UI REFS
+// -------------------------------------------
 
-    const on = !!data.speakerOn;
-    const rem = typeof data.remainingSeconds === "number" ? data.remainingSeconds : 0;
-    const mm = formatMMSS(rem);
+function initializeUIRefs() {
+    LOF.ui.banner        = document.querySelector(".lof-banner");
+    LOF.ui.grid          = document.querySelector("#rf-grid");
+    LOF.ui.vibeMeter     = document.querySelector(".lof-vibe-meter");
+    LOF.ui.personaTitle  = document.querySelector(".lof-persona-title");
+    LOF.ui.personaBadge  = document.querySelector(".lof-persona-badge");
+    LOF.ui.personaStreak = document.querySelector(".lof-persona-streak");
+    LOF.ui.tonightRoot   = document.querySelector(".lof-tonight");
+    LOF.ui.tonightVibe   = document.querySelector(".lof-tonight-vibe");
+    LOF.ui.tonightStats  = document.querySelector(".lof-tonight-stats");
+}
 
-    if (!on) {
-      el.textContent = texts.off || "";
-      el.classList.add("lof-speaker-indicator--off");
-      el.classList.remove("lof-speaker-indicator--on");
-      return;
-    }
+// -------------------------------------------
+// REMOTE FALCON CONTROL MANAGEMENT
+// -------------------------------------------
 
-    let line = "";
-    if (rem > 0 && typeof texts.onWithTime === "function") {
-      line = texts.onWithTime(mm.m, rem);
-    } else if (texts.onNoTime) {
-      line = texts.onNoTime;
-    }
+function enableRFControls(enabled) {
+    const cards = document.querySelectorAll(".rf-card");
 
-    if (!line) {
-      line = "Sound is ON near the show.";
-    }
-
-    el.textContent = line;
-    el.classList.add("lof-speaker-indicator--on");
-    el.classList.remove("lof-speaker-indicator--off");
-  }
-
-  function pollSpeakerStatus() {
-    fetchSpeakerStatus().then(function (data) {
-      updateSpeakerIndicator(data);
+    cards.forEach(card => {
+        if (enabled) {
+            card.classList.remove("rf-disabled");
+            card.removeAttribute("aria-disabled");
+        } else {
+            card.classList.add("rf-disabled");
+            card.setAttribute("aria-disabled", "true");
+        }
     });
-  }
+}
 
-  // ------------------------------
-  // FPP show-status helpers
-  // ------------------------------
+function setGridActive(active) {
+    if (!LOF.ui.grid) return;
+    LOF.ui.grid.setAttribute("data-grid-active", active ? "1" : "0");
+}
 
-  let fppState = {
-    isPlaying: null,
-    mode: null,
-    playlist: null,
-    lastUpdated: null
-  };
+// -------------------------------------------
+// PERSONA ENGINE (v3)
+// -------------------------------------------
 
-  function getFppStatusEndpoint() {
-    return window.location.origin + "/wp-content/themes/integrations/lof-speaker.php?action=showstatus";
-  }
+function PersonaEngine() {
 
-  function fetchFppStatus() {
-    const url = getFppStatusEndpoint();
-    return fetch(url, { credentials: "same-origin" })
-      .then(function (res) {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
-      .then(function (data) {
-        if (!data || typeof data !== "object") return null;
-        fppState.isPlaying = !!data.isPlaying;
-        fppState.mode = data.mode || null;
-        fppState.playlist = data.playlist || null;
-        fppState.lastUpdated = new Date();
-        return data;
-      })
-      .catch(function () {
-        return null;
-      });
-  }
+    let data = store.get("lof_persona", {
+        xp: 0,
+        level: 1,
+        title: "New Neighbor",
+        badges: [],
+        streakDays: 0,
+        lastVisit: null,
+        totalRequests: 0,
+        totalGlows: 0,
+        easterEggs: []
+    });
 
-  function pollFppStatus() {
-    fetchFppStatus();
-  }
+    const titles = [
+        "New Neighbor",        // 1
+        "Returning Neighbor",  // 2
+        "Chaos Rookie",        // 3
+        "Falcon Regular",      // 4
+        "Chaos Captain",       // 5
+        "Midnight Mayor"       // 6
+    ];
 
-  // ------------------------------
-  // Persona / badge helpers
-  // ------------------------------
+    function save() { store.set("lof_persona", data); }
 
-  let personaState = null;
-  let sessionInteractions = 0; // interactions this page load (for energy meter)
+    function addXP(amount, reason) {
+        if (!amount || amount === 0) return;
+        data.xp += amount;
 
-  function loadPersona() {
-    if (personaState) return personaState;
+        const newLevel = Math.min(6, Math.floor(data.xp / 40) + 1); // slower leveling
+        if (newLevel !== data.level) {
+            data.level = newLevel;
+            data.title = titles[newLevel - 1];
+            save();
+            showPersonaToast(`You leveled up to ${data.title}!`);
+            updatePersonaUI();
+        } else {
+            save();
+        }
+    }
 
-    let base = {
-      firstVisit: null,
-      lastVisit: null,
-      visitCount: 0,
-      totalInteractions: 0
+    function recordVisit() {
+        const today = new Date().toISOString().slice(0,10);
+        if (data.lastVisit !== today) {
+            data.lastVisit = today;
+            data.streakDays += 1;
+            // Small XP nudge for streak
+            addXP(1, "visit_streak");
+        }
+        save();
+        updatePersonaUI();
+    }
+
+    function recordRequest() {
+        data.totalRequests += 1;
+        addXP(3, "song_request");
+        save();
+        maybeGrantBadge("request_3", data.totalRequests >= 3, "3 Requests Club");
+        maybeGrantBadge("request_10", data.totalRequests >= 10, "Playlist Co-Pilot");
+    }
+
+    function recordGlow() {
+        data.totalGlows += 1;
+        addXP(2, "glow");
+        save();
+        maybeGrantBadge("glow_5", data.totalGlows >= 5, "Neighborhood Hype Squad");
+    }
+
+    function maybeGrantBadge(id, condition, label) {
+        if (!condition) return;
+        if (data.badges.includes(id)) return;
+        data.badges.push(id);
+        save();
+        showPersonaToast(`New badge unlocked: ${label}`);
+    }
+
+    function addEasterEgg(id) {
+        if (!data.easterEggs.includes(id)) {
+            data.easterEggs.push(id);
+            save();
+        }
+    }
+
+    function updatePersonaUI() {
+        if (LOF.ui.personaTitle) {
+            LOF.ui.personaTitle.textContent = data.title;
+        }
+        if (LOF.ui.personaBadge) {
+            LOF.ui.personaBadge.textContent = `${data.badges.length} badge${data.badges.length === 1 ? '' : 's'}`;
+        }
+        if (LOF.ui.personaStreak) {
+            LOF.ui.personaStreak.textContent = `${data.streakDays} night${data.streakDays === 1 ? '' : 's'} this season`;
+        }
+    }
+
+    function showPersonaToast(msg) {
+        lofToast(msg);
+    }
+
+    // On first load, sync UI + register visit
+    lofReady(() => {
+        recordVisit();
+        updatePersonaUI();
+    });
+
+    return {
+        addXP,
+        recordVisit,
+        recordRequest,
+        recordGlow,
+        addEasterEgg,
+        get: () => data
     };
+}
 
-    try {
-      if (typeof window.localStorage === "undefined") {
-        personaState = base;
-        return base;
-      }
-      const raw = window.localStorage.getItem(PERSONA_STORAGE_KEY);
-      if (!raw) {
-        personaState = base;
-        return base;
-      }
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") {
-        base = Object.assign(base, parsed);
-      }
-    } catch (e) {
-      // ignore
-    }
-    personaState = base;
-    return base;
-  }
+// -------------------------------------------
+// VIBE ENGINE (v3)
+// -------------------------------------------
 
-  function savePersona() {
-    if (!personaState) return;
-    try {
-      if (typeof window.localStorage === "undefined") return;
-      window.localStorage.setItem(PERSONA_STORAGE_KEY, JSON.stringify(personaState));
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function touchVisit() {
-    const now = Date.now();
-    const p = loadPersona();
-    if (!p.firstVisit) {
-      p.firstVisit = now;
-    }
-    p.lastVisit = now;
-    p.visitCount = (p.visitCount || 0) + 1;
-    personaState = p;
-    savePersona();
-  }
-
-  function recordInteraction() {
-    const p = loadPersona();
-    p.totalInteractions = (p.totalInteractions || 0) + 1;
-    personaState = p;
-    savePersona();
-    sessionInteractions += 1;
-  }
-
-  function getPersonaSummary() {
-    const p = loadPersona();
-    const visits = p.visitCount || 0;
-    const actions = p.totalInteractions || 0;
-
-    let title = "";
-    let detail = "";
-
-    if (visits <= 1) {
-      title = "First time at Falcon 💫";
-      detail = actions > 0
-        ? "You’re already poking at the controls. Respect."
-        : "Take your time, explore the chaos. The lights are friendly.";
-    } else if (visits <= 5) {
-      title = "Returning neighbor 👋";
-      detail = actions >= 3
-        ? "You’ve already helped steer the show multiple times."
-        : "You know the drill. Pick a favorite or let Surprise Me do the work.";
-    } else {
-      title = "Regular on the block 🌈";
-      if (actions >= 10) {
-        detail = "Chaos captain: you’ve been nudging the playlist all season.";
-      } else if (actions >= 3) {
-        detail = "You’ve shaped the soundtrack more than once. Keep going.";
-      } else {
-        detail = "Thanks for coming back again. The lights missed you.";
-      }
-    }
-
-    let badge = null;
-    if (actions >= 3 && actions < 10) {
-      badge = "Song selector (3+ picks)";
-    } else if (actions >= 10) {
-      badge = "Chaos captain (10+ picks)";
-    }
-
-    return { title: title, detail: detail, badge: badge };
-  }
-
-  function getPersonaRoot() {
-    let root = document.getElementById("lof-persona-badge");
-    if (root) return root;
-
-    const banner = document.getElementById("lof-epic-banner");
-    root = document.createElement("div");
-    root.id = "lof-persona-badge";
-    root.className = "lof-persona-badge";
-
-    if (banner && banner.parentNode) {
-      banner.parentNode.insertBefore(root, banner.nextSibling);
-    } else {
-      document.body.appendChild(root);
-    }
-
-    const label = document.createElement("div");
-    label.className = "lof-persona-title";
-    root.appendChild(label);
-
-    const detail = document.createElement("div");
-    detail.className = "lof-persona-detail";
-    root.appendChild(detail);
-
-    const badge = document.createElement("div");
-    badge.className = "lof-persona-chip";
-    root.appendChild(badge);
-
-    return root;
-  }
-
-  function updatePersonaUI() {
-    const root = getPersonaRoot();
-    const summary = getPersonaSummary();
-
-    const titleEl = root.querySelector(".lof-persona-title");
-    const detailEl = root.querySelector(".lof-persona-detail");
-    const chipEl = root.querySelector(".lof-persona-chip");
-
-    if (titleEl) titleEl.textContent = summary.title || "";
-    if (detailEl) detailEl.textContent = summary.detail || "";
-
-    if (summary.badge) {
-      chipEl.textContent = summary.badge;
-      chipEl.style.display = "inline-flex";
-    } else {
-      chipEl.textContent = "";
-      chipEl.style.display = "none";
-    }
-  }
-
-  function initPersonaListeners() {
-    const grid = document.getElementById("rf-grid");
-    if (!grid) return;
-
-    // Delegate clicks on RF card buttons as "interactions" (requests/votes)
-    grid.addEventListener("click", function (evt) {
-      if (!evt.target) return;
-      const btn = evt.target.closest(".rf-card-btn");
-      if (!btn) return;
-      recordInteraction();
-      updatePersonaUI();
-      updateEnergyMeterUI(); // bump the vibe when they poke something
-    });
-  }
-
-  // ------------------------------
-  // Energy meter helpers
-  // ------------------------------
-
-  function getEnergyRoot() {
-    let root = document.getElementById("lof-energy-meter");
-    if (root) return root;
-
-    const banner = document.getElementById("lof-epic-banner");
-    root = document.createElement("div");
-    root.id = "lof-energy-meter";
-    root.className = "lof-energy-meter";
-
-    // Visually keep it near the persona band on all devices
-    if (banner && banner.parentNode) {
-      banner.parentNode.insertBefore(root, banner.nextSibling);
-    } else {
-      document.body.appendChild(root);
-    }
-
-    const label = document.createElement("div");
-    label.className = "lof-energy-label";
-    root.appendChild(label);
-
-    const bar = document.createElement("div");
-    bar.className = "lof-energy-bar";
-    root.appendChild(bar);
-
-    const fill = document.createElement("div");
-    fill.className = "lof-energy-fill";
-    bar.appendChild(fill);
-
-    return root;
-  }
-
-  function computeEnergyScore() {
-    // Very simple v1:
-    // - base from FPP playing
-    // - plus local session interactions (this tab)
-    // - plus a nudge if within a show window
-    const cfg = getEffectiveConfig();
-    const now = new Date();
-    const nowMin = getMinutesSinceMidnight(now);
-    const windows = getNextShowWindow(cfg, nowMin);
-    const inShowWindow = windows && windows.current;
+function VibeEngine() {
 
     let score = 0;
+    let events = {
+        requests: 0,
+        glows: 0,
+        neighbors: 1
+    };
 
-    if (fppState.isPlaying === true) {
-      score += 40;
-    } else if (fppState.isPlaying === false) {
-      score += 5;
+    function bump(val, source) {
+        // basic bump
+        score = Math.min(100, score + (val || 1));
+
+        // record extra events
+        if (source === "song_request") events.requests++;
+        if (source === "glow") events.glows++;
+
+        updateVibeUI();
     }
 
-    // Each interaction is ~6 points, up to 30
-    const interactionScore = Math.min(30, sessionInteractions * 6);
-    score += interactionScore;
-
-    if (inShowWindow) {
-      score += 20;
+    function decay() {
+        score = Math.max(0, score - 1);
+        updateVibeUI();
     }
 
-    // Keep in [0, 100]
-    if (score < 0) score = 0;
-    if (score > 100) score = 100;
-
-    return score;
-  }
-
-  function energyLabelForScore(score) {
-    if (score < 25) {
-      return "Falcon vibe check: Quiet & cozy 🕯️";
-    } else if (score < 60) {
-      return "Falcon vibe check: Kids laughing, neighbors mingling 💛";
-    } else {
-      return "Falcon vibe check: Full chaos in the best way ⚡️";
-    }
-  }
-
-  function updateEnergyMeterUI() {
-    const root = getEnergyRoot();
-    const labelEl = root.querySelector(".lof-energy-label");
-    const fillEl = root.querySelector(".lof-energy-fill");
-
-    if (!labelEl || !fillEl) return;
-
-    const score = computeEnergyScore();
-    labelEl.textContent = energyLabelForScore(score);
-    fillEl.style.width = score + "%";
-
-    // add a little pulse when we're in full chaos
-    if (score >= 60) {
-      root.classList.add("lof-energy-meter--hot");
-    } else {
-      root.classList.remove("lof-energy-meter--hot");
-    }
-  }
-
-  function pollEnergyMeter() {
-    updateEnergyMeterUI();
-  }
-
-  // ------------------------------
-  // DOM helpers
-  // ------------------------------
-
-  function setText(id, text) {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.textContent = text || "";
-  }
-
-  function setCountdownText(minutesUntil) {
-    const el = document.getElementById("lof-show-countdown");
-    if (!el) return;
-
-    if (minutesUntil == null || minutesUntil <= 0) {
-      el.textContent = "";
-      el.style.display = "none";
-      return;
+    function vibeState() {
+        if (score > 80) return "peak";   // absolute chaos
+        if (score > 60) return "warm";   // strong energy
+        if (score > 30) return "cozy";   // mellow but alive
+        return "low";                    // calm
     }
 
-    el.style.display = "block";
+    function updateVibeUI() {
+        const state = vibeState();
+        document.documentElement.setAttribute("data-vibe", state);
 
-    if (minutesUntil < 1) {
-      el.textContent = "Next show starts in under a minute.";
-    } else if (minutesUntil === 1) {
-      el.textContent = "Next show starts in about 1 minute.";
-    } else {
-      el.textContent = "Next show starts in about " + minutesUntil + " minutes.";
-    }
-  }
+        if (LOF.ui.vibeMeter) {
+            LOF.ui.vibeMeter.setAttribute("data-vibe", state);
+            LOF.ui.vibeMeter.style.setProperty("--lof-vibe-score", score);
+            LOF.ui.vibeMeter.textContent = state === "peak"
+                ? "Peak Falcon Energy"
+                : state === "warm"
+                ? "Warming Up Nicely"
+                : state === "cozy"
+                ? "Cozy Neighborhood Glow"
+                : "Soft & Quiet";
+        }
 
-  // ------------------------------
-  // Banner logic (schedule + RF mode + FPP state)
-  // ------------------------------
-
-  function updateEpicBanner() {
-    const root = document.getElementById("lof-epic-banner");
-    if (!root) return;
-
-    const now = new Date();
-    const nowMin = getMinutesSinceMidnight(now);
-    const mode = getRFMode();
-    const cfg = getEffectiveConfig();
-    const windows = getNextShowWindow(cfg, nowMin);
-
-    const texts = cfg.text || {};
-    let kicker;
-    let title;
-    let body;
-    let minutesUntilNext = null;
-
-    const inShowWindow = windows && windows.current;
-
-    if (inShowWindow) {
-      kicker = texts.showtime && texts.showtime.kicker;
-      title = texts.showtime && texts.showtime.title;
-      body = texts.showtime && texts.showtime.body;
-    } else {
-      if (windows && windows.next) {
-        minutesUntilNext = windows.next.start - nowMin;
-      }
-
-      if (
-        minutesUntilNext != null &&
-        minutesUntilNext > 0 &&
-        minutesUntilNext <= cfg.countdownThresholdMinutes
-      ) {
-        kicker = texts.adhoc && texts.adhoc.kicker;
-        title = texts.adhoc && texts.adhoc.title;
-        body = texts.adhoc && texts.adhoc.body;
-      } else {
-        kicker = texts.offline && texts.offline.kicker;
-        title = texts.offline && texts.offline.title;
-        body = texts.offline && texts.offline.body;
-      }
+        // Let TonightPanel know vibe changed
+        if (LOF.tonight) LOF.tonight.updateVibe(state, score, events);
     }
 
-    // Layer 2: FPP truth (if we know it)
-    const fppKnown = typeof fppState.isPlaying === "boolean";
-    const fppPlaying = fppKnown && fppState.isPlaying;
+    return {
+        bump,
+        decay,
+        state: () => vibeState(),
+        getScore: () => score,
+        getEvents: () => events
+    };
+}
 
-    if (fppKnown) {
-      if (!fppPlaying) {
-        kicker = texts.offline && texts.offline.kicker;
-        title = texts.offline && texts.offline.title;
-        body = texts.offline && texts.offline.body;
-      } else {
-        kicker = texts.showtime && texts.showtime.kicker;
-        title = texts.showtime && texts.showtime.title;
-        body = texts.showtime && texts.showtime.body;
-        minutesUntilNext = null;
-      }
+function startVibeTicking() {
+    if (LOF.timers.vibeTick) clearInterval(LOF.timers.vibeTick);
+    LOF.timers.vibeTick = setInterval(() => LOF.vibe.decay(), 8000);
+}
+
+// -------------------------------------------
+// TONIGHT PANEL ENGINE
+// -------------------------------------------
+
+function TonightPanelEngine() {
+
+    function updateAll() {
+        if (!LOF.ui.tonightRoot) return;
+
+        updateHeadline();
+        updateStats();
+        updateVibeBlock();
     }
 
-    // Layer 3: RF mode nuance (only if FPP state is unknown)
-    if (!fppKnown && mode) {
-      if (mode === "OFF") {
-        kicker = texts.offline && texts.offline.kicker;
-        title = texts.offline && texts.offline.title;
-        body = texts.offline && texts.offline.body;
-      } else if (mode === "INTERACTIVE") {
-        kicker = texts.adhoc && texts.adhoc.kicker;
-        title = texts.adhoc && texts.adhoc.title;
-        body = texts.adhoc && texts.adhoc.body;
-      } else if (mode === "SHOW") {
-        kicker = texts.showtime && texts.showtime.kicker;
-        title = texts.showtime && texts.showtime.title;
-        body = texts.showtime && texts.showtime.body;
-      }
+    function updateHeadline() {
+        if (!LOF.ui.tonightRoot) return;
+        const persona = LOF.persona.get();
+        const phase = LOF.phase;
+
+        let line = "Tonight at Lights on Falcon";
+        if (phase === "showtime") {
+            line = `Tonight at Lights on Falcon — you’re part of the show, ${persona.title}.`;
+        } else if (phase === "intermission") {
+            line = `Intermission vibes — stretch, sip, and stay glowing, ${persona.title}.`;
+        } else if (phase === "drop_by") {
+            line = `Drop-by mode — you found us early, ${persona.title}.`;
+        } else if (phase === "off_hours" || phase === "off_season") {
+            line = `Falcon’s resting, but the story keeps going.`;
+        }
+
+        const hl = LOF.ui.tonightRoot.querySelector(".lof-tonight-headline");
+        if (hl) hl.textContent = line;
     }
 
-    setText("lof-banner-kicker", kicker || "");
-    setText("lof-banner-title", title || "");
-    setText("lof-banner-body", body || "");
+    function updateStats() {
+        if (!LOF.ui.tonightStats) return;
 
-    if (
-      minutesUntilNext != null &&
-      minutesUntilNext > 0 &&
-      minutesUntilNext <= cfg.countdownThresholdMinutes
-    ) {
-      setCountdownText(minutesUntilNext);
-    } else {
-      setCountdownText(null);
+        const persona = LOF.persona.get();
+        const show = LOF.show || {};
+        const playlist = show.playlist || "—";
+
+        const bits = [];
+
+        bits.push(`Level: ${persona.level} (${persona.title})`);
+        bits.push(`Requests from this device: ${persona.totalRequests}`);
+        bits.push(`Glows you’ve sent: ${persona.totalGlows}`);
+        bits.push(`Nights this season: ${persona.streakDays}`);
+        bits.push(`Current playlist: ${playlist}`);
+
+        LOF.ui.tonightStats.innerHTML = bits.map(b => `<div class="lof-tonight-stat-line">${b}</div>`).join("");
     }
-  }
 
-  // ------------------------------
-  // Init
-  // ------------------------------
+    function updateVibe(state, score, ev) {
+        if (!LOF.ui.tonightVibe) return;
 
-  function initEpicViewer() {
-    loadViewerConfigFromREST();
+        let label;
+        if (state === "peak") label = "Neighborhood is absolutely lit 🔥";
+        else if (state === "warm") label = "Energy is high, keep it going ✨";
+        else if (state === "cozy") label = "Soft glow, easy vibes 🌙";
+        else label = "Quiet moment — your glow still matters 💚";
 
-    touchVisit();
-    updatePersonaUI();
-    initPersonaListeners();
+        LOF.ui.tonightVibe.innerHTML = `
+            <div class="lof-tonight-vibe-label">${label}</div>
+            <div class="lof-tonight-vibe-meta">
+                <span>Vibe score: ${score}</span>
+                <span>Requests this session: ${ev.requests}</span>
+                <span>Glows this session: ${ev.glows}</span>
+            </div>
+        `;
+    }
 
-    // Initial pulls
-    updateEpicBanner();
-    pollSpeakerStatus();
-    pollFppStatus();
-    updateEnergyMeterUI();
+    return {
+        updateAll,
+        updateVibe
+    };
+}
 
-    // Poll banner state (showtime/ad-hoc) every 30s
-    setInterval(updateEpicBanner, 30000);
+// -------------------------------------------
+// THEME LOADER
+// -------------------------------------------
 
-    // Poll speaker status
-    const speakerIntervalMs = Math.max(3, LOF_VIEWER_CONFIG.speakerPollSeconds || 5) * 1000;
-    setInterval(pollSpeakerStatus, speakerIntervalMs);
+function applyInitialTheme() {
+    const season = LOF.config?.season || "default";
+    document.documentElement.setAttribute("data-season", season);
+}
 
-    // Poll FPP show status
-    const fppIntervalMs = Math.max(5, LOF_VIEWER_CONFIG.fppPollSeconds || 15) * 1000;
-    setInterval(pollFppStatus, fppIntervalMs);
+// -------------------------------------------
+// EASTER EGG ENGINE
+// -------------------------------------------
 
-    // Poll energy meter
-    const energyIntervalMs = Math.max(5, LOF_VIEWER_CONFIG.energyPollSeconds || 10) * 1000;
-    setInterval(pollEnergyMeter, energyIntervalMs);
-  }
+function EasterEggEngine() {
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initEpicViewer);
-  } else {
-    initEpicViewer();
-  }
-})();
+    const eggs = {
+        // Example eggs:
+        // 'late_night_showtime': triggered if showtime after 22:00
+        // 'first_dropby': first time hitting dropby
+    };
+
+    function checkInitial() {
+        // Example: if first time ever visiting
+        const persona = LOF.persona.get();
+        if (persona.streakDays === 1 && persona.totalRequests === 0) {
+            // subtle nudge
+            lofLog("First visit this season — subtle easter egg hook.");
+        }
+    }
+
+    function checkOnStatus() {
+        // Could use LOF.show, LOF.phase, etc.
+        if (!LOF.show) return;
+
+        // Example: late-night showtime achievement
+        if (LOF.phase === "showtime") {
+            const now = new Date();
+            const hour = now.getHours();
+            if (hour >= 22) {
+                triggerEgg("late_night_showtime", "Night Owl: You caught the late show.");
+            }
+        }
+    }
+
+    function trigger(phaseKey) {
+        // This can be extended with more complex patterns.
+        if (phaseKey === "dropby") {
+            triggerEgg("first_dropby", "You found us early — Drop-By Explorer.");
+        }
+    }
+
+    function triggerEgg(id, label) {
+        const persona = LOF.persona.get();
+        if (persona.easterEggs && persona.easterEggs.includes(id)) return;
+        LOF.persona.addEasterEgg(id);
+        if (label) lofToast(label);
+    }
+
+    return {
+        checkInitial,
+        checkOnStatus,
+        trigger
+    };
+}
+
+// -------------------------------------------
+// REMOTE FALCON HOOKS (EVENT GLUE)
+// -------------------------------------------
+
+function hookRemoteFalconEvents() {
+
+    // Now Playing event (custom event expected from rf-viewer.js integration)
+    document.addEventListener("rf-nowplaying", (ev) => {
+        LOF.rf.nowPlaying = ev.detail;
+        LOF.vibe.bump(1, "nowplaying");
+    });
+
+    // Queue update (song added / removed)
+    document.addEventListener("rf-queue-update", (ev) => {
+        LOF.rf.queue = ev.detail.queue || [];
+        LOF.vibe.bump(1, "queue");
+    });
+
+    // Song picked by this viewer (we also emit this locally on card click)
+    document.addEventListener("rf-song-picked", (ev) => {
+        LOF.rf.lastPickAt = Date.now();
+        LOF.persona.recordRequest();
+        LOF.vibe.bump(3, "song_request");
+        lofToast("Request locked in. Nice pick. 🎶");
+    });
+
+    // Glow sent (if Glow UI emits this custom event)
+    document.addEventListener("lof-glow-sent", (ev) => {
+        LOF.persona.recordGlow();
+        LOF.vibe.bump(2, "glow");
+        lofToast("Glow sent. Thanks for lighting someone’s night. 💚");
+    });
+
+    // Cooldown event (RF request throttle)
+    document.addEventListener("rf-cooldown", () => {
+        LOF.rf.cooldown = true;
+        lofToast("Take a breather, you’ve hit the request cooldown.");
+        setTimeout(() => { LOF.rf.cooldown = false; }, 15000);
+    });
+}
+
+// Local click hook to generate rf-song-picked when RF doesn't emit it natively
+function hookRFCardClicks() {
+    document.addEventListener("click", (ev) => {
+        const card = ev.target.closest(".rf-card");
+        if (!card) return;
+        if (card.classList.contains("rf-disabled")) return;
+
+        // Fire synthetic event that other parts of system can listen to
+        const evt = new CustomEvent("rf-song-picked", {
+            detail: {
+                id: card.getAttribute("data-id") || null
+            }
+        });
+        document.dispatchEvent(evt);
+    });
+}
+
+// -------------------------------------------
+// TOAST UTILITY
+// -------------------------------------------
+
+function lofToast(msg) {
+    const n = document.createElement("div");
+    n.className = "lof-toast";
+    n.textContent = msg;
+    document.body.appendChild(n);
+    requestAnimationFrame(() => {
+        n.classList.add("lof-toast-in");
+    });
+    setTimeout(() => {
+        n.classList.remove("lof-toast-in");
+        n.classList.add("lof-toast-out");
+        setTimeout(() => n.remove(), 300);
+    }, 2500);
+}
