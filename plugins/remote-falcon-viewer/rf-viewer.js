@@ -65,6 +65,10 @@
   let currentControlEnabled = false;
   let currentVisibleSequences = [];
 
+  // Simple per-device rate limit for "Send a Glow"
+  let lastGlowTime = 0;
+  const GLOW_COOLDOWN_MS = 30000; // 30 seconds
+
   // Local “identity” for this device
   const STORAGE_REQUESTS_KEY = 'lofRequestedSongs_v1';
   const STORAGE_STATS_KEY    = 'lofViewerStats_v1';
@@ -572,6 +576,7 @@
     }
 
     renderStats(extra, queueLength);
+    addGlowCard(extra);
     addSpeakerCard(extra);
   }
 
@@ -822,7 +827,138 @@
 
     extra.appendChild(wrapper);
   }
+  /* -------------------------
+   * Glow card (Send a little love)
+   * ------------------------- */
 
+  function addGlowCard(extra) {
+    // Feature flag from LOF Extras, if present
+    let glowEnabled = true;
+    try {
+      if (
+        LOFViewer &&
+        LOFViewer.config &&
+        LOFViewer.config.features &&
+        typeof LOFViewer.config.features.glow_enabled === 'boolean'
+      ) {
+        glowEnabled = LOFViewer.config.features.glow_enabled;
+      }
+    } catch (e) {}
+
+    if (!glowEnabled) return;
+
+    const card = document.createElement('div');
+    card.className = 'rf-glow-card';
+
+    const title       = lofCopy('glow_title', 'Send a glow to someone 💌');
+    const subtitle    = lofCopy(
+      'glow_sub',
+      'Drop a short note of appreciation. We’ll turn it into a little moment of light.'
+    );
+    const placeholder = lofCopy(
+      'glow_placeholder',
+      '“For the neighbor who always waves at passing kids…”'
+    );
+    const btnLabel    = lofCopy('glow_button', 'Send this glow');
+
+    card.innerHTML = `
+      <div class="rf-extra-title">${escapeHtml(title)}</div>
+      <div class="rf-extra-sub">
+        ${escapeHtml(subtitle)}
+      </div>
+      <textarea
+        id="rf-glow-message"
+        class="rf-glow-input"
+        rows="3"
+        maxlength="280"
+        placeholder="${escapeHtml(placeholder)}"
+      ></textarea>
+      <div class="rf-glow-actions">
+        <button id="rf-glow-btn" class="rf-glow-btn">
+          ${escapeHtml(btnLabel)}
+        </button>
+      </div>
+      <div class="rf-glow-footnote">
+        Keep it kind. We’re all neighbors here. 💚
+      </div>
+    `;
+
+    extra.appendChild(card);
+
+    const textarea = card.querySelector('#rf-glow-message');
+    const button   = card.querySelector('#rf-glow-btn');
+
+    if (!textarea || !button) return;
+
+    button.addEventListener('click', async () => {
+      const now = Date.now();
+      if (now - lastGlowTime < GLOW_COOLDOWN_MS) {
+        const remaining = Math.ceil((GLOW_COOLDOWN_MS - (now - lastGlowTime)) / 1000);
+        const rateMsg = lofCopy(
+          'glow_rate_limited',
+          'You just sent a glow — give it a few seconds before sending another. ✨'
+        );
+        showToast(`${rateMsg} (${remaining}s)`, 'error');
+        return;
+      }
+
+      const raw = (textarea.value || '').trim();
+      if (!raw) {
+        const emptyMsg = lofCopy(
+          'glow_empty_error',
+          'Add a short note before sending your glow.'
+        );
+        showToast(emptyMsg, 'error');
+        return;
+      }
+
+      // Lock UI
+      button.disabled = true;
+      const oldLabel = button.textContent;
+      button.textContent = 'Sending glow…';
+
+      const successMsg = lofCopy(
+        'glow_success',
+        'Your glow has been sent into the Falcon ether. 💫'
+      );
+      const errorMsg = lofCopy(
+        'glow_error',
+        'We couldn’t send that glow right now. Please try again in a bit.'
+      );
+
+      try {
+        const res = await fetch('/wp-json/lof-extras/v1/glow', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            message: raw
+          })
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.success) {
+          textarea.value = '';
+          lastGlowTime = Date.now();
+          showToast(data.message || successMsg, 'success');
+        } else {
+          const msg =
+            (data && (data.message || data.error)) ||
+            errorMsg;
+          showToast(msg, 'error');
+        }
+      } catch (e) {
+        showToast(errorMsg, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = oldLabel;
+      }
+    });
+  }
   /* -------------------------
    * Speaker control card
    * ------------------------- */

@@ -602,3 +602,46 @@
   transform: translateY(-1px);
   box-shadow: 0 0 14px rgba(133, 255, 179, 0.6);
 }
+.rf-glow-card {
+  margin-top: 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rf-glow-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.4);
+  color: #fff;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.rf-glow-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.rf-glow-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rf-glow-btn {
+  border-radius: 999px;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.rf-glow-footnote {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
