@@ -883,7 +883,7 @@
     extra.appendChild(wrapper);
   }
     /* -------------------------
-   * Glow card (Send a little love)
+   * Glow hub (Quick glow / Glow + note / Nominate neighbor)
    * ------------------------- */
 
   function addGlowCard(extra) {
@@ -903,7 +903,6 @@
         }
       }
     } catch (e) {
-      // If anything is weird, keep it enabled instead of silently hiding the card
       glowEnabled = true;
     }
 
@@ -915,32 +914,96 @@
     const title       = lofCopy('glow_title', 'Send a little glow 💚');
     const subtitle    = lofCopy(
       'glow_sub',
-      'Drop a short note of thanks, joy, or encouragement.'
+      'Drop a little love, a note, or a neighbor nomination.'
     );
-    const placeholder = lofCopy(
+
+    const quickLabel  = lofCopy('glow_mode_quick', 'Quick glow');
+    const noteLabel   = lofCopy('glow_mode_note', 'Glow + note');
+    const neighLabel  = lofCopy('glow_mode_neighbor', 'Nominate a neighbor');
+
+    const msgPlaceholder = lofCopy(
       'glow_placeholder',
-      'Tell us who made your night, or what made you smile…'
+      '“This show made our night!”'
     );
-    // Button label uses glow_btn (matches LOF Extras)
-    const btnLabel    = lofCopy('glow_btn', 'Send this glow ✨');
+    const neighNameLabel = lofCopy(
+      'neighbor_name_label',
+      'Neighbor first name or nickname (optional)'
+    );
+    const neighStoryPlaceholder = lofCopy(
+      'neighbor_story_placeholder',
+      'Tell us briefly why this neighbor deserves a little extra light.'
+    );
+
+    const btnGlowQuick  = lofCopy('glow_btn_quick', 'Send a quick glow ✨');
+    const btnGlowNote   = lofCopy('glow_btn_note', 'Send glow + note ✨');
+    const btnNeighbor   = lofCopy('neighbor_btn', 'Nominate this neighbor 💚');
 
     card.innerHTML = `
       <div class="rf-extra-title">${escapeHtml(title)}</div>
       <div class="rf-extra-sub">
         ${escapeHtml(subtitle)}
       </div>
-      <textarea
-        id="rf-glow-message"
-        class="rf-glow-input"
-        rows="3"
-        maxlength="280"
-        placeholder="${escapeHtml(placeholder)}"
-      ></textarea>
-      <div class="rf-glow-actions">
-        <button id="rf-glow-btn" class="rf-glow-btn">
-          ${escapeHtml(btnLabel)}
+
+      <div class="rf-glow-modes">
+        <button class="rf-glow-mode rf-glow-mode--active" data-mode="quick">
+          ${escapeHtml(quickLabel)}
+        </button>
+        <button class="rf-glow-mode" data-mode="note">
+          ${escapeHtml(noteLabel)}
+        </button>
+        <button class="rf-glow-mode" data-mode="neighbor">
+          ${escapeHtml(neighLabel)}
         </button>
       </div>
+
+      <div class="rf-glow-body">
+
+        <!-- Quick glow info (no fields) -->
+        <div class="rf-glow-panel rf-glow-panel--quick">
+          <div class="rf-glow-help">
+            We’ll log a little burst of appreciation from this visit. No text needed, just pure vibes. ✨
+          </div>
+        </div>
+
+        <!-- Glow + note -->
+        <div class="rf-glow-panel rf-glow-panel--note" style="display:none;">
+          <textarea
+            id="rf-glow-message"
+            class="rf-glow-input"
+            rows="3"
+            maxlength="280"
+            placeholder="${escapeHtml(msgPlaceholder)}"
+          ></textarea>
+        </div>
+
+        <!-- Nominate neighbor -->
+        <div class="rf-glow-panel rf-glow-panel--neighbor" style="display:none;">
+          <label class="rf-glow-label" for="rf-neighbor-name">
+            ${escapeHtml(neighNameLabel)}
+          </label>
+          <input
+            id="rf-neighbor-name"
+            class="rf-glow-input rf-glow-input--text"
+            type="text"
+            maxlength="80"
+          />
+          <textarea
+            id="rf-neighbor-story"
+            class="rf-glow-input"
+            rows="3"
+            maxlength="400"
+            placeholder="${escapeHtml(neighStoryPlaceholder)}"
+          ></textarea>
+        </div>
+
+      </div>
+
+      <div class="rf-glow-actions">
+        <button id="rf-glow-btn" class="rf-glow-btn">
+          ${escapeHtml(btnGlowQuick)}
+        </button>
+      </div>
+
       <div class="rf-glow-footnote">
         Keep it kind. We’re all neighbors here. 💚
       </div>
@@ -948,10 +1011,57 @@
 
     extra.appendChild(card);
 
-    const textarea = card.querySelector('#rf-glow-message');
-    const button   = card.querySelector('#rf-glow-btn');
+    const modeButtons   = card.querySelectorAll('.rf-glow-mode');
+    const panelQuick    = card.querySelector('.rf-glow-panel--quick');
+    const panelNote     = card.querySelector('.rf-glow-panel--note');
+    const panelNeighbor = card.querySelector('.rf-glow-panel--neighbor');
+    const msgTextarea   = card.querySelector('#rf-glow-message');
+    const neighName     = card.querySelector('#rf-neighbor-name');
+    const neighStory    = card.querySelector('#rf-neighbor-story');
+    const button        = card.querySelector('#rf-glow-btn');
 
-    if (!textarea || !button) return;
+    if (!button) return;
+
+    // Current mode: "quick", "note", "neighbor"
+    let currentMode = 'quick';
+
+    function updateMode(newMode) {
+      currentMode = newMode;
+
+      // Toggle active styling
+      modeButtons.forEach((btn) => {
+        const btnMode = btn.getAttribute('data-mode');
+        if (btnMode === newMode) {
+          btn.classList.add('rf-glow-mode--active');
+        } else {
+          btn.classList.remove('rf-glow-mode--active');
+        }
+      });
+
+      // Toggle panels
+      if (panelQuick)    panelQuick.style.display    = (newMode === 'quick')    ? 'block' : 'none';
+      if (panelNote)     panelNote.style.display     = (newMode === 'note')     ? 'block' : 'none';
+      if (panelNeighbor) panelNeighbor.style.display = (newMode === 'neighbor') ? 'block' : 'none';
+
+      // Button label per mode
+      if (newMode === 'quick') {
+        button.textContent = btnGlowQuick;
+      } else if (newMode === 'note') {
+        button.textContent = btnGlowNote;
+      } else {
+        button.textContent = btnNeighbor;
+      }
+    }
+
+    modeButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const newMode = btn.getAttribute('data-mode') || 'quick';
+        updateMode(newMode);
+      });
+    });
+
+    // Initial mode setup
+    updateMode('quick');
 
     button.addEventListener('click', async () => {
       const now = Date.now();
@@ -965,49 +1075,99 @@
         return;
       }
 
-      const raw = (textarea.value || '').trim();
-      if (!raw) {
-        const emptyMsg = lofCopy(
-          'glow_empty_error',
-          'Add a short note before sending your glow.'
+      // Validate fields based on mode
+      let payload = {};
+      let endpoint = '';
+      let successMsg = '';
+      let errorMsg   = '';
+
+      if (currentMode === 'quick') {
+        endpoint   = '/wp-json/lof-extras/v1/glow';
+        payload    = { type: 'quick', message: '' };
+        successMsg = lofCopy(
+          'glow_success_toast',
+          'Glow sent. Thanks for sharing the love. 💚'
         );
-        showToast(emptyMsg, 'error');
-        return;
+        errorMsg = lofCopy(
+          'glow_error_toast',
+          'Could not send glow. Please try again.'
+        );
+      } else if (currentMode === 'note') {
+        const raw = (msgTextarea && msgTextarea.value || '').trim();
+        if (!raw) {
+          const emptyMsg = lofCopy(
+            'glow_empty_error',
+            'Add a short note before sending your glow.'
+          );
+          showToast(emptyMsg, 'error');
+          return;
+        }
+        endpoint   = '/wp-json/lof-extras/v1/glow';
+        payload    = { type: 'note', message: raw };
+        successMsg = lofCopy(
+          'glow_success_toast',
+          'Glow sent. Thanks for sharing the love. 💚'
+        );
+        errorMsg = lofCopy(
+          'glow_error_toast',
+          'Could not send glow. Please try again.'
+        );
+      } else {
+        // neighbor
+        const storyRaw = (neighStory && neighStory.value || '').trim();
+        if (!storyRaw) {
+          const emptyNeigh = lofCopy(
+            'neighbor_empty_error',
+            'Share a few words about your neighbor before sending.'
+          );
+          showToast(emptyNeigh, 'error');
+          return;
+        }
+        const nameRaw = (neighName && neighName.value || '').trim();
+
+        endpoint = '/wp-json/lof-extras/v1/neighbor';
+        payload  = {
+          name: nameRaw,
+          story: storyRaw
+        };
+        successMsg = lofCopy(
+          'neighbor_success_toast',
+          'Neighbor nomination sent. Thanks for lifting someone up. 💚'
+        );
+        errorMsg = lofCopy(
+          'neighbor_error_toast',
+          'Could not send nomination. Please try again.'
+        );
       }
 
       // Lock UI
       button.disabled = true;
       const oldLabel = button.textContent;
-      button.textContent = 'Sending glow…';
-
-      // Toasts use glow_success_toast / glow_error_toast (LOF Extras)
-      const successMsg = lofCopy(
-        'glow_success_toast',
-        'Glow sent. Thanks for sharing the love. 💚'
-      );
-      const errorMsg = lofCopy(
-        'glow_error_toast',
-        'Could not send glow. Please try again.'
-      );
+      button.textContent = 'Sending…';
 
       try {
-        const res = await fetch('/wp-json/lof-extras/v1/glow', {
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           credentials: 'same-origin',
-          body: JSON.stringify({
-            message: raw
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json().catch(() => null);
 
         if (res.ok && data && data.success) {
-          textarea.value = '';
           lastGlowTime = Date.now();
+
+          if (currentMode === 'note' && msgTextarea) {
+            msgTextarea.value = '';
+          } else if (currentMode === 'neighbor') {
+            if (neighName)   neighName.value = '';
+            if (neighStory)  neighStory.value = '';
+          }
+
           showToast(data.message || successMsg, 'success');
         } else {
           const msg =
