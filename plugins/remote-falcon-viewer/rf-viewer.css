@@ -645,3 +645,27 @@
   font-size: 0.75rem;
   opacity: 0.7;
 }
+.rf-phase-banner {
+  margin-bottom: 1.25rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(
+    135deg,
+    rgba(0, 255, 180, 0.18),
+    rgba(111, 66, 193, 0.32)
+  );
+  backdrop-filter: blur(10px);
+}
+
+.rf-phase-banner-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.rf-phase-banner-sub {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  opacity: 0.9;
+}

@@ -539,21 +539,76 @@
     });
 
     addSurpriseCard();
-    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength, phase, nextDisplay);
+    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength, phase);
   }
-
   /* -------------------------
-   * Extra panel (queue / leaderboard / stats / speakers / tonight)
+   * Phase banner ("Tonight on Falcon")
    * ------------------------- */
 
-  function renderExtraPanel(mode, enabled, data, queueLength, phase, nextDisplay) {
+  function addPhaseBanner(extra, phase, mode, enabled) {
+    // Fallbacks if LOF Extras doesn’t provide copy yet
+    let titleKey;
+    let subKey;
+    let defaultTitle;
+    let defaultSub;
+
+    if (phase === 'showtime') {
+      titleKey     = 'banner_showtime_title';
+      subKey       = 'banner_showtime_sub';
+      defaultTitle = 'Showtime on Falcon ✨';
+      defaultSub   = 'Lights are synced to the music right now. Pick a song or just soak it in.';
+    } else if (phase === 'intermission') {
+      titleKey     = 'banner_intermission_title';
+      subKey       = 'banner_intermission_sub';
+      defaultTitle = 'Intermission — lights still glowing';
+      defaultSub   = 'We’re in between featured songs. The lights are in “ambient” mode while guests wander and explore.';
+    } else {
+      // idle / unknown
+      titleKey     = 'banner_idle_title';
+      subKey       = 'banner_idle_sub';
+      defaultTitle = 'Welcome to Lights on Falcon';
+      defaultSub   = 'Show times kick in on the hour most evenings. If you’re here off-cycle, you might catch ambient patterns or a surprise track.';
+    }
+
+    let title = lofCopy(titleKey, defaultTitle);
+    let sub   = lofCopy(subKey, defaultSub);
+
+    // If viewer control is paused, layer that into the message
+    if (!enabled) {
+      const pausedTitle = lofCopy(
+        'banner_paused_title',
+        'Requests are taking a breather'
+      );
+      const pausedSub = lofCopy(
+        'banner_paused_sub',
+        'You can still enjoy the show. We’ll turn viewer control back on soon so you can help steer the playlist.'
+      );
+      title = pausedTitle;
+      sub   = pausedSub;
+    }
+
+    const banner = document.createElement('div');
+    banner.className = 'rf-phase-banner';
+
+    banner.innerHTML = `
+      <div class="rf-phase-banner-title">${escapeHtml(title)}</div>
+      <div class="rf-phase-banner-sub">${escapeHtml(sub)}</div>
+    `;
+
+    extra.appendChild(banner);
+  }
+  /* -------------------------
+   * Extra panel (queue / leaderboard / stats / speakers / glow)
+   * ------------------------- */
+
+  function renderExtraPanel(mode, enabled, data, queueLength, phase) {
     const extra = document.getElementById('rf-extra-panel');
     if (!extra) return;
 
     extra.innerHTML = '';
 
-    // Tonight panel at the top of the right column
-    renderTonightPanel(extra, mode, enabled, data, queueLength, phase, nextDisplay);
+    // Phase banner at the top
+    addPhaseBanner(extra, phase, mode, enabled);
 
     if (!enabled) {
       extra.innerHTML += `
