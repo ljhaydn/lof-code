@@ -432,7 +432,7 @@
     return base;
   }
 
-  function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
+    function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
     const headlineEl = document.getElementById('rf-viewer-headline');
     const subcopyEl  = document.getElementById('rf-viewer-subcopy');
     if (!headlineEl || !subcopyEl) return;
