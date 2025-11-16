@@ -839,9 +839,9 @@
         LOFViewer &&
         LOFViewer.config &&
         LOFViewer.config.features &&
-        typeof LOFViewer.config.features.glow_enabled === 'boolean'
+        typeof LOFViewer.config.features.glow === 'boolean'
       ) {
-        glowEnabled = LOFViewer.config.features.glow_enabled;
+        glowEnabled = LOFViewer.config.features.glow;
       }
     } catch (e) {}
 
@@ -850,16 +850,17 @@
     const card = document.createElement('div');
     card.className = 'rf-glow-card';
 
-    const title       = lofCopy('glow_title', 'Send a glow to someone 💌');
+    const title       = lofCopy('glow_title', 'Send a little glow 💚');
     const subtitle    = lofCopy(
       'glow_sub',
-      'Drop a short note of appreciation. We’ll turn it into a little moment of light.'
+      'Drop a short note of thanks, joy, or encouragement.'
     );
     const placeholder = lofCopy(
       'glow_placeholder',
-      '“For the neighbor who always waves at passing kids…”'
+      'Tell us who made your night, or what made you smile…'
     );
-    const btnLabel    = lofCopy('glow_button', 'Send this glow');
+    // 🔑 Button label uses glow_btn (matches LOF Extras)
+    const btnLabel    = lofCopy('glow_btn', 'Send this glow ✨');
 
     card.innerHTML = `
       <div class="rf-extra-title">${escapeHtml(title)}</div>
@@ -917,13 +918,14 @@
       const oldLabel = button.textContent;
       button.textContent = 'Sending glow…';
 
+      // 🔑 Toasts use glow_success_toast / glow_error_toast (match LOF Extras)
       const successMsg = lofCopy(
-        'glow_success',
-        'Your glow has been sent into the Falcon ether. 💫'
+        'glow_success_toast',
+        'Glow sent. Thanks for sharing the love. 💚'
       );
       const errorMsg = lofCopy(
-        'glow_error',
-        'We couldn’t send that glow right now. Please try again in a bit.'
+        'glow_error_toast',
+        'Could not send glow. Please try again.'
       );
 
       try {
