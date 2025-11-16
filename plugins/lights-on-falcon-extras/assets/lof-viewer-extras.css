@@ -332,15 +332,6 @@ html[data-lof-phase="drop_by"] {
   --lof-surface-soft: #121c24;
 }
 
-html[data-lof-phase="off_hours"],
-html[data-lof-phase="off_season"] {
-  --lof-surface-soft: #101217;
-}
-
-html[data-lof-phase="maintenance"] {
-  --lof-accent: #f97316;
-}
-
 /* Vibe-based subtle accents */
 html[data-vibe="peak"] {
   --lof-accent-soft: rgba(190, 242, 100, 0.3);

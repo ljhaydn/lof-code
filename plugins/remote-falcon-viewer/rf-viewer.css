@@ -719,16 +719,6 @@
 }
 /* LOF overlay tweaks (safe, additive) */
 
-html[data-lof-phase] #rf-grid {
-  transition: opacity 0.25s ease, filter 0.25s ease;
-}
-
-html[data-grid-active="0"] #rf-grid,
-#rf-grid[data-grid-active="0"] {
-  opacity: 0.5;
-  filter: grayscale(0.2);
-}
-
 /* Tighten card transitions slightly for interactivity */
 .rf-card {
   transition: transform 0.2s ease, box-shadow 0.25s ease, opacity 0.2s ease;
