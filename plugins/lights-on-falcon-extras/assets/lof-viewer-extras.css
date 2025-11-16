@@ -185,3 +185,96 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+/* Persona band just under the epic banner */
+#lof-persona-badge.lof-persona-badge {
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e5e7eb;
+  font-size: 0.85rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+}
+
+.lof-persona-title {
+  font-weight: 600;
+}
+
+.lof-persona-detail {
+  opacity: 0.9;
+}
+
+.lof-persona-chip {
+  display: none;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.7);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Energy meter – vibes strip */
+#lof-energy-meter.lof-energy-meter {
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  background: radial-gradient(circle at 0% 50%, rgba(56, 189, 248, 0.25), transparent 55%),
+              radial-gradient(circle at 100% 50%, rgba(236, 72, 153, 0.25), transparent 55%),
+              rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.lof-energy-label {
+  font-weight: 500;
+}
+
+.lof-energy-bar {
+  position: relative;
+  width: 100%;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  overflow: hidden;
+}
+
+.lof-energy-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 25%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a855f7, #22c55e, #eab308);
+  transition: width 0.4s ease-out;
+}
+
+#lof-energy-meter.lof-energy-meter--hot .lof-energy-fill {
+  animation: lofEnergyPulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes lofEnergyPulse {
+  from {
+    filter: drop-shadow(0 0 6px rgba(244, 114, 182, 0.7));
+  }
+  to {
+    filter: drop-shadow(0 0 16px rgba(244, 114, 182, 1));
+  }
+}
+
+/* Mobile: stack persona + energy nicely */
+@media (max-width: 768px) {
+  #lof-persona-badge.lof-persona-badge,
+  #lof-energy-meter.lof-energy-meter {
+    width: 100%;
+  }
+}

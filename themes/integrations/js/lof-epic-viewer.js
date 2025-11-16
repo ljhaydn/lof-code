@@ -18,6 +18,9 @@
     // How often to refresh FPP show status (seconds)
     fppPollSeconds: 15,
 
+    // How often to recompute the energy meter (seconds)
+    energyPollSeconds: 10,
+
     text: {
       showtime: {
         kicker: "It’s showtime ✨",
@@ -104,8 +107,6 @@
         cfg.showWindows = mapped;
       }
     }
-
-    // Later we can wire cfg.text.showtime/adhoc/offline from remoteConfig.copy if desired
 
     return cfg;
   }
@@ -305,6 +306,7 @@
   // ------------------------------
 
   let personaState = null;
+  let sessionInteractions = 0; // interactions this page load (for energy meter)
 
   function loadPersona() {
     if (personaState) return personaState;
@@ -313,7 +315,7 @@
       firstVisit: null,
       lastVisit: null,
       visitCount: 0,
-      totalInteractions: 0 // roughly "requests/votes" via card button clicks
+      totalInteractions: 0
     };
 
     try {
@@ -364,6 +366,7 @@
     p.totalInteractions = (p.totalInteractions || 0) + 1;
     personaState = p;
     savePersona();
+    sessionInteractions += 1;
   }
 
   function getPersonaSummary() {
@@ -395,7 +398,6 @@
       }
     }
 
-    // Little extra nod for 3+ interactions milestone
     let badge = null;
     if (actions >= 3 && actions < 10) {
       badge = "Song selector (3+ picks)";
@@ -415,7 +417,6 @@
     root.id = "lof-persona-badge";
     root.className = "lof-persona-badge";
 
-    // Keep it visually tied to the epic banner if possible
     if (banner && banner.parentNode) {
       banner.parentNode.insertBefore(root, banner.nextSibling);
     } else {
@@ -468,7 +469,110 @@
       if (!btn) return;
       recordInteraction();
       updatePersonaUI();
+      updateEnergyMeterUI(); // bump the vibe when they poke something
     });
+  }
+
+  // ------------------------------
+  // Energy meter helpers
+  // ------------------------------
+
+  function getEnergyRoot() {
+    let root = document.getElementById("lof-energy-meter");
+    if (root) return root;
+
+    const banner = document.getElementById("lof-epic-banner");
+    root = document.createElement("div");
+    root.id = "lof-energy-meter";
+    root.className = "lof-energy-meter";
+
+    // Visually keep it near the persona band on all devices
+    if (banner && banner.parentNode) {
+      banner.parentNode.insertBefore(root, banner.nextSibling);
+    } else {
+      document.body.appendChild(root);
+    }
+
+    const label = document.createElement("div");
+    label.className = "lof-energy-label";
+    root.appendChild(label);
+
+    const bar = document.createElement("div");
+    bar.className = "lof-energy-bar";
+    root.appendChild(bar);
+
+    const fill = document.createElement("div");
+    fill.className = "lof-energy-fill";
+    bar.appendChild(fill);
+
+    return root;
+  }
+
+  function computeEnergyScore() {
+    // Very simple v1:
+    // - base from FPP playing
+    // - plus local session interactions (this tab)
+    // - plus a nudge if within a show window
+    const cfg = getEffectiveConfig();
+    const now = new Date();
+    const nowMin = getMinutesSinceMidnight(now);
+    const windows = getNextShowWindow(cfg, nowMin);
+    const inShowWindow = windows && windows.current;
+
+    let score = 0;
+
+    if (fppState.isPlaying === true) {
+      score += 40;
+    } else if (fppState.isPlaying === false) {
+      score += 5;
+    }
+
+    // Each interaction is ~6 points, up to 30
+    const interactionScore = Math.min(30, sessionInteractions * 6);
+    score += interactionScore;
+
+    if (inShowWindow) {
+      score += 20;
+    }
+
+    // Keep in [0, 100]
+    if (score < 0) score = 0;
+    if (score > 100) score = 100;
+
+    return score;
+  }
+
+  function energyLabelForScore(score) {
+    if (score < 25) {
+      return "Falcon vibe check: Quiet & cozy 🕯️";
+    } else if (score < 60) {
+      return "Falcon vibe check: Kids laughing, neighbors mingling 💛";
+    } else {
+      return "Falcon vibe check: Full chaos in the best way ⚡️";
+    }
+  }
+
+  function updateEnergyMeterUI() {
+    const root = getEnergyRoot();
+    const labelEl = root.querySelector(".lof-energy-label");
+    const fillEl = root.querySelector(".lof-energy-fill");
+
+    if (!labelEl || !fillEl) return;
+
+    const score = computeEnergyScore();
+    labelEl.textContent = energyLabelForScore(score);
+    fillEl.style.width = score + "%";
+
+    // add a little pulse when we're in full chaos
+    if (score >= 60) {
+      root.classList.add("lof-energy-meter--hot");
+    } else {
+      root.classList.remove("lof-energy-meter--hot");
+    }
+  }
+
+  function pollEnergyMeter() {
+    updateEnergyMeterUI();
   }
 
   // ------------------------------
@@ -554,17 +658,14 @@
 
     if (fppKnown) {
       if (!fppPlaying) {
-        // FPP says we're not playing anything – treat as offline, even in a window
         kicker = texts.offline && texts.offline.kicker;
         title = texts.offline && texts.offline.title;
         body = texts.offline && texts.offline.body;
-        minutesUntilNext = minutesUntilNext; // unchanged
       } else {
-        // FPP is actively playing – treat as showtime regardless of the static window
         kicker = texts.showtime && texts.showtime.kicker;
         title = texts.showtime && texts.showtime.title;
         body = texts.showtime && texts.showtime.body;
-        minutesUntilNext = null; // you’re already in the thick of it
+        minutesUntilNext = null;
       }
     }
 
@@ -607,7 +708,6 @@
   function initEpicViewer() {
     loadViewerConfigFromREST();
 
-    // Personas: track visit & wire up request/vote clicks
     touchVisit();
     updatePersonaUI();
     initPersonaListeners();
@@ -616,17 +716,22 @@
     updateEpicBanner();
     pollSpeakerStatus();
     pollFppStatus();
+    updateEnergyMeterUI();
 
     // Poll banner state (showtime/ad-hoc) every 30s
     setInterval(updateEpicBanner, 30000);
 
-    // Poll speaker status more frequently
+    // Poll speaker status
     const speakerIntervalMs = Math.max(3, LOF_VIEWER_CONFIG.speakerPollSeconds || 5) * 1000;
     setInterval(pollSpeakerStatus, speakerIntervalMs);
 
     // Poll FPP show status
     const fppIntervalMs = Math.max(5, LOF_VIEWER_CONFIG.fppPollSeconds || 15) * 1000;
     setInterval(pollFppStatus, fppIntervalMs);
+
+    // Poll energy meter
+    const energyIntervalMs = Math.max(5, LOF_VIEWER_CONFIG.energyPollSeconds || 10) * 1000;
+    setInterval(pollEnergyMeter, energyIntervalMs);
   }
 
   if (document.readyState === "loading") {
