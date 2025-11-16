@@ -23,7 +23,7 @@
   const PRESENCE_STORAGE_KEY      = 'lofPresenceSession_v1';
   const PRESENCE_PING_INTERVAL_MS = 15000; // 15s
   const PRESENCE_SUMMARY_MS       = 45000; // 45s
-  let presencePingTimer   = null;
+  let presencePingTimer    = null;
   let presenceSummaryTimer = null;
 
   function lofCopy(key, fallback) {
@@ -56,7 +56,6 @@
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        // Once config is loaded, we can start presence summary polling
         startPresenceSummary();
       })
       .catch(function (err) {
@@ -86,7 +85,6 @@
       window.localStorage.setItem(PRESENCE_STORAGE_KEY, fresh);
       return fresh;
     } catch (e) {
-      // If localStorage fails, just generate something ephemeral
       return generateUUID();
     }
   }
@@ -95,7 +93,6 @@
     if (window.crypto && window.crypto.randomUUID) {
       return window.crypto.randomUUID();
     }
-    // Fallback
     const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
     return (
       s4() + s4() + '-' +
@@ -116,15 +113,12 @@
         body: JSON.stringify({ session_key: sessionKey })
       });
     } catch (e) {
-      // Silent fail; presence is best-effort
       console.warn('[LOF] Presence ping failed:', e);
     }
   }
 
   function startPresencePing() {
-    // Don't start multiple intervals
     if (presencePingTimer) return;
-    // initial ping
     sendPresencePing();
     presencePingTimer = setInterval(sendPresencePing, PRESENCE_PING_INTERVAL_MS);
   }
@@ -146,7 +140,6 @@
 
   function startPresenceSummary() {
     if (presenceSummaryTimer) return;
-    // initial summary
     fetchPresenceSummary();
     presenceSummaryTimer = setInterval(fetchPresenceSummary, PRESENCE_SUMMARY_MS);
   }
@@ -198,10 +191,6 @@
   let viewerStats        = loadStats();
 
   let lastRequestedSequenceName = null;
-
-  /* -------------------------
-   * Local storage helpers
-   * ------------------------- */
 
   function loadRequestedSongs() {
     try {
@@ -821,10 +810,10 @@
   function renderStats(extra, queueLength) {
     const stats = viewerStats || { requests: 0, surprise: 0 };
 
-    const title      = lofCopy('stats_title', 'Tonight from this device');
-    const reqLabel   = lofCopy('stats_requests_label', 'Requests sent');
+    const title         = lofCopy('stats_title', 'Tonight from this device');
+    const reqLabel      = lofCopy('stats_requests_label', 'Requests sent');
     const surpriseLabel = lofCopy('stats_surprise_label', '“Surprise me” taps');
-    const vibeLabel  = lofCopy('stats_vibe_label', 'Falcon vibe check');
+    const vibeLabel     = lofCopy('stats_vibe_label', 'Falcon vibe check');
 
     let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
     if (queueLength >= 3 && queueLength <= 7) {
@@ -863,8 +852,8 @@
     const card = document.createElement('div');
     card.className = 'rf-speaker-card';
 
-    const btnOnLabel   = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
-    const timeLabel    = lofCopy('speaker_time_left_prefix', 'Time left:');
+    const btnOnLabel = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+    const timeLabel  = lofCopy('speaker_time_left_prefix', 'Time left:');
 
     card.innerHTML = `
       <div class="rf-extra-title">Need sound?</div>
@@ -993,11 +982,10 @@
   }
 
   /* -------------------------
-   * Glow card
+   * Glow card (with Quick Glow + Mood)
    * ------------------------- */
 
   function addGlowCard(extra) {
-    // If LOF Extras isn't loaded or glow feature is disabled, bail gracefully.
     if (!LOFViewer.configLoaded || !getFeatureEnabled('glow')) {
       return;
     }
@@ -1018,14 +1006,102 @@
     );
     const submitLabel = lofCopy('glow_submit_label', 'Send glow');
 
+    // Quick glow chip labels/text
+    const quickChips = [
+      {
+        keyLabel: 'glow_quick_1_label',
+        keyText:  'glow_quick_1_text',
+        fallbackLabel: 'Thanks for lighting up the block tonight.',
+        fallbackText:  'Thanks for lighting up the block tonight.'
+      },
+      {
+        keyLabel: 'glow_quick_2_label',
+        keyText:  'glow_quick_2_text',
+        fallbackLabel: 'You made our night. 💚',
+        fallbackText:  'You made our night. 💚'
+      },
+      {
+        keyLabel: 'glow_quick_3_label',
+        keyText:  'glow_quick_3_text',
+        fallbackLabel: 'This is exactly what our neighborhood needed.',
+        fallbackText:  'This is exactly what our neighborhood needed.'
+      }
+    ].map(function (cfg) {
+      const label = lofCopy(cfg.keyLabel, cfg.fallbackLabel);
+      const text  = lofCopy(cfg.keyText,  cfg.fallbackText);
+      return { label, text };
+    });
+
+    // Mood tags
+    const moodOptions = [
+      {
+        id: 'grateful',
+        label: lofCopy('glow_mood_grateful', 'Grateful 💚')
+      },
+      {
+        id: 'celebrating',
+        label: lofCopy('glow_mood_celebrating', 'Celebrating 🎉')
+      },
+      {
+        id: 'inspired',
+        label: lofCopy('glow_mood_inspired', 'Inspired 💡')
+      },
+      {
+        id: 'supported',
+        label: lofCopy('glow_mood_supported', 'Supported 🤝')
+      }
+    ];
+
     const card = document.createElement('div');
     card.className = 'rf-glow-card';
+
+    // Build Quick Glow chips markup (only if at least one label is non-empty)
+    const hasQuick = quickChips.some(c => c.label && c.label.trim() !== '');
+    let quickHtml = '';
+    if (hasQuick) {
+      quickHtml = `
+        <div class="rf-glow-quick">
+          ${quickChips.map(function (chip, index) {
+            if (!chip.label || chip.label.trim() === '') return '';
+            return `
+              <button type="button"
+                      class="rf-glow-chip"
+                      data-chip-index="${index}">
+                ${escapeHtml(chip.label)}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // Build mood tag markup (always include if we have labels)
+    const hasMoods = moodOptions.some(m => m.label && m.label.trim() !== '');
+    let moodHtml = '';
+    if (hasMoods) {
+      moodHtml = `
+        <div class="rf-glow-moods">
+          ${moodOptions.map(function (m) {
+            if (!m.label || m.label.trim() === '') return '';
+            return `
+              <button type="button"
+                      class="rf-glow-mood"
+                      data-mood="${escapeHtml(m.id)}">
+                ${escapeHtml(m.label)}
+              </button>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
 
     card.innerHTML = `
       <div class="rf-extra-title">${escapeHtml(title)}</div>
       <div class="rf-extra-sub">
         ${escapeHtml(subtitle)}
       </div>
+      ${quickHtml}
+      ${moodHtml}
       <div class="rf-glow-form">
         <textarea
           class="rf-glow-message"
@@ -1050,12 +1126,59 @@
 
     extra.appendChild(card);
 
-    const textarea = card.querySelector('.rf-glow-message');
-    const fromInput = card.querySelector('.rf-glow-from');
-    const toInput   = card.querySelector('.rf-glow-to');
-    const submitBtn = card.querySelector('.rf-glow-submit');
+    const textarea   = card.querySelector('.rf-glow-message');
+    const fromInput  = card.querySelector('.rf-glow-from');
+    const toInput    = card.querySelector('.rf-glow-to');
+    const submitBtn  = card.querySelector('.rf-glow-submit');
+    const chipButtons = Array.prototype.slice.call(card.querySelectorAll('.rf-glow-chip'));
+    const moodButtons = Array.prototype.slice.call(card.querySelectorAll('.rf-glow-mood'));
 
     if (!textarea || !submitBtn) return;
+
+    let selectedMood = '';
+
+    // Quick Glow chip behavior: prefill / append text
+    chipButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const indexAttr = btn.getAttribute('data-chip-index');
+        const index = parseInt(indexAttr, 10);
+        if (isNaN(index) || index < 0 || index >= quickChips.length) return;
+
+        const chip = quickChips[index];
+        const chipText = chip.text || chip.label || '';
+        if (!chipText) return;
+
+        const existing = textarea.value.trim();
+        if (!existing) {
+          textarea.value = chipText;
+        } else {
+          textarea.value = existing + '\n' + chipText;
+        }
+
+        textarea.focus();
+      });
+    });
+
+    // Mood tag behavior: toggle active class, set selectedMood
+    moodButtons.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const moodId = btn.getAttribute('data-mood') || '';
+
+        if (selectedMood === moodId) {
+          // Clicking again toggles off
+          selectedMood = '';
+          moodButtons.forEach(function (b) {
+            b.classList.remove('rf-glow-mood--active');
+          });
+          return;
+        }
+
+        selectedMood = moodId;
+        moodButtons.forEach(function (b) {
+          b.classList.toggle('rf-glow-mood--active', b === btn);
+        });
+      });
+    });
 
     submitBtn.addEventListener('click', async () => {
       const message = textarea.value.trim();
@@ -1081,7 +1204,7 @@
             from_name: from,
             to_name: to,
             relationship: '',
-            mood: '',
+            mood: selectedMood || '',
             source: 'viewer_page'
           })
         });
@@ -1293,10 +1416,7 @@
    * Init
    * ------------------------- */
 
-  // Start presence pinging immediately (best effort)
   startPresencePing();
-
-  // LOF Extras config + Remote Falcon data in parallel
   lofLoadConfig();
   fetchShowDetails();
   setInterval(fetchShowDetails, 15000);
