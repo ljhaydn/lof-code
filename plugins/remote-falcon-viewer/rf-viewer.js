@@ -51,7 +51,7 @@
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        // Later we'll hook this into banners, feature toggles, etc.
+        // Banner + stats + surprise + tonight panel copy all come from here.
       })
       .catch(function (err) {
         console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
@@ -265,69 +265,28 @@
     const locationMethod = prefs.locationCheckMethod || 'NONE';
 
     const late = isLateNight();
-
-    // Determine which banner title/sub to use based on phase
-    let titleKey;
-    let subKey;
+    let phaseLine = '';
 
     if (phase === 'intermission') {
-      titleKey = 'banner_intermission_title';
-      subKey   = 'banner_intermission_sub';
+      phaseLine = 'Intermission: the lights are catching their breath. 🎭 ';
     } else if (phase === 'showtime') {
-      titleKey = 'banner_showtime_title';
-      subKey   = 'banner_showtime_sub';
-    } else {
-      // fallback for idle / outside show windows
-      titleKey = 'banner_offseason_title';
-      subKey   = 'banner_offseason_sub';
+      phaseLine = 'Showtime: lights synced, neighbors vibing. ✨ ';
     }
 
-    const defaultTitle =
-      phase === 'intermission'
-        ? 'Intermission'
-        : phase === 'showtime'
-          ? 'Showtime 🎶'
-          : 'Interactive show controls';
-
-    const defaultSub =
-      phase === 'intermission'
-        ? 'The lights are catching their breath between songs.'
-        : phase === 'showtime'
-          ? 'Lights, audio, and neighbors in sync.'
-          : 'Use the controls below to interact with the Lights on Falcon show in real time.';
-
-    const phaseTitle = lofCopy(titleKey, defaultTitle);
-    const phaseSub   = lofCopy(subKey, defaultSub);
-
-    // If viewer control is OFF, use the "after-hours" banner copy
     if (!enabled) {
-      const pausedTitle = lofCopy(
-        'banner_afterhours_title',
-        'Viewer control is currently paused'
-      );
-
-      const pausedSub = lofCopy(
-        'banner_afterhours_sub',
-        phaseSub + ' You can still enjoy the show — we’ll turn song requests and voting back on soon.'
-      );
-
-      headlineEl.textContent = phaseTitle || pausedTitle;
-      subcopyEl.textContent  = pausedSub;
+      headlineEl.textContent = 'Viewer control is currently paused';
+      subcopyEl.textContent =
+        phaseLine +
+        'You can still enjoy the show — we’ll turn song requests and voting back on soon.';
       return;
     }
 
-    // Viewer control is ON from here down.
     if (mode === 'JUKEBOX') {
-      // Headline is the current phase title (eg. Showtime / Intermission)
-      headlineEl.textContent = phaseTitle || 'Tap a song to request it 🎧';
+      headlineEl.textContent = 'Tap a song to request it 🎧';
 
       const bits = [];
 
-      // Base phase subcopy from settings
-      bits.push(phaseSub);
-
-      // Interaction instructions
-      bits.push('Tap a song below to add it to the queue.');
+      bits.push(phaseLine + 'Requests join the queue in the order they come in.');
 
       if (queueLength > 0) {
         bits.push(
@@ -340,11 +299,9 @@
           `You can request up to ${requestLimit} song${requestLimit > 1 ? 's' : ''} per session.`
         );
       }
-
       if (locationMethod && locationMethod !== 'NONE') {
         bits.push('Viewer control may be limited to guests near the show location.');
       }
-
       if (late) {
         bits.push('Late-night Falcon fans are the real MVPs. 🌙');
       }
@@ -354,16 +311,13 @@
     }
 
     if (mode === 'VOTING') {
-      // Voting headline = phase title or generic fallback
-      headlineEl.textContent = phaseTitle || 'Vote for your favorites 🗳️';
+      headlineEl.textContent = 'Vote for your favorites 🗳️';
 
       const bits = [];
-
       bits.push(
-        phaseSub +
-          ' Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
+        phaseLine +
+          'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
       );
-
       if (late) {
         bits.push('Bonus points for after-dark voting energy. 🌒');
       }
@@ -372,9 +326,10 @@
       return;
     }
 
-    // Fallback: generic interactive header using phase banner copy
-    headlineEl.textContent = phaseTitle;
-    subcopyEl.textContent  = phaseSub;
+    headlineEl.textContent = 'Interactive show controls';
+    subcopyEl.textContent =
+      phaseLine +
+      'Use the controls below to interact with the Lights on Falcon show in real time.';
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
@@ -580,21 +535,24 @@
     });
 
     addSurpriseCard();
-    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
+    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength, phase, nextDisplay);
   }
 
   /* -------------------------
-   * Extra panel (queue / leaderboard / stats / speakers)
+   * Extra panel (queue / leaderboard / stats / speakers / tonight)
    * ------------------------- */
 
-  function renderExtraPanel(mode, enabled, data, queueLength) {
+  function renderExtraPanel(mode, enabled, data, queueLength, phase, nextDisplay) {
     const extra = document.getElementById('rf-extra-panel');
     if (!extra) return;
 
     extra.innerHTML = '';
 
+    // Tonight panel at the top of the right column
+    renderTonightPanel(extra, mode, enabled, data, queueLength, phase, nextDisplay);
+
     if (!enabled) {
-      extra.innerHTML = `
+      extra.innerHTML += `
         <div class="rf-extra-title">Viewer control paused</div>
         <div class="rf-extra-sub">
           When interactive mode is back on, you’ll see the live request queue or top-voted songs here.
@@ -605,7 +563,7 @@
     } else if (mode === 'VOTING') {
       renderLeaderboard(extra, data);
     } else {
-      extra.innerHTML = `
+      extra.innerHTML += `
         <div class="rf-extra-title">Show status</div>
         <div class="rf-extra-sub">
           Interactive controls are on, but this mode doesn’t expose queue or vote data.
@@ -615,6 +573,101 @@
 
     renderStats(extra, queueLength);
     addSpeakerCard(extra);
+  }
+
+  /**
+   * "Tonight" panel – top of right column.
+   * Priority (Option A):
+   * 1. Offseason override
+   * 2. After-hours override
+   * 3. Intermission override
+   * 4. Showtime override
+   * 5. Default enabled / disabled copy
+   */
+  function renderTonightPanel(extra, mode, enabled, data, queueLength, phase, nextDisplay) {
+    if (!extra) return;
+
+    const sequences   = Array.isArray(data.sequences) ? data.sequences : [];
+    const rawRequests = Array.isArray(data.requests)  ? data.requests  : [];
+    const rawVotes    = Array.isArray(data.votes)     ? data.votes     : [];
+    const playingNow  = data.playingNow || '';
+
+    const afterHours  = isLateNight();
+
+    // Very lightweight "offseason" heuristic: nothing playing, no sequences, no queue, no votes
+    const isOffseason = (
+      !sequences.length &&
+      !playingNow &&
+      !rawRequests.length &&
+      !rawVotes.length
+    );
+
+    const title = lofCopy('tonight_title', 'Tonight at Lights on Falcon');
+
+    // Base copies
+    const enabledSub   = lofCopy(
+      'tonight_enabled_sub',
+      'You’re in the mix — tap a song below to shape the show.'
+    );
+    const disabledSub  = lofCopy(
+      'tonight_disabled_sub',
+      'Requests are paused while we line up the next moment.'
+    );
+
+    let sub = enabled ? enabledSub : disabledSub;
+
+    // Overrides with priority A
+    const offSeasonOverride  = lofCopy('tonight_offseason_override', '');
+    const afterHoursOverride = lofCopy('tonight_afterhours_override', '');
+    const intermissionOverride = lofCopy('tonight_intermission_override', '');
+    const showtimeOverride     = lofCopy('tonight_showtime_override', '');
+
+    if (isOffseason && offSeasonOverride.trim() !== '') {
+      sub = offSeasonOverride;
+    } else if (afterHours && afterHoursOverride.trim() !== '') {
+      sub = afterHoursOverride;
+    } else if (phase === 'intermission' && intermissionOverride.trim() !== '') {
+      sub = intermissionOverride;
+    } else if (phase === 'showtime' && showtimeOverride.trim() !== '') {
+      sub = showtimeOverride;
+    }
+
+    // Queue line w/ tokens
+    const queueTemplate = lofCopy(
+      'tonight_queue_line',
+      'There are {queue_count} requests ahead. Next up: {next_title}.'
+    );
+    const queueLine = formatTonightTemplate(queueTemplate, {
+      queue_count: queueLength,
+      next_title:  nextDisplay || '—',
+      mode:        mode || 'UNKNOWN',
+      my_requests: viewerStats && typeof viewerStats.requests === 'number'
+        ? viewerStats.requests
+        : 0
+    });
+
+    const footer = lofCopy(
+      'tonight_footer',
+      'Thanks for being part of the glow. 💚'
+    );
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rf-tonight';
+
+    wrapper.innerHTML = `
+      <div class="rf-tonight-title">${escapeHtml(title)}</div>
+      ${sub && sub.trim() !== '' ? `
+        <div class="rf-tonight-sub">${escapeHtml(sub)}</div>
+      ` : ''}
+      ${queueLine && queueLine.trim() !== '' ? `
+        <div class="rf-tonight-queue">${escapeHtml(queueLine)}</div>
+      ` : ''}
+      ${footer && footer.trim() !== '' ? `
+        <div class="rf-tonight-footer">${escapeHtml(footer)}</div>
+      ` : ''}
+    `;
+
+    extra.appendChild(wrapper);
   }
 
   function renderQueue(extra, data) {
@@ -736,10 +789,10 @@
   function renderStats(extra, queueLength) {
     const stats = viewerStats || { requests: 0, surprise: 0 };
 
-    const title      = lofCopy('stats_title', 'Tonight from this device');
-    const reqLabel   = lofCopy('stats_requests_label', 'Requests sent');
+    const title         = lofCopy('stats_title', 'Tonight from this device');
+    const reqLabel      = lofCopy('stats_requests_label', 'Requests sent');
     const surpriseLabel = lofCopy('stats_surprise_label', '“Surprise me” taps');
-    const vibeLabel  = lofCopy('stats_vibe_label', 'Falcon vibe check');
+    const vibeLabel     = lofCopy('stats_vibe_label', 'Falcon vibe check');
 
     let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
     if (queueLength >= 3 && queueLength <= 7) {
@@ -1060,6 +1113,16 @@
   /* -------------------------
    * Utils
    * ------------------------- */
+
+  function formatTonightTemplate(template, context) {
+    if (typeof template !== 'string' || !template) return '';
+    const ctx = context || {};
+    return template
+      .replace(/\{queue_count\}/g, String(ctx.queue_count != null ? ctx.queue_count : '0'))
+      .replace(/\{next_title\}/g, String(ctx.next_title != null ? ctx.next_title : '—'))
+      .replace(/\{mode\}/g, String(ctx.mode != null ? ctx.mode : 'UNKNOWN'))
+      .replace(/\{my_requests\}/g, String(ctx.my_requests != null ? ctx.my_requests : '0'));
+  }
 
   function escapeHtml(str) {
     if (typeof str !== 'string') return '';
