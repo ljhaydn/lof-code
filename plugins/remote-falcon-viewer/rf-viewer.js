@@ -831,16 +831,21 @@
     const card = document.createElement('div');
     card.className = 'rf-speaker-card';
 
+    // These come from LOF Extras speaker settings where possible
+    const title       = 'Need sound?'; // Card title – can make this configurable later
+    const timePrefix  = lofCopy('speaker_time_left_prefix', 'Time left:');
+    const buttonLabel = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+
     card.innerHTML = `
-      <div class="rf-extra-title">Need sound?</div>
+      <div class="rf-extra-title">${escapeHtml(title)}</div>
       <div class="rf-extra-sub" id="rf-speaker-status-text">
         Checking speaker status…
       </div>
       <button id="rf-speaker-btn" class="rf-speaker-btn">
-        Turn speakers on 🔊
+        ${escapeHtml(buttonLabel)}
       </button>
       <div class="rf-card-timer">
-        <span class="rf-card-timer-label">Time left:</span>
+        <span class="rf-card-timer-label">${escapeHtml(timePrefix)}</span>
         <span id="lof-speaker-countdown-inline" class="rf-card-timer-value"></span>
       </div>
     `;
@@ -862,6 +867,25 @@
 
     async function refreshSpeakerStatus() {
       if (!statusText) return;
+
+      // Pull status copy from LOF Extras (with sane fallbacks)
+      const textOn       = lofCopy(
+        'speaker_status_on',
+        'Speakers are currently ON near the show.'
+      );
+      const textOff      = lofCopy(
+        'speaker_status_off',
+        'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
+      );
+      const textUnknown  = lofCopy(
+        'speaker_status_unknown',
+        'Unable to read speaker status.'
+      );
+      const genericError = lofCopy(
+        'speaker_error_msg',
+        'Something glitched while talking to the speakers.'
+      );
+
       try {
         const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=status', {
           method: 'GET',
@@ -884,33 +908,33 @@
                 label = `about ${minutes} minutes`;
               }
 
-              statusText.textContent = 'Speakers are currently ON near the show.';
+              statusText.textContent = textOn;
               if (countdownEl) countdownEl.textContent = label;
               if (timerRow) timerRow.style.display = 'flex';
             } else {
               // ON but no remaining info → show ON, hide timer
-              statusText.textContent = 'Speakers are currently ON near the show.';
+              statusText.textContent = textOn;
               if (countdownEl) countdownEl.textContent = '';
               if (timerRow) timerRow.style.display = 'none';
             }
           } else {
             // Speaker OFF
-            statusText.textContent =
-              'Speakers are currently OFF. If you’re standing at the show, you can turn them on.';
+            statusText.textContent = textOff;
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
           }
         } else if (data && data.message) {
+          // Message coming from lof-speaker.php (e.g., "feature limited to on-site")
           statusText.textContent = data.message;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         } else {
-          statusText.textContent = 'Unable to read speaker status.';
+          statusText.textContent = textUnknown;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         }
       } catch (e) {
-        statusText.textContent = 'Unable to reach show controller.';
+        statusText.textContent = genericError;
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
       }
@@ -930,13 +954,22 @@
           const data = await res.json().catch(() => null);
 
           if (res.ok && data && data.success) {
+            // success toast – can later be wired to LOF Extras if we want
             showToast('Speakers should be on now. 🎶', 'success');
           } else {
-            const msg = (data && data.message) ? data.message : 'Something glitched.';
+            const fallbackErr = lofCopy(
+              'speaker_error_msg',
+              'Something glitched while talking to the speakers.'
+            );
+            const msg = (data && data.message) ? data.message : fallbackErr;
             showToast(msg, 'error');
           }
         } catch (e) {
-          showToast('Network issue — try again in a moment.', 'error');
+          const networkErr = lofCopy(
+            'speaker_error_msg',
+            'Something glitched while talking to the speakers.'
+          );
+          showToast(networkErr, 'error');
         } finally {
           setTimeout(() => {
             btn.disabled = false;
