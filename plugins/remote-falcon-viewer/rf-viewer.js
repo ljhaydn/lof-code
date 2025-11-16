@@ -435,7 +435,6 @@
   function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
     const headlineEl = document.getElementById('rf-viewer-headline');
     const subcopyEl  = document.getElementById('rf-viewer-subcopy');
-    const bannerEl   = document.getElementById('rf-viewer-phase-banner');
     if (!headlineEl || !subcopyEl) return;
 
     const requestLimit   = prefs.jukeboxRequestLimit || null;
@@ -445,54 +444,76 @@
     let phaseLine = '';
 
     if (phase === 'intermission') {
+      // We still keep this inline for now – it’s very state-specific.
       phaseLine = 'Intermission: the lights are catching their breath. 🎭 ';
     } else if (phase === 'showtime') {
       phaseLine = 'Showtime: lights synced, neighbors vibing. ✨ ';
     }
 
-    // Update explainer banner
-    if (bannerEl) {
-      const text = getPhaseBannerText(phase);
-      if (text) {
-        bannerEl.textContent = text;
-        bannerEl.style.display = 'block';
-      } else {
-        bannerEl.textContent = '';
-        bannerEl.style.display = 'none';
-      }
-    }
-
     if (!enabled) {
-      headlineEl.textContent = 'Viewer control is currently paused';
-      subcopyEl.textContent =
-        phaseLine +
-        'You can still enjoy the show — we’ll turn song requests and voting back on soon.';
+      // Viewer control paused
+      headlineEl.textContent = lofCopy(
+        'header_paused_title',
+        'Viewer control is currently paused'
+      );
+      const body = lofCopy(
+        'header_paused_body',
+        'You can still enjoy the show — we’ll turn song requests and voting back on soon.'
+      );
+      subcopyEl.textContent = phaseLine + body;
       return;
     }
 
     if (mode === 'JUKEBOX') {
-      headlineEl.textContent = 'Tap a song to request it 🎧';
+      headlineEl.textContent = lofCopy(
+        'header_jukebox_title',
+        'Tap a song to request it 🎧'
+      );
 
       const bits = [];
 
-      bits.push(phaseLine + 'Requests join the queue in the order they come in.');
+      bits.push(
+        phaseLine +
+          lofCopy(
+            'header_jukebox_intro',
+            'Requests join the queue in the order they come in.'
+          )
+      );
 
       if (queueLength > 0) {
         bits.push(
-          `There ${queueLength === 1 ? 'is' : 'are'} currently ${queueLength} song${queueLength === 1 ? '' : 's'} in the queue.`
+          lofCopy(
+            'header_jukebox_queue',
+            'There are songs in the queue already — yours will join the line.'
+          )
         );
       }
 
       if (requestLimit && requestLimit > 0) {
         bits.push(
-          `You can request up to ${requestLimit} song${requestLimit > 1 ? 's' : ''} per session.`
+          lofCopy(
+            'header_jukebox_limit',
+            'You can request a limited number of songs per session.'
+          )
         );
       }
+
       if (locationMethod && locationMethod !== 'NONE') {
-        bits.push('Viewer control may be limited to guests near the show location.');
+        bits.push(
+          lofCopy(
+            'header_jukebox_geo',
+            'Viewer control may be limited to guests near the show location.'
+          )
+        );
       }
+
       if (late) {
-        bits.push('Late-night Falcon fans are the real MVPs. 🌙');
+        bits.push(
+          lofCopy(
+            'header_jukebox_late',
+            'Late-night Falcon fans are the real MVPs. 🌙'
+          )
+        );
       }
 
       subcopyEl.textContent = bits.join(' ');
@@ -500,25 +521,43 @@
     }
 
     if (mode === 'VOTING') {
-      headlineEl.textContent = 'Vote for your favorites 🗳️';
+      headlineEl.textContent = lofCopy(
+        'header_voting_title',
+        'Vote for your favorites 🗳️'
+      );
 
       const bits = [];
       bits.push(
         phaseLine +
-          'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
+          lofCopy(
+            'header_voting_intro',
+            'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
+          )
       );
+
       if (late) {
-        bits.push('Bonus points for after-dark voting energy. 🌒');
+        bits.push(
+          lofCopy(
+            'header_voting_late',
+            'Bonus points for after-dark voting energy. 🌒'
+          )
+        );
       }
 
       subcopyEl.textContent = bits.join(' ');
       return;
     }
 
-    headlineEl.textContent = 'Interactive show controls';
-    subcopyEl.textContent =
-      phaseLine +
-      'Use the controls below to interact with the Lights on Falcon show in real time.';
+    // Fallback / unknown mode
+    headlineEl.textContent = lofCopy(
+      'header_default_title',
+      'Interactive show controls'
+    );
+    const body = lofCopy(
+      'header_default_body',
+      'Use the controls below to interact with the Lights on Falcon show in real time.'
+    );
+    subcopyEl.textContent = phaseLine + body;
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
