@@ -19,6 +19,23 @@
     configLoaded: false
   };
 
+  function lofCopy(key, fallback) {
+    try {
+      if (
+        LOFViewer &&
+        LOFViewer.config &&
+        LOFViewer.config.copy &&
+        typeof LOFViewer.config.copy[key] === 'string'
+      ) {
+        const val = LOFViewer.config.copy[key];
+        if (val && val.trim() !== '') {
+          return val;
+        }
+      }
+    } catch (e) {}
+    return fallback;
+  }
+
   function lofLoadConfig() {
     // If LOF Extras plugin is not installed or the endpoint errors out,
     // we don't want to break the viewer – just log and move on.
@@ -34,7 +51,7 @@
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        // Later we'll hook this into banners, copy, feature toggles, etc.
+        // Later we'll hook this into banners, feature toggles, etc.
       })
       .catch(function (err) {
         console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
@@ -674,29 +691,34 @@
   function renderStats(extra, queueLength) {
     const stats = viewerStats || { requests: 0, surprise: 0 };
 
-    let vibe = 'Cozy & chill 😌';
+    const title      = lofCopy('stats_title', 'Tonight from this device');
+    const reqLabel   = lofCopy('stats_requests_label', 'Requests sent');
+    const surpriseLabel = lofCopy('stats_surprise_label', '“Surprise me” taps');
+    const vibeLabel  = lofCopy('stats_vibe_label', 'Falcon vibe check');
+
+    let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
     if (queueLength >= 3 && queueLength <= 7) {
-      vibe = 'Party forming 🕺';
+      vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
     } else if (queueLength > 7) {
-      vibe = 'Full-send Falcon 🔥';
+      vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
     }
 
     const wrapper = document.createElement('div');
     wrapper.className = 'rf-stats';
 
     wrapper.innerHTML = `
-      <div class="rf-stats-title">Tonight from this device</div>
+      <div class="rf-stats-title">${escapeHtml(title)}</div>
       <div class="rf-stats-row">
-        <span>Requests sent</span>
+        <span>${escapeHtml(reqLabel)}</span>
         <span>${stats.requests}</span>
       </div>
       <div class="rf-stats-row">
-        <span>“Surprise me” taps</span>
+        <span>${escapeHtml(surpriseLabel)}</span>
         <span>${stats.surprise}</span>
       </div>
       <div class="rf-stats-row rf-stats-row--vibe">
-        <span>Falcon vibe check</span>
-        <span>${vibe}</span>
+        <span>${escapeHtml(vibeLabel)}</span>
+        <span>${escapeHtml(vibeText)}</span>
       </div>
     `;
 
@@ -842,17 +864,21 @@
     const card = document.createElement('div');
     card.className = 'rf-card rf-card--surprise';
 
+    const title    = lofCopy('surprise_title', 'Can’t pick just one?');
+    const subtitle = lofCopy('surprise_sub', 'Let us queue up a random crowd-pleaser for you.');
+    const btnText  = lofCopy('surprise_btn', 'Surprise me ✨');
+
     card.innerHTML = `
-      <div class="rf-card-title">Can’t pick just one?</div>
+      <div class="rf-card-title">${escapeHtml(title)}</div>
       <div class="rf-card-artist">
-        Let us queue up a random crowd-pleaser for you.
+        ${escapeHtml(subtitle)}
       </div>
       <div class="rf-card-meta">
         <span class="rf-card-duration">We’ll choose from tonight’s available songs.</span>
       </div>
       <div class="rf-card-actions">
         <button class="rf-card-btn">
-          Surprise me ✨
+          ${escapeHtml(btnText)}
         </button>
       </div>
     `;
@@ -959,7 +985,8 @@
 
   function handleSurpriseMe() {
     if (!currentControlEnabled) {
-      showToast('Viewer control is currently paused.', 'error');
+      const disabledMsg = lofCopy('surprise_disabled', 'Viewer control is currently paused.');
+      showToast(disabledMsg, 'error');
       return;
     }
 
@@ -972,7 +999,11 @@
     saveStats();
 
     if (viewerStats.surprise === 4) {
-      showToast('You like chaos. We respect that. 😈', 'success');
+      const fourthMsg = lofCopy(
+        'surprise_fourth_time',
+        'You like chaos. We respect that. 😈'
+      );
+      showToast(fourthMsg, 'success');
     }
 
     const randomIndex = Math.floor(Math.random() * currentVisibleSequences.length);
@@ -999,7 +1030,7 @@
    * Init
    * ------------------------- */
 
-  // NEW: load LOF Extras config in parallel with Remote Falcon data
+  // LOF Extras config + Remote Falcon data in parallel
   lofLoadConfig();
   fetchShowDetails();
   setInterval(fetchShowDetails, 15000);
