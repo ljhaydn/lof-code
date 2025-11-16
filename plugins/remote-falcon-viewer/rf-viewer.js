@@ -827,23 +827,30 @@
 
     extra.appendChild(wrapper);
   }
-  /* -------------------------
+    /* -------------------------
    * Glow card (Send a little love)
    * ------------------------- */
 
   function addGlowCard(extra) {
-    // Feature flag from LOF Extras, if present
+    // Feature flag from LOF Extras, but very forgiving:
+    // - If features.glow === false → hide
+    // - Anything else → show
     let glowEnabled = true;
     try {
       if (
         LOFViewer &&
         LOFViewer.config &&
         LOFViewer.config.features &&
-        typeof LOFViewer.config.features.glow === 'boolean'
+        Object.prototype.hasOwnProperty.call(LOFViewer.config.features, 'glow')
       ) {
-        glowEnabled = LOFViewer.config.features.glow;
+        if (LOFViewer.config.features.glow === false) {
+          glowEnabled = false;
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      // If anything is weird, keep it enabled instead of silently hiding the card
+      glowEnabled = true;
+    }
 
     if (!glowEnabled) return;
 
@@ -859,7 +866,7 @@
       'glow_placeholder',
       'Tell us who made your night, or what made you smile…'
     );
-    // 🔑 Button label uses glow_btn (matches LOF Extras)
+    // Button label uses glow_btn (matches LOF Extras)
     const btnLabel    = lofCopy('glow_btn', 'Send this glow ✨');
 
     card.innerHTML = `
@@ -918,7 +925,7 @@
       const oldLabel = button.textContent;
       button.textContent = 'Sending glow…';
 
-      // 🔑 Toasts use glow_success_toast / glow_error_toast (match LOF Extras)
+      // Toasts use glow_success_toast / glow_error_toast (LOF Extras)
       const successMsg = lofCopy(
         'glow_success_toast',
         'Glow sent. Thanks for sharing the love. 💚'
