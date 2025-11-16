@@ -310,6 +310,11 @@
       subcopy.id = 'rf-viewer-subcopy';
       subcopy.className = 'rf-viewer-subcopy';
 
+      const phaseBanner = document.createElement('div');
+      phaseBanner.id = 'rf-viewer-phase-banner';
+      phaseBanner.className = 'rf-viewer-phase-banner';
+      phaseBanner.style.display = 'none';
+
       const myStatus = document.createElement('div');
       myStatus.id = 'rf-viewer-my-status';
       myStatus.className = 'rf-viewer-my-status';
@@ -325,6 +330,7 @@
 
       header.appendChild(headline);
       header.appendChild(subcopy);
+      header.appendChild(phaseBanner);
       header.appendChild(myStatus);
       header.appendChild(presence);
       header.appendChild(controls);
@@ -375,9 +381,61 @@
     }
   }
 
+  function getNextTopOfHourCountdown() {
+    try {
+      const now = new Date();
+      const next = new Date(now);
+      // next top-of-hour
+      next.setMinutes(0, 0, 0);
+      if (now.getMinutes() !== 0 || now.getSeconds() !== 0) {
+        next.setHours(next.getHours() + 1);
+      }
+      const diffMs = next.getTime() - now.getTime();
+      if (diffMs <= 0 || diffMs > 90 * 60000) {
+        return '';
+      }
+      const minutes = Math.round(diffMs / 60000);
+      if (minutes <= 1) {
+        return 'Next top-of-the-hour show starts in about a minute.';
+      }
+      return `Next top-of-the-hour show starts in about ${minutes} minutes.`;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function getPhaseBannerText(phase) {
+    const countdown = getNextTopOfHourCountdown();
+
+    if (phase === 'showtime') {
+      const base = lofCopy(
+        'phase_showtime_banner',
+        'You’re in a scheduled show block. Songs play back-to-back, and your picks join the live queue.'
+      );
+      return base;
+    }
+
+    if (phase === 'intermission') {
+      const base = lofCopy(
+        'phase_intermission_banner',
+        'Between shows: the lights are in “Intermission.” Tap a song to wake up the show any time.'
+      );
+      if (countdown) return base + ' ' + countdown;
+      return base;
+    }
+
+    const base = lofCopy(
+      'phase_idle_banner',
+      'The show is idle right now. You can still request a song to bring the block to life.'
+    );
+    if (countdown) return base + ' ' + countdown;
+    return base;
+  }
+
   function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
     const headlineEl = document.getElementById('rf-viewer-headline');
     const subcopyEl  = document.getElementById('rf-viewer-subcopy');
+    const bannerEl   = document.getElementById('rf-viewer-phase-banner');
     if (!headlineEl || !subcopyEl) return;
 
     const requestLimit   = prefs.jukeboxRequestLimit || null;
@@ -390,6 +448,18 @@
       phaseLine = 'Intermission: the lights are catching their breath. 🎭 ';
     } else if (phase === 'showtime') {
       phaseLine = 'Showtime: lights synced, neighbors vibing. ✨ ';
+    }
+
+    // Update explainer banner
+    if (bannerEl) {
+      const text = getPhaseBannerText(phase);
+      if (text) {
+        bannerEl.textContent = text;
+        bannerEl.style.display = 'block';
+      } else {
+        bannerEl.textContent = '';
+        bannerEl.style.display = 'none';
+      }
     }
 
     if (!enabled) {
@@ -804,7 +874,7 @@
   }
 
   /* -------------------------
-   * Stats panel
+   * Stats panel (with persona)
    * ------------------------- */
 
   function renderStats(extra, queueLength) {
@@ -822,7 +892,6 @@
       vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
     }
 
-    // Persona / achievement row
     const personaLabel = lofCopy(
       'stats_persona_label',
       'Tonight you’re acting like'
@@ -1031,7 +1100,6 @@
     );
     const submitLabel = lofCopy('glow_submit_label', 'Send glow');
 
-    // Quick glow chip labels/text
     const quickChips = [
       {
         keyLabel: 'glow_quick_1_label',
@@ -1057,7 +1125,6 @@
       return { label, text };
     });
 
-    // Mood tags
     const moodOptions = [
       {
         id: 'grateful',
@@ -1080,7 +1147,6 @@
     const card = document.createElement('div');
     card.className = 'rf-glow-card';
 
-    // Build Quick Glow chips markup (only if at least one label is non-empty)
     const hasQuick = quickChips.some(c => c.label && c.label.trim() !== '');
     let quickHtml = '';
     if (hasQuick) {
@@ -1100,7 +1166,6 @@
       `;
     }
 
-    // Build mood tag markup (always include if we have labels)
     const hasMoods = moodOptions.some(m => m.label && m.label.trim() !== '');
     let moodHtml = '';
     if (hasMoods) {
@@ -1162,7 +1227,6 @@
 
     let selectedMood = '';
 
-    // Quick Glow chip behavior: prefill / append text
     chipButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         const indexAttr = btn.getAttribute('data-chip-index');
@@ -1184,13 +1248,11 @@
       });
     });
 
-    // Mood tag behavior: toggle active class, set selectedMood
     moodButtons.forEach(function (btn) {
       btn.addEventListener('click', function () {
         const moodId = btn.getAttribute('data-mood') || '';
 
         if (selectedMood === moodId) {
-          // Clicking again toggles off
           selectedMood = '';
           moodButtons.forEach(function (b) {
             b.classList.remove('rf-glow-mood--active');
