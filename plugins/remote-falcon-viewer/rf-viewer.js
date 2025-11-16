@@ -12,19 +12,12 @@
   const modeEl      = document.getElementById('rf-mode-value');
 
   // -----------------------------
-  // LOF EXTRAS CONFIG + PRESENCE
+  // LOF EXTRAS CONFIG
   // -----------------------------
   const LOFViewer = {
     config: null,
-    configLoaded: false,
-    presence: null
+    configLoaded: false
   };
-
-  const PRESENCE_STORAGE_KEY      = 'lofPresenceSession_v1';
-  const PRESENCE_PING_INTERVAL_MS = 15000; // 15s
-  const PRESENCE_SUMMARY_MS       = 45000; // 45s
-  let presencePingTimer    = null;
-  let presenceSummaryTimer = null;
 
   function lofCopy(key, fallback) {
     try {
@@ -43,7 +36,22 @@
     return fallback;
   }
 
+  function getLofConfig() {
+    return (LOFViewer && LOFViewer.config) ? LOFViewer.config : null;
+  }
+
+  function applyTokens(template, tokens) {
+    if (typeof template !== 'string' || !tokens) return template;
+    return template.replace(/\{(\w+)\}/g, function (_, key) {
+      return Object.prototype.hasOwnProperty.call(tokens, key)
+        ? String(tokens[key])
+        : '{' + key + '}';
+    });
+  }
+
   function lofLoadConfig() {
+    // If LOF Extras plugin is not installed or the endpoint errors out,
+    // we don't want to break the viewer – just log and move on.
     fetch('/wp-json/lof-extras/v1/viewer-config', {
       method: 'GET',
       credentials: 'same-origin'
@@ -56,126 +64,12 @@
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        startPresenceSummary();
+        // Banner + header will be updated the next time renderShowDetails runs.
       })
       .catch(function (err) {
         console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
       });
   }
-
-  function getFeatureEnabled(flag) {
-    try {
-      return !!(LOFViewer.config && LOFViewer.config.features && LOFViewer.config.features[flag]);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // -----------------------------
-  // Presence helpers
-  // -----------------------------
-
-  function getPresenceSessionKey() {
-    try {
-      const existing = window.localStorage.getItem(PRESENCE_STORAGE_KEY);
-      if (existing && existing.length > 0) {
-        return existing;
-      }
-      const fresh = generateUUID();
-      window.localStorage.setItem(PRESENCE_STORAGE_KEY, fresh);
-      return fresh;
-    } catch (e) {
-      return generateUUID();
-    }
-  }
-
-  function generateUUID() {
-    if (window.crypto && window.crypto.randomUUID) {
-      return window.crypto.randomUUID();
-    }
-    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    return (
-      s4() + s4() + '-' +
-      s4() + '-' +
-      s4() + '-' +
-      s4() + '-' +
-      s4() + s4() + s4()
-    );
-  }
-
-  async function sendPresencePing() {
-    const sessionKey = getPresenceSessionKey();
-    try {
-      await fetch('/wp-json/lof-extras/v1/presence/ping', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_key: sessionKey })
-      });
-    } catch (e) {
-      console.warn('[LOF] Presence ping failed:', e);
-    }
-  }
-
-  function startPresencePing() {
-    if (presencePingTimer) return;
-    sendPresencePing();
-    presencePingTimer = setInterval(sendPresencePing, PRESENCE_PING_INTERVAL_MS);
-  }
-
-  async function fetchPresenceSummary() {
-    try {
-      const res = await fetch('/wp-json/lof-extras/v1/presence/summary', {
-        method: 'GET',
-        credentials: 'same-origin'
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      LOFViewer.presence = data;
-      updatePresenceLine();
-    } catch (e) {
-      console.warn('[LOF] Presence summary failed:', e);
-    }
-  }
-
-  function startPresenceSummary() {
-    if (presenceSummaryTimer) return;
-    fetchPresenceSummary();
-    presenceSummaryTimer = setInterval(fetchPresenceSummary, PRESENCE_SUMMARY_MS);
-  }
-
-  function updatePresenceLine() {
-    const el = document.getElementById('rf-viewer-presence');
-    if (!el) return;
-
-    const presence = LOFViewer.presence;
-    if (!presence || typeof presence.count !== 'number') {
-      el.textContent = '';
-      el.style.display = 'none';
-      return;
-    }
-
-    const count  = presence.count;
-    const bucket = presence.bucket || 'solo';
-
-    let text = '';
-    if (count <= 1) {
-      text = 'You might be the only one here right now — enjoy the private show. ✨';
-    } else if (bucket === 'small') {
-      text = `You’re glowing with a few neighbors right now. (${count} viewing)`;
-    } else if (bucket === 'party') {
-      text = `You’re part of a mini block party. (${count} viewers)`;
-    } else {
-      text = `Falcon is packed right now. (${count} viewers) 🔥`;
-    }
-
-    el.textContent = text;
-    el.style.display = 'block';
-  }
-
-  // -----------------------------
-  // RF viewer state
-  // -----------------------------
 
   let lastActionTimes = {};
   const ACTION_COOLDOWN = 15000; // 15s
@@ -184,13 +78,22 @@
   let currentControlEnabled = false;
   let currentVisibleSequences = [];
 
+  // Local “identity” for this device
   const STORAGE_REQUESTS_KEY = 'lofRequestedSongs_v1';
   const STORAGE_STATS_KEY    = 'lofViewerStats_v1';
+  const STORAGE_GLOW_KEY     = 'lofGlowLastTime_v1';
 
   let requestedSongNames = loadRequestedSongs();
   let viewerStats        = loadStats();
 
+  // last requested song (name) this session
   let lastRequestedSequenceName = null;
+  // cache last phase for banner logic
+  let lastPhase = 'idle';
+
+  /* -------------------------
+   * Local storage helpers
+   * ------------------------- */
 
   function loadRequestedSongs() {
     try {
@@ -211,7 +114,7 @@
 
   function loadStats() {
     const today = new Date();
-    const dayKey = today.toISOString().slice(0, 10);
+    const dayKey = today.toISOString().slice(0, 10); // yyyy-mm-dd
 
     try {
       const raw = window.localStorage.getItem(STORAGE_STATS_KEY);
@@ -235,6 +138,23 @@
   function saveStats() {
     try {
       window.localStorage.setItem(STORAGE_STATS_KEY, JSON.stringify(viewerStats));
+    } catch (e) {}
+  }
+
+  function getLastGlowTime() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_GLOW_KEY);
+      if (!raw) return 0;
+      const t = parseInt(raw, 10);
+      return isNaN(t) ? 0 : t;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function saveLastGlowTime(ts) {
+    try {
+      window.localStorage.setItem(STORAGE_GLOW_KEY, String(ts));
     } catch (e) {}
   }
 
@@ -310,19 +230,9 @@
       subcopy.id = 'rf-viewer-subcopy';
       subcopy.className = 'rf-viewer-subcopy';
 
-      const phaseBanner = document.createElement('div');
-      phaseBanner.id = 'rf-viewer-phase-banner';
-      phaseBanner.className = 'rf-viewer-phase-banner';
-      phaseBanner.style.display = 'none';
-
       const myStatus = document.createElement('div');
       myStatus.id = 'rf-viewer-my-status';
       myStatus.className = 'rf-viewer-my-status';
-
-      const presence = document.createElement('div');
-      presence.id = 'rf-viewer-presence';
-      presence.className = 'rf-viewer-presence';
-      presence.style.display = 'none';
 
       const controls = document.createElement('div');
       controls.id = 'rf-viewer-controls';
@@ -330,12 +240,50 @@
 
       header.appendChild(headline);
       header.appendChild(subcopy);
-      header.appendChild(phaseBanner);
       header.appendChild(myStatus);
-      header.appendChild(presence);
       header.appendChild(controls);
 
       viewerRoot.insertBefore(header, statusPanel);
+    }
+  }
+
+  function ensureBanner() {
+    if (!viewerRoot) return;
+
+    let banner = document.getElementById('rf-viewer-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'rf-viewer-banner';
+      banner.className = 'rf-viewer-banner';
+      // lightweight inline baseline styling so it doesn't look broken even without CSS
+      banner.style.padding = '0.75rem 1rem';
+      banner.style.marginBottom = '0.75rem';
+      banner.style.borderRadius = '0.75rem';
+      banner.style.background = 'rgba(0,0,0,0.25)';
+      banner.style.backdropFilter = 'blur(6px)';
+      banner.style.color = 'inherit';
+
+      const title = document.createElement('div');
+      title.id = 'rf-banner-title';
+      title.style.fontWeight = '600';
+
+      const body = document.createElement('div');
+      body.id = 'rf-banner-body';
+      body.style.fontSize = '0.9rem';
+      body.style.opacity = '0.9';
+
+      banner.appendChild(title);
+      banner.appendChild(body);
+
+      // Insert banner above header (if header exists), otherwise above status panel.
+      const header = document.getElementById('rf-viewer-header');
+      if (header && header.parentNode === viewerRoot) {
+        viewerRoot.insertBefore(banner, header);
+      } else if (statusPanel) {
+        viewerRoot.insertBefore(banner, statusPanel);
+      } else {
+        viewerRoot.insertBefore(banner, viewerRoot.firstChild);
+      }
     }
   }
 
@@ -381,58 +329,107 @@
     }
   }
 
-  function getNextTopOfHourCountdown() {
-    try {
+  function getShowState(phase) {
+    const config = getLofConfig();
+    const holidayMode = config && config.holiday_mode ? String(config.holiday_mode) : 'offseason';
+    const showtimes = (config && Array.isArray(config.showtimes)) ? config.showtimes : [];
+
+    // If explicitly offseason, that wins.
+    if (holidayMode === 'offseason') {
+      return 'offseason';
+    }
+
+    let inWindow = false;
+    if (showtimes.length) {
       const now = new Date();
-      const next = new Date(now);
-      // next top-of-hour
-      next.setMinutes(0, 0, 0);
-      if (now.getMinutes() !== 0 || now.getSeconds() !== 0) {
-        next.setHours(next.getHours() + 1);
+      const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+      for (let i = 0; i < showtimes.length; i++) {
+        const win = showtimes[i];
+        if (!win || typeof win !== 'object') continue;
+        const startStr = win.start || '';
+        const endStr   = win.end || '';
+        if (!startStr || !endStr) continue;
+
+        const partsStart = startStr.split(':');
+        const partsEnd   = endStr.split(':');
+        if (partsStart.length < 2 || partsEnd.length < 2) continue;
+
+        const sH = parseInt(partsStart[0], 10);
+        const sM = parseInt(partsStart[1], 10);
+        const eH = parseInt(partsEnd[0], 10);
+        const eM = parseInt(partsEnd[1], 10);
+        if (isNaN(sH) || isNaN(sM) || isNaN(eH) || isNaN(eM)) continue;
+
+        const startMin = sH * 60 + sM;
+        const endMin   = eH * 60 + eM;
+
+        if (nowMinutes >= startMin && nowMinutes < endMin) {
+          inWindow = true;
+          break;
+        }
       }
-      const diffMs = next.getTime() - now.getTime();
-      if (diffMs <= 0 || diffMs > 90 * 60000) {
-        return '';
-      }
-      const minutes = Math.round(diffMs / 60000);
-      if (minutes <= 1) {
-        return 'Next top-of-the-hour show starts in about a minute.';
-      }
-      return `Next top-of-the-hour show starts in about ${minutes} minutes.`;
-    } catch (e) {
-      return '';
     }
+
+    if (inWindow) {
+      if (phase === 'intermission') return 'intermission';
+      return 'showtime';
+    }
+
+    // Not in a show window
+    if (phase === 'intermission' || phase === 'showtime') {
+      // If RF says something is playing or intermission but we're outside schedule,
+      // treat it as after-hours glow.
+      return 'afterhours';
+    }
+
+    // default: afterhours vs offseason (offseason handled at top)
+    return 'afterhours';
   }
 
-  function getPhaseBannerText(phase) {
-    const countdown = getNextTopOfHourCountdown();
+  function updateBanner(phase) {
+    ensureBanner();
 
-    if (phase === 'showtime') {
-      const base = lofCopy(
-        'phase_showtime_banner',
-        'You’re in a scheduled show block. Songs play back-to-back, and your picks join the live queue.'
-      );
-      return base;
+    const banner    = document.getElementById('rf-viewer-banner');
+    const titleEl   = document.getElementById('rf-banner-title');
+    const bodyEl    = document.getElementById('rf-banner-body');
+    if (!banner || !titleEl || !bodyEl) return;
+
+    const config      = getLofConfig();
+    const holidayMode = config && config.holiday_mode ? String(config.holiday_mode) : 'offseason';
+
+    const showState = getShowState(phase); // showtime | intermission | afterhours | offseason
+
+    // Clear CSS classes and re-apply based on holiday mode + showState
+    banner.className = 'rf-viewer-banner';
+    banner.classList.add('rf-banner--' + showState);
+    banner.classList.add('rf-banner-holiday--' + holidayMode);
+
+    let titleKey, bodyKey;
+
+    if (showState === 'offseason') {
+      titleKey = 'banner_offseason_title';
+      bodyKey  = 'banner_offseason_sub';
+    } else if (showState === 'afterhours') {
+      titleKey = 'banner_afterhours_title';
+      bodyKey  = 'banner_afterhours_sub';
+    } else if (showState === 'intermission') {
+      titleKey = 'banner_intermission_title';
+      bodyKey  = 'banner_intermission_sub';
+    } else {
+      // showtime
+      titleKey = 'banner_showtime_title';
+      bodyKey  = 'banner_showtime_sub';
     }
 
-    if (phase === 'intermission') {
-      const base = lofCopy(
-        'phase_intermission_banner',
-        'Between shows: the lights are in “Intermission.” Tap a song to wake up the show any time.'
-      );
-      if (countdown) return base + ' ' + countdown;
-      return base;
-    }
+    const titleText = lofCopy(titleKey, titleEl.textContent || '');
+    const bodyText  = lofCopy(bodyKey, bodyEl.textContent || '');
 
-    const base = lofCopy(
-      'phase_idle_banner',
-      'The show is idle right now. You can still request a song to bring the block to life.'
-    );
-    if (countdown) return base + ' ' + countdown;
-    return base;
+    titleEl.textContent = titleText || '';
+    bodyEl.textContent  = bodyText || '';
   }
 
-    function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
+  function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
     const headlineEl = document.getElementById('rf-viewer-headline');
     const subcopyEl  = document.getElementById('rf-viewer-subcopy');
     if (!headlineEl || !subcopyEl) return;
@@ -441,65 +438,66 @@
     const locationMethod = prefs.locationCheckMethod || 'NONE';
 
     const late = isLateNight();
-    let phaseLine = '';
+    let parts = [];
 
+    // Phase contribution (pre-header flavor)
     if (phase === 'intermission') {
-      // We still keep this inline for now – it’s very state-specific.
-      phaseLine = 'Intermission: the lights are catching their breath. 🎭 ';
+      // We can optionally prepend intermission flavor here if we want;
+      // the main banner now carries most of that weight.
     } else if (phase === 'showtime') {
-      phaseLine = 'Showtime: lights synced, neighbors vibing. ✨ ';
+      // Likewise, banner covers most of the "showtime" vibe.
     }
 
     if (!enabled) {
-      // Viewer control paused
-      headlineEl.textContent = lofCopy(
+      const title = lofCopy(
         'header_paused_title',
         'Viewer control is currently paused'
       );
-      const body = lofCopy(
+      const body  = lofCopy(
         'header_paused_body',
         'You can still enjoy the show — we’ll turn song requests and voting back on soon.'
       );
-      subcopyEl.textContent = phaseLine + body;
+      headlineEl.textContent = title;
+      subcopyEl.textContent  = body;
       return;
     }
 
     if (mode === 'JUKEBOX') {
-      headlineEl.textContent = lofCopy(
+      const title = lofCopy(
         'header_jukebox_title',
         'Tap a song to request it 🎧'
       );
+      headlineEl.textContent = title;
 
-      const bits = [];
+      const tokens = {
+        queueCount: queueLength,
+        requestLimit: requestLimit || ''
+      };
 
-      bits.push(
-        phaseLine +
-          lofCopy(
-            'header_jukebox_intro',
-            'Requests join the queue in the order they come in.'
-          )
+      const intro = lofCopy(
+        'header_jukebox_intro',
+        'Requests join the queue in the order they come in.'
       );
+      parts.push(intro);
 
       if (queueLength > 0) {
-        bits.push(
-          lofCopy(
-            'header_jukebox_queue',
-            'There are songs in the queue already — yours will join the line.'
-          )
+        const queueLineTmpl = lofCopy(
+          'header_jukebox_queue',
+          'There are currently {queueCount} songs in the queue.'
         );
+        parts.push(applyTokens(queueLineTmpl, tokens));
       }
 
       if (requestLimit && requestLimit > 0) {
-        bits.push(
-          lofCopy(
-            'header_jukebox_limit',
-            'You can request a limited number of songs per session.'
-          )
+        const limitLineTmpl = lofCopy(
+          'header_jukebox_limit',
+          'You can request up to {requestLimit} songs per session.'
         );
+        parts.push(applyTokens(limitLineTmpl, tokens));
       }
 
       if (locationMethod && locationMethod !== 'NONE') {
-        bits.push(
+        parts.push(
           lofCopy(
             'header_jukebox_geo',
             'Viewer control may be limited to guests near the show location.'
@@ -508,7 +506,7 @@
       }
 
       if (late) {
-        bits.push(
+        parts.push(
           lofCopy(
             'header_jukebox_late',
             'Late-night Falcon fans are the real MVPs. 🌙'
@@ -516,27 +514,24 @@
         );
       }
 
-      subcopyEl.textContent = bits.join(' ');
+      subcopyEl.textContent = parts.join(' ');
       return;
     }
 
     if (mode === 'VOTING') {
-      headlineEl.textContent = lofCopy(
+      const title = lofCopy(
         'header_voting_title',
         'Vote for your favorites 🗳️'
       );
-
-      const bits = [];
-      bits.push(
-        phaseLine +
-          lofCopy(
-            'header_voting_intro',
-            'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
-          )
+      const intro = lofCopy(
+        'header_voting_intro',
+        'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
       );
+      headlineEl.textContent = title;
+      parts.push(intro);
 
       if (late) {
-        bits.push(
+        parts.push(
           lofCopy(
             'header_voting_late',
             'Bonus points for after-dark voting energy. 🌒'
@@ -544,20 +539,21 @@
         );
       }
 
-      subcopyEl.textContent = bits.join(' ');
+      subcopyEl.textContent = parts.join(' ');
       return;
     }
 
-    // Fallback / unknown mode
-    headlineEl.textContent = lofCopy(
+    const fallbackTitle = lofCopy(
       'header_default_title',
       'Interactive show controls'
     );
-    const body = lofCopy(
+    const fallbackBody = lofCopy(
       'header_default_body',
       'Use the controls below to interact with the Lights on Falcon show in real time.'
     );
-    subcopyEl.textContent = phaseLine + body;
+
+    headlineEl.textContent = fallbackTitle;
+    subcopyEl.textContent  = fallbackBody;
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
@@ -633,8 +629,8 @@
     const playingNextRaw = data.playingNext || '';
 
     ensureHeader();
-    ensureControls();
     ensureMainLayout();
+    ensureBanner();
 
     const nowSeq = sequences.find(
       (s) => s.name === playingNowRaw || s.displayName === playingNowRaw
@@ -661,6 +657,7 @@
     const nowKey  = nowSeq  ? (nowSeq.name  || nowSeq.displayName) : playingNowRaw;
     const nextKey = nextSeq ? (nextSeq.name || nextSeq.displayName) : playingNextRaw;
 
+    // DIM LOGIC (uses display title):
     const hasRawNow      = !!(playingNowRaw && playingNowRaw.toString().trim());
     const isIntermission = nowDisplay && /intermission/i.test(nowDisplay);
     const isPlayingReal  = hasRawNow && !isIntermission;
@@ -681,8 +678,10 @@
 
     const queueLength = rawRequests.length || 0;
     const phase = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');
-    updateHeaderCopy(currentMode, currentControlEnabled, prefs, queueLength, phase);
+    lastPhase = phase;
 
+    updateHeaderCopy(currentMode, currentControlEnabled, prefs, queueLength, phase);
+    updateBanner(phase);
     updateMyStatusLine(nowSeq, rawRequests, nowKey);
 
     if (!gridEl) return;
@@ -766,7 +765,7 @@
   }
 
   /* -------------------------
-   * Extra panel
+   * Extra panel (queue / leaderboard / stats / speakers / glow)
    * ------------------------- */
 
   function renderExtraPanel(mode, enabled, data, queueLength) {
@@ -796,8 +795,8 @@
     }
 
     renderStats(extra, queueLength);
-    addSpeakerCard(extra);
     addGlowCard(extra);
+    addSpeakerCard(extra);
   }
 
   function renderQueue(extra, data) {
@@ -913,7 +912,7 @@
   }
 
   /* -------------------------
-   * Stats panel (with persona)
+   * Stats panel
    * ------------------------- */
 
   function renderStats(extra, queueLength) {
@@ -929,26 +928,6 @@
       vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
     } else if (queueLength > 7) {
       vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
-    }
-
-    const personaLabel = lofCopy(
-      'stats_persona_label',
-      'Tonight you’re acting like'
-    );
-
-    const totalInteractions = (stats.requests || 0) + (stats.surprise || 0);
-    let personaText;
-
-    if (totalInteractions === 0) {
-      personaText = lofCopy('stats_persona_warmup', 'Just warming up.');
-    } else if (totalInteractions <= 2) {
-      personaText = lofCopy('stats_persona_newbie', 'Neighborhood Newbie');
-    } else if (totalInteractions <= 5) {
-      personaText = lofCopy('stats_persona_glow_starter', 'Glow Starter');
-    } else if (totalInteractions <= 9) {
-      personaText = lofCopy('stats_persona_copilot', 'Party Co-Pilot');
-    } else {
-      personaText = lofCopy('stats_persona_chaos', 'Chaos Conductor ⚡');
     }
 
     const wrapper = document.createElement('div');
@@ -968,13 +947,140 @@
         <span>${escapeHtml(vibeLabel)}</span>
         <span>${escapeHtml(vibeText)}</span>
       </div>
-      <div class="rf-stats-row rf-stats-row--persona">
-        <span>${escapeHtml(personaLabel)}</span>
-        <span>${escapeHtml(personaText)}</span>
-      </div>
     `;
 
     extra.appendChild(wrapper);
+  }
+
+  /* -------------------------
+   * Glow card
+   * ------------------------- */
+
+  function addGlowCard(extra) {
+    const title       = lofCopy('glow_title', 'Send a little glow 💚');
+    const sub         = lofCopy('glow_sub', 'Drop a short note of thanks, joy, or encouragement.');
+    const placeholder = lofCopy('glow_placeholder', 'Tell us who made your night, or what made you smile…');
+    const namePlaceholder = lofCopy('glow_name_placeholder', 'Name or initials (optional)');
+    const btnLabel    = lofCopy('glow_btn', 'Send this glow ✨');
+
+    const card = document.createElement('div');
+    card.className = 'rf-glow-card';
+
+    card.innerHTML = `
+      <div class="rf-extra-title">${escapeHtml(title)}</div>
+      <div class="rf-extra-sub">
+        ${escapeHtml(sub)}
+      </div>
+      <div class="rf-glow-form">
+        <textarea class="rf-glow-message" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>
+        <input class="rf-glow-name" type="text" placeholder="${escapeHtml(namePlaceholder)}" />
+        <div class="rf-glow-footer">
+          <span class="rf-glow-charcount">0 / 280</span>
+          <button class="rf-glow-btn">${escapeHtml(btnLabel)}</button>
+        </div>
+      </div>
+    `;
+
+    extra.appendChild(card);
+
+    const messageEl   = card.querySelector('.rf-glow-message');
+    const nameEl      = card.querySelector('.rf-glow-name');
+    const btnEl       = card.querySelector('.rf-glow-btn');
+    const countEl     = card.querySelector('.rf-glow-charcount');
+
+    const minLen = 5;
+    const maxLen = 280;
+    const glowCooldownMs = 60 * 1000; // 60s between glows from a single device
+
+    if (messageEl && countEl) {
+      messageEl.addEventListener('input', () => {
+        const len = messageEl.value.length;
+        countEl.textContent = `${len} / ${maxLen}`;
+      });
+    }
+
+    if (!btnEl || !messageEl) return;
+
+    btnEl.addEventListener('click', async () => {
+      const now = Date.now();
+      const last = getLastGlowTime();
+
+      if (now - last < glowCooldownMs) {
+        const msg = lofCopy(
+          'glow_rate_limited',
+          'You just sent a glow. Give it a minute before sending another.'
+        );
+        showToast(msg, 'error');
+        return;
+      }
+
+      const message = (messageEl.value || '').trim();
+      const name    = nameEl ? (nameEl.value || '').trim() : '';
+
+      if (message.length < minLen) {
+        const msg = lofCopy(
+          'glow_too_short',
+          'Give us a little more than that. 🙂'
+        );
+        showToast(msg, 'error');
+        return;
+      }
+      if (message.length > maxLen) {
+        const msg = lofCopy(
+          'glow_too_long',
+          'That\'s a bit too long for a quick glow.'
+        );
+        showToast(msg, 'error');
+        return;
+      }
+
+      btnEl.disabled = true;
+      const originalLabel = btnEl.textContent;
+      btnEl.textContent = 'Sending glow…';
+
+      try {
+        const res = await fetch('/wp-json/lof-extras/v1/glow', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            message: message,
+            name: name
+          })
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.success) {
+          saveLastGlowTime(now);
+          const msg = lofCopy(
+            'glow_success_toast',
+            'Glow sent. Thanks for sharing the love. 💚'
+          );
+          showToast(msg, 'success');
+          messageEl.value = '';
+          if (nameEl) nameEl.value = '';
+          if (countEl) countEl.textContent = `0 / ${maxLen}`;
+        } else {
+          const msg = lofCopy(
+            'glow_error_toast',
+            'Could not send glow. Please try again.'
+          );
+          showToast(msg, 'error');
+        }
+      } catch (e) {
+        const msg = lofCopy(
+          'glow_error_toast',
+          'Could not send glow. Please try again.'
+        );
+        showToast(msg, 'error');
+      } finally {
+        btnEl.disabled = false;
+        btnEl.textContent = originalLabel;
+      }
+    });
   }
 
   /* -------------------------
@@ -982,11 +1088,11 @@
    * ------------------------- */
 
   function addSpeakerCard(extra) {
+    const btnLabelOn   = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+    const timePrefix   = lofCopy('speaker_time_left_prefix', 'Time left:');
+
     const card = document.createElement('div');
     card.className = 'rf-speaker-card';
-
-    const btnOnLabel = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
-    const timeLabel  = lofCopy('speaker_time_left_prefix', 'Time left:');
 
     card.innerHTML = `
       <div class="rf-extra-title">Need sound?</div>
@@ -994,10 +1100,10 @@
         Checking speaker status…
       </div>
       <button id="rf-speaker-btn" class="rf-speaker-btn">
-        ${escapeHtml(btnOnLabel)}
+        ${escapeHtml(btnLabelOn)}
       </button>
       <div class="rf-card-timer">
-        <span class="rf-card-timer-label">${escapeHtml(timeLabel)}</span>
+        <span class="rf-card-timer-label">${escapeHtml(timePrefix)}</span>
         <span id="lof-speaker-countdown-inline" class="rf-card-timer-value"></span>
       </div>
     `;
@@ -1009,8 +1115,10 @@
     const countdownEl = card.querySelector('#lof-speaker-countdown-inline');
     const timerRow    = card.querySelector('.rf-card-timer');
 
+    // hide timer row by default
     if (timerRow) timerRow.style.display = 'none';
 
+    // Optional: only show button on “mobile-ish” widths
     if (window.innerWidth > 900 && btn) {
       btn.style.display = 'none';
     }
@@ -1029,7 +1137,8 @@
           const rem = typeof data.remainingSeconds === 'number' ? data.remainingSeconds : 0;
 
           if (on) {
-            const baseOnText = lofCopy(
+            // Speaker ON
+            const statusOnText = lofCopy(
               'speaker_status_on',
               'Speakers are currently ON near the show.'
             );
@@ -1042,20 +1151,21 @@
                 label = `about ${minutes} minutes`;
               }
 
-              statusText.textContent = baseOnText;
+              statusText.textContent = statusOnText;
               if (countdownEl) countdownEl.textContent = label;
               if (timerRow) timerRow.style.display = 'flex';
             } else {
-              statusText.textContent = baseOnText;
+              statusText.textContent = statusOnText;
               if (countdownEl) countdownEl.textContent = '';
               if (timerRow) timerRow.style.display = 'none';
             }
           } else {
-            const offText = lofCopy(
+            // Speaker OFF
+            const statusOffText = lofCopy(
               'speaker_status_off',
               'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
             );
-            statusText.textContent = offText;
+            statusText.textContent = statusOffText;
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
           }
@@ -1064,14 +1174,18 @@
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         } else {
-          const unknown = lofCopy('speaker_status_unknown', 'Unable to read speaker status.');
-          statusText.textContent = unknown;
+          statusText.textContent = lofCopy(
+            'speaker_status_unknown',
+            'Unable to read speaker status.'
+          );
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         }
       } catch (e) {
-        const unknown = lofCopy('speaker_status_unknown', 'Unable to reach show controller.');
-        statusText.textContent = unknown;
+        statusText.textContent = lofCopy(
+          'speaker_status_unknown',
+          'Unable to reach show controller.'
+        );
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
       }
@@ -1093,14 +1207,19 @@
           if (res.ok && data && data.success) {
             showToast('Speakers should be on now. 🎶', 'success');
           } else {
-            const msg = (data && data.message) ? data.message : lofCopy(
+            const errorText = lofCopy(
               'speaker_error_msg',
               'Something glitched while talking to the speakers.'
             );
+            const msg = (data && data.message) ? data.message : errorText;
             showToast(msg, 'error');
           }
         } catch (e) {
-          showToast('Network issue — try again in a moment.', 'error');
+          const errorText = lofCopy(
+            'speaker_error_msg',
+            'Something glitched while talking to the speakers.'
+          );
+          showToast(errorText, 'error');
         } finally {
           setTimeout(() => {
             btn.disabled = false;
@@ -1112,256 +1231,6 @@
     }
 
     refreshSpeakerStatus();
-  }
-
-  /* -------------------------
-   * Glow card (with Quick Glow + Mood)
-   * ------------------------- */
-
-  function addGlowCard(extra) {
-    if (!LOFViewer.configLoaded || !getFeatureEnabled('glow')) {
-      return;
-    }
-
-    const title       = lofCopy('glow_title', 'Send a little glow 💚');
-    const subtitle    = lofCopy('glow_sub', 'Drop a short note of thanks, joy, or encouragement.');
-    const msgPlaceholder = lofCopy(
-      'glow_placeholder',
-      'Tell us who made your night, or what made you smile…'
-    );
-    const namePlaceholder = lofCopy(
-      'glow_name_placeholder',
-      'Name or initials (optional)'
-    );
-    const targetPlaceholder = lofCopy(
-      'glow_target_placeholder',
-      'Who is this for? (optional)'
-    );
-    const submitLabel = lofCopy('glow_submit_label', 'Send glow');
-
-    const quickChips = [
-      {
-        keyLabel: 'glow_quick_1_label',
-        keyText:  'glow_quick_1_text',
-        fallbackLabel: 'Thanks for lighting up the block tonight.',
-        fallbackText:  'Thanks for lighting up the block tonight.'
-      },
-      {
-        keyLabel: 'glow_quick_2_label',
-        keyText:  'glow_quick_2_text',
-        fallbackLabel: 'You made our night. 💚',
-        fallbackText:  'You made our night. 💚'
-      },
-      {
-        keyLabel: 'glow_quick_3_label',
-        keyText:  'glow_quick_3_text',
-        fallbackLabel: 'This is exactly what our neighborhood needed.',
-        fallbackText:  'This is exactly what our neighborhood needed.'
-      }
-    ].map(function (cfg) {
-      const label = lofCopy(cfg.keyLabel, cfg.fallbackLabel);
-      const text  = lofCopy(cfg.keyText,  cfg.fallbackText);
-      return { label, text };
-    });
-
-    const moodOptions = [
-      {
-        id: 'grateful',
-        label: lofCopy('glow_mood_grateful', 'Grateful 💚')
-      },
-      {
-        id: 'celebrating',
-        label: lofCopy('glow_mood_celebrating', 'Celebrating 🎉')
-      },
-      {
-        id: 'inspired',
-        label: lofCopy('glow_mood_inspired', 'Inspired 💡')
-      },
-      {
-        id: 'supported',
-        label: lofCopy('glow_mood_supported', 'Supported 🤝')
-      }
-    ];
-
-    const card = document.createElement('div');
-    card.className = 'rf-glow-card';
-
-    const hasQuick = quickChips.some(c => c.label && c.label.trim() !== '');
-    let quickHtml = '';
-    if (hasQuick) {
-      quickHtml = `
-        <div class="rf-glow-quick">
-          ${quickChips.map(function (chip, index) {
-            if (!chip.label || chip.label.trim() === '') return '';
-            return `
-              <button type="button"
-                      class="rf-glow-chip"
-                      data-chip-index="${index}">
-                ${escapeHtml(chip.label)}
-              </button>
-            `;
-          }).join('')}
-        </div>
-      `;
-    }
-
-    const hasMoods = moodOptions.some(m => m.label && m.label.trim() !== '');
-    let moodHtml = '';
-    if (hasMoods) {
-      moodHtml = `
-        <div class="rf-glow-moods">
-          ${moodOptions.map(function (m) {
-            if (!m.label || m.label.trim() === '') return '';
-            return `
-              <button type="button"
-                      class="rf-glow-mood"
-                      data-mood="${escapeHtml(m.id)}">
-                ${escapeHtml(m.label)}
-              </button>
-            `;
-          }).join('')}
-        </div>
-      `;
-    }
-
-    card.innerHTML = `
-      <div class="rf-extra-title">${escapeHtml(title)}</div>
-      <div class="rf-extra-sub">
-        ${escapeHtml(subtitle)}
-      </div>
-      ${quickHtml}
-      ${moodHtml}
-      <div class="rf-glow-form">
-        <textarea
-          class="rf-glow-message"
-          rows="3"
-          placeholder="${escapeHtml(msgPlaceholder)}"
-        ></textarea>
-        <input
-          type="text"
-          class="rf-glow-from"
-          placeholder="${escapeHtml(namePlaceholder)}"
-        />
-        <input
-          type="text"
-          class="rf-glow-to"
-          placeholder="${escapeHtml(targetPlaceholder)}"
-        />
-        <button class="rf-glow-submit">
-          ${escapeHtml(submitLabel)}
-        </button>
-      </div>
-    `;
-
-    extra.appendChild(card);
-
-    const textarea   = card.querySelector('.rf-glow-message');
-    const fromInput  = card.querySelector('.rf-glow-from');
-    const toInput    = card.querySelector('.rf-glow-to');
-    const submitBtn  = card.querySelector('.rf-glow-submit');
-    const chipButtons = Array.prototype.slice.call(card.querySelectorAll('.rf-glow-chip'));
-    const moodButtons = Array.prototype.slice.call(card.querySelectorAll('.rf-glow-mood'));
-
-    if (!textarea || !submitBtn) return;
-
-    let selectedMood = '';
-
-    chipButtons.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const indexAttr = btn.getAttribute('data-chip-index');
-        const index = parseInt(indexAttr, 10);
-        if (isNaN(index) || index < 0 || index >= quickChips.length) return;
-
-        const chip = quickChips[index];
-        const chipText = chip.text || chip.label || '';
-        if (!chipText) return;
-
-        const existing = textarea.value.trim();
-        if (!existing) {
-          textarea.value = chipText;
-        } else {
-          textarea.value = existing + '\n' + chipText;
-        }
-
-        textarea.focus();
-      });
-    });
-
-    moodButtons.forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        const moodId = btn.getAttribute('data-mood') || '';
-
-        if (selectedMood === moodId) {
-          selectedMood = '';
-          moodButtons.forEach(function (b) {
-            b.classList.remove('rf-glow-mood--active');
-          });
-          return;
-        }
-
-        selectedMood = moodId;
-        moodButtons.forEach(function (b) {
-          b.classList.toggle('rf-glow-mood--active', b === btn);
-        });
-      });
-    });
-
-    submitBtn.addEventListener('click', async () => {
-      const message = textarea.value.trim();
-      const from    = fromInput ? fromInput.value.trim() : '';
-      const to      = toInput ? toInput.value.trim() : '';
-
-      if (!message) {
-        showToast('Please write a short message before sending a glow. 💚', 'error');
-        return;
-      }
-
-      submitBtn.disabled = true;
-      const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Sending…';
-
-      try {
-        const res = await fetch('/wp-json/lof-extras/v1/glow', {
-          method: 'POST',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: message,
-            from_name: from,
-            to_name: to,
-            relationship: '',
-            mood: selectedMood || '',
-            source: 'viewer_page'
-          })
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data && data.success) {
-          const successText = lofCopy(
-            'glow_success_toast',
-            'Glow sent. Thanks for sharing the love. 💚'
-          );
-          showToast(successText, 'success');
-          textarea.value = '';
-        } else {
-          const errorText = lofCopy(
-            'glow_error_toast',
-            'Could not send glow. Please try again.'
-          );
-          showToast(errorText, 'error');
-        }
-      } catch (e) {
-        const errorText = lofCopy(
-          'glow_error_toast',
-          'Could not send glow. Please try again.'
-        );
-        showToast(errorText, 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
-      }
-    });
   }
 
   /* -------------------------
@@ -1406,7 +1275,7 @@
   }
 
   /* -------------------------
-   * Actions
+   * Actions (request / vote)
    * ------------------------- */
 
   function getButtonLabel(mode, controlEnabled) {
@@ -1542,7 +1411,7 @@
    * Init
    * ------------------------- */
 
-  startPresencePing();
+  // LOF Extras config + Remote Falcon data in parallel
   lofLoadConfig();
   fetchShowDetails();
   setInterval(fetchShowDetails, 15000);
