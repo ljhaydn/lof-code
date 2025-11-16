@@ -12,12 +12,19 @@
   const modeEl      = document.getElementById('rf-mode-value');
 
   // -----------------------------
-  // LOF EXTRAS CONFIG
+  // LOF EXTRAS CONFIG + PRESENCE
   // -----------------------------
   const LOFViewer = {
     config: null,
-    configLoaded: false
+    configLoaded: false,
+    presence: null
   };
+
+  const PRESENCE_STORAGE_KEY      = 'lofPresenceSession_v1';
+  const PRESENCE_PING_INTERVAL_MS = 15000; // 15s
+  const PRESENCE_SUMMARY_MS       = 45000; // 45s
+  let presencePingTimer   = null;
+  let presenceSummaryTimer = null;
 
   function lofCopy(key, fallback) {
     try {
@@ -37,8 +44,6 @@
   }
 
   function lofLoadConfig() {
-    // If LOF Extras plugin is not installed or the endpoint errors out,
-    // we don't want to break the viewer – just log and move on.
     fetch('/wp-json/lof-extras/v1/viewer-config', {
       method: 'GET',
       credentials: 'same-origin'
@@ -51,12 +56,133 @@
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        // Banner + stats + surprise + tonight panel copy all come from here.
+        // Once config is loaded, we can start presence summary polling
+        startPresenceSummary();
       })
       .catch(function (err) {
         console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
       });
   }
+
+  function getFeatureEnabled(flag) {
+    try {
+      return !!(LOFViewer.config && LOFViewer.config.features && LOFViewer.config.features[flag]);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // -----------------------------
+  // Presence helpers
+  // -----------------------------
+
+  function getPresenceSessionKey() {
+    try {
+      const existing = window.localStorage.getItem(PRESENCE_STORAGE_KEY);
+      if (existing && existing.length > 0) {
+        return existing;
+      }
+      const fresh = generateUUID();
+      window.localStorage.setItem(PRESENCE_STORAGE_KEY, fresh);
+      return fresh;
+    } catch (e) {
+      // If localStorage fails, just generate something ephemeral
+      return generateUUID();
+    }
+  }
+
+  function generateUUID() {
+    if (window.crypto && window.crypto.randomUUID) {
+      return window.crypto.randomUUID();
+    }
+    // Fallback
+    const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    return (
+      s4() + s4() + '-' +
+      s4() + '-' +
+      s4() + '-' +
+      s4() + '-' +
+      s4() + s4() + s4()
+    );
+  }
+
+  async function sendPresencePing() {
+    const sessionKey = getPresenceSessionKey();
+    try {
+      await fetch('/wp-json/lof-extras/v1/presence/ping', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_key: sessionKey })
+      });
+    } catch (e) {
+      // Silent fail; presence is best-effort
+      console.warn('[LOF] Presence ping failed:', e);
+    }
+  }
+
+  function startPresencePing() {
+    // Don't start multiple intervals
+    if (presencePingTimer) return;
+    // initial ping
+    sendPresencePing();
+    presencePingTimer = setInterval(sendPresencePing, PRESENCE_PING_INTERVAL_MS);
+  }
+
+  async function fetchPresenceSummary() {
+    try {
+      const res = await fetch('/wp-json/lof-extras/v1/presence/summary', {
+        method: 'GET',
+        credentials: 'same-origin'
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      LOFViewer.presence = data;
+      updatePresenceLine();
+    } catch (e) {
+      console.warn('[LOF] Presence summary failed:', e);
+    }
+  }
+
+  function startPresenceSummary() {
+    if (presenceSummaryTimer) return;
+    // initial summary
+    fetchPresenceSummary();
+    presenceSummaryTimer = setInterval(fetchPresenceSummary, PRESENCE_SUMMARY_MS);
+  }
+
+  function updatePresenceLine() {
+    const el = document.getElementById('rf-viewer-presence');
+    if (!el) return;
+
+    const presence = LOFViewer.presence;
+    if (!presence || typeof presence.count !== 'number') {
+      el.textContent = '';
+      el.style.display = 'none';
+      return;
+    }
+
+    const count  = presence.count;
+    const bucket = presence.bucket || 'solo';
+
+    let text = '';
+    if (count <= 1) {
+      text = 'You might be the only one here right now — enjoy the private show. ✨';
+    } else if (bucket === 'small') {
+      text = `You’re glowing with a few neighbors right now. (${count} viewing)`;
+    } else if (bucket === 'party') {
+      text = `You’re part of a mini block party. (${count} viewers)`;
+    } else {
+      text = `Falcon is packed right now. (${count} viewers) 🔥`;
+    }
+
+    el.textContent = text;
+    el.style.display = 'block';
+  }
+
+  // -----------------------------
+  // RF viewer state
+  // -----------------------------
 
   let lastActionTimes = {};
   const ACTION_COOLDOWN = 15000; // 15s
@@ -65,18 +191,12 @@
   let currentControlEnabled = false;
   let currentVisibleSequences = [];
 
-  // Simple per-device rate limit for "Send a Glow"
-  let lastGlowTime = 0;
-  const GLOW_COOLDOWN_MS = 30000; // 30 seconds
-
-  // Local “identity” for this device
   const STORAGE_REQUESTS_KEY = 'lofRequestedSongs_v1';
   const STORAGE_STATS_KEY    = 'lofViewerStats_v1';
 
   let requestedSongNames = loadRequestedSongs();
   let viewerStats        = loadStats();
 
-  // last requested song (name) this session
   let lastRequestedSequenceName = null;
 
   /* -------------------------
@@ -102,7 +222,7 @@
 
   function loadStats() {
     const today = new Date();
-    const dayKey = today.toISOString().slice(0, 10); // yyyy-mm-dd
+    const dayKey = today.toISOString().slice(0, 10);
 
     try {
       const raw = window.localStorage.getItem(STORAGE_STATS_KEY);
@@ -205,6 +325,11 @@
       myStatus.id = 'rf-viewer-my-status';
       myStatus.className = 'rf-viewer-my-status';
 
+      const presence = document.createElement('div');
+      presence.id = 'rf-viewer-presence';
+      presence.className = 'rf-viewer-presence';
+      presence.style.display = 'none';
+
       const controls = document.createElement('div');
       controls.id = 'rf-viewer-controls';
       controls.className = 'rf-viewer-controls';
@@ -212,6 +337,7 @@
       header.appendChild(headline);
       header.appendChild(subcopy);
       header.appendChild(myStatus);
+      header.appendChild(presence);
       header.appendChild(controls);
 
       viewerRoot.insertBefore(header, statusPanel);
@@ -437,7 +563,6 @@
     const nowKey  = nowSeq  ? (nowSeq.name  || nowSeq.displayName) : playingNowRaw;
     const nextKey = nextSeq ? (nextSeq.name || nextSeq.displayName) : playingNextRaw;
 
-    // DIM LOGIC (uses display title):
     const hasRawNow      = !!(playingNowRaw && playingNowRaw.toString().trim());
     const isIntermission = nowDisplay && /intermission/i.test(nowDisplay);
     const isPlayingReal  = hasRawNow && !isIntermission;
@@ -539,79 +664,21 @@
     });
 
     addSurpriseCard();
-    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength, phase);
+    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
   }
+
   /* -------------------------
-   * Phase banner ("Tonight on Falcon")
+   * Extra panel
    * ------------------------- */
 
-  function addPhaseBanner(extra, phase, mode, enabled) {
-    // Fallbacks if LOF Extras doesn’t provide copy yet
-    let titleKey;
-    let subKey;
-    let defaultTitle;
-    let defaultSub;
-
-    if (phase === 'showtime') {
-      titleKey     = 'banner_showtime_title';
-      subKey       = 'banner_showtime_sub';
-      defaultTitle = 'Showtime on Falcon ✨';
-      defaultSub   = 'Lights are synced to the music right now. Pick a song or just soak it in.';
-    } else if (phase === 'intermission') {
-      titleKey     = 'banner_intermission_title';
-      subKey       = 'banner_intermission_sub';
-      defaultTitle = 'Intermission — lights still glowing';
-      defaultSub   = 'We’re in between featured songs. The lights are in “ambient” mode while guests wander and explore.';
-    } else {
-      // idle / unknown
-      titleKey     = 'banner_idle_title';
-      subKey       = 'banner_idle_sub';
-      defaultTitle = 'Welcome to Lights on Falcon';
-      defaultSub   = 'Show times kick in on the hour most evenings. If you’re here off-cycle, you might catch ambient patterns or a surprise track.';
-    }
-
-    let title = lofCopy(titleKey, defaultTitle);
-    let sub   = lofCopy(subKey, defaultSub);
-
-    // If viewer control is paused, layer that into the message
-    if (!enabled) {
-      const pausedTitle = lofCopy(
-        'banner_paused_title',
-        'Requests are taking a breather'
-      );
-      const pausedSub = lofCopy(
-        'banner_paused_sub',
-        'You can still enjoy the show. We’ll turn viewer control back on soon so you can help steer the playlist.'
-      );
-      title = pausedTitle;
-      sub   = pausedSub;
-    }
-
-    const banner = document.createElement('div');
-    banner.className = 'rf-phase-banner';
-
-    banner.innerHTML = `
-      <div class="rf-phase-banner-title">${escapeHtml(title)}</div>
-      <div class="rf-phase-banner-sub">${escapeHtml(sub)}</div>
-    `;
-
-    extra.appendChild(banner);
-  }
-  /* -------------------------
-   * Extra panel (queue / leaderboard / stats / speakers / glow)
-   * ------------------------- */
-
-  function renderExtraPanel(mode, enabled, data, queueLength, phase) {
+  function renderExtraPanel(mode, enabled, data, queueLength) {
     const extra = document.getElementById('rf-extra-panel');
     if (!extra) return;
 
     extra.innerHTML = '';
 
-    // Phase banner at the top
-    addPhaseBanner(extra, phase, mode, enabled);
-
     if (!enabled) {
-      extra.innerHTML += `
+      extra.innerHTML = `
         <div class="rf-extra-title">Viewer control paused</div>
         <div class="rf-extra-sub">
           When interactive mode is back on, you’ll see the live request queue or top-voted songs here.
@@ -622,7 +689,7 @@
     } else if (mode === 'VOTING') {
       renderLeaderboard(extra, data);
     } else {
-      extra.innerHTML += `
+      extra.innerHTML = `
         <div class="rf-extra-title">Show status</div>
         <div class="rf-extra-sub">
           Interactive controls are on, but this mode doesn’t expose queue or vote data.
@@ -631,103 +698,8 @@
     }
 
     renderStats(extra, queueLength);
-    addGlowCard(extra);
     addSpeakerCard(extra);
-  }
-
-  /**
-   * "Tonight" panel – top of right column.
-   * Priority (Option A):
-   * 1. Offseason override
-   * 2. After-hours override
-   * 3. Intermission override
-   * 4. Showtime override
-   * 5. Default enabled / disabled copy
-   */
-  function renderTonightPanel(extra, mode, enabled, data, queueLength, phase, nextDisplay) {
-    if (!extra) return;
-
-    const sequences   = Array.isArray(data.sequences) ? data.sequences : [];
-    const rawRequests = Array.isArray(data.requests)  ? data.requests  : [];
-    const rawVotes    = Array.isArray(data.votes)     ? data.votes     : [];
-    const playingNow  = data.playingNow || '';
-
-    const afterHours  = isLateNight();
-
-    // Very lightweight "offseason" heuristic: nothing playing, no sequences, no queue, no votes
-    const isOffseason = (
-      !sequences.length &&
-      !playingNow &&
-      !rawRequests.length &&
-      !rawVotes.length
-    );
-
-    const title = lofCopy('tonight_title', 'Tonight at Lights on Falcon');
-
-    // Base copies
-    const enabledSub   = lofCopy(
-      'tonight_enabled_sub',
-      'You’re in the mix — tap a song below to shape the show.'
-    );
-    const disabledSub  = lofCopy(
-      'tonight_disabled_sub',
-      'Requests are paused while we line up the next moment.'
-    );
-
-    let sub = enabled ? enabledSub : disabledSub;
-
-    // Overrides with priority A
-    const offSeasonOverride  = lofCopy('tonight_offseason_override', '');
-    const afterHoursOverride = lofCopy('tonight_afterhours_override', '');
-    const intermissionOverride = lofCopy('tonight_intermission_override', '');
-    const showtimeOverride     = lofCopy('tonight_showtime_override', '');
-
-    if (isOffseason && offSeasonOverride.trim() !== '') {
-      sub = offSeasonOverride;
-    } else if (afterHours && afterHoursOverride.trim() !== '') {
-      sub = afterHoursOverride;
-    } else if (phase === 'intermission' && intermissionOverride.trim() !== '') {
-      sub = intermissionOverride;
-    } else if (phase === 'showtime' && showtimeOverride.trim() !== '') {
-      sub = showtimeOverride;
-    }
-
-    // Queue line w/ tokens
-    const queueTemplate = lofCopy(
-      'tonight_queue_line',
-      'There are {queue_count} requests ahead. Next up: {next_title}.'
-    );
-    const queueLine = formatTonightTemplate(queueTemplate, {
-      queue_count: queueLength,
-      next_title:  nextDisplay || '—',
-      mode:        mode || 'UNKNOWN',
-      my_requests: viewerStats && typeof viewerStats.requests === 'number'
-        ? viewerStats.requests
-        : 0
-    });
-
-    const footer = lofCopy(
-      'tonight_footer',
-      'Thanks for being part of the glow. 💚'
-    );
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rf-tonight';
-
-    wrapper.innerHTML = `
-      <div class="rf-tonight-title">${escapeHtml(title)}</div>
-      ${sub && sub.trim() !== '' ? `
-        <div class="rf-tonight-sub">${escapeHtml(sub)}</div>
-      ` : ''}
-      ${queueLine && queueLine.trim() !== '' ? `
-        <div class="rf-tonight-queue">${escapeHtml(queueLine)}</div>
-      ` : ''}
-      ${footer && footer.trim() !== '' ? `
-        <div class="rf-tonight-footer">${escapeHtml(footer)}</div>
-      ` : ''}
-    `;
-
-    extra.appendChild(wrapper);
+    addGlowCard(extra);
   }
 
   function renderQueue(extra, data) {
@@ -849,10 +821,10 @@
   function renderStats(extra, queueLength) {
     const stats = viewerStats || { requests: 0, surprise: 0 };
 
-    const title         = lofCopy('stats_title', 'Tonight from this device');
-    const reqLabel      = lofCopy('stats_requests_label', 'Requests sent');
+    const title      = lofCopy('stats_title', 'Tonight from this device');
+    const reqLabel   = lofCopy('stats_requests_label', 'Requests sent');
     const surpriseLabel = lofCopy('stats_surprise_label', '“Surprise me” taps');
-    const vibeLabel     = lofCopy('stats_vibe_label', 'Falcon vibe check');
+    const vibeLabel  = lofCopy('stats_vibe_label', 'Falcon vibe check');
 
     let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
     if (queueLength >= 3 && queueLength <= 7) {
@@ -882,307 +854,7 @@
 
     extra.appendChild(wrapper);
   }
-    /* -------------------------
-   * Glow hub (Quick glow / Glow + note / Nominate neighbor)
-   * ------------------------- */
 
-  function addGlowCard(extra) {
-    // Feature flag from LOF Extras, but very forgiving:
-    // - If features.glow === false → hide
-    // - Anything else → show
-    let glowEnabled = true;
-    try {
-      if (
-        LOFViewer &&
-        LOFViewer.config &&
-        LOFViewer.config.features &&
-        Object.prototype.hasOwnProperty.call(LOFViewer.config.features, 'glow')
-      ) {
-        if (LOFViewer.config.features.glow === false) {
-          glowEnabled = false;
-        }
-      }
-    } catch (e) {
-      glowEnabled = true;
-    }
-
-    if (!glowEnabled) return;
-
-    const card = document.createElement('div');
-    card.className = 'rf-glow-card';
-
-    const title       = lofCopy('glow_title', 'Send a little glow 💚');
-    const subtitle    = lofCopy(
-      'glow_sub',
-      'Drop a little love, a note, or a neighbor nomination.'
-    );
-
-    const quickLabel  = lofCopy('glow_mode_quick', 'Quick glow');
-    const noteLabel   = lofCopy('glow_mode_note', 'Glow + note');
-    const neighLabel  = lofCopy('glow_mode_neighbor', 'Nominate a neighbor');
-
-    const msgPlaceholder = lofCopy(
-      'glow_placeholder',
-      '“This show made our night!”'
-    );
-    const neighNameLabel = lofCopy(
-      'neighbor_name_label',
-      'Neighbor first name or nickname (optional)'
-    );
-    const neighStoryPlaceholder = lofCopy(
-      'neighbor_story_placeholder',
-      'Tell us briefly why this neighbor deserves a little extra light.'
-    );
-
-    const btnGlowQuick  = lofCopy('glow_btn_quick', 'Send a quick glow ✨');
-    const btnGlowNote   = lofCopy('glow_btn_note', 'Send glow + note ✨');
-    const btnNeighbor   = lofCopy('neighbor_btn', 'Nominate this neighbor 💚');
-
-    card.innerHTML = `
-      <div class="rf-extra-title">${escapeHtml(title)}</div>
-      <div class="rf-extra-sub">
-        ${escapeHtml(subtitle)}
-      </div>
-
-      <div class="rf-glow-modes">
-        <button class="rf-glow-mode rf-glow-mode--active" data-mode="quick">
-          ${escapeHtml(quickLabel)}
-        </button>
-        <button class="rf-glow-mode" data-mode="note">
-          ${escapeHtml(noteLabel)}
-        </button>
-        <button class="rf-glow-mode" data-mode="neighbor">
-          ${escapeHtml(neighLabel)}
-        </button>
-      </div>
-
-      <div class="rf-glow-body">
-
-        <!-- Quick glow info (no fields) -->
-        <div class="rf-glow-panel rf-glow-panel--quick">
-          <div class="rf-glow-help">
-            We’ll log a little burst of appreciation from this visit. No text needed, just pure vibes. ✨
-          </div>
-        </div>
-
-        <!-- Glow + note -->
-        <div class="rf-glow-panel rf-glow-panel--note" style="display:none;">
-          <textarea
-            id="rf-glow-message"
-            class="rf-glow-input"
-            rows="3"
-            maxlength="280"
-            placeholder="${escapeHtml(msgPlaceholder)}"
-          ></textarea>
-        </div>
-
-        <!-- Nominate neighbor -->
-        <div class="rf-glow-panel rf-glow-panel--neighbor" style="display:none;">
-          <label class="rf-glow-label" for="rf-neighbor-name">
-            ${escapeHtml(neighNameLabel)}
-          </label>
-          <input
-            id="rf-neighbor-name"
-            class="rf-glow-input rf-glow-input--text"
-            type="text"
-            maxlength="80"
-          />
-          <textarea
-            id="rf-neighbor-story"
-            class="rf-glow-input"
-            rows="3"
-            maxlength="400"
-            placeholder="${escapeHtml(neighStoryPlaceholder)}"
-          ></textarea>
-        </div>
-
-      </div>
-
-      <div class="rf-glow-actions">
-        <button id="rf-glow-btn" class="rf-glow-btn">
-          ${escapeHtml(btnGlowQuick)}
-        </button>
-      </div>
-
-      <div class="rf-glow-footnote">
-        Keep it kind. We’re all neighbors here. 💚
-      </div>
-    `;
-
-    extra.appendChild(card);
-
-    const modeButtons   = card.querySelectorAll('.rf-glow-mode');
-    const panelQuick    = card.querySelector('.rf-glow-panel--quick');
-    const panelNote     = card.querySelector('.rf-glow-panel--note');
-    const panelNeighbor = card.querySelector('.rf-glow-panel--neighbor');
-    const msgTextarea   = card.querySelector('#rf-glow-message');
-    const neighName     = card.querySelector('#rf-neighbor-name');
-    const neighStory    = card.querySelector('#rf-neighbor-story');
-    const button        = card.querySelector('#rf-glow-btn');
-
-    if (!button) return;
-
-    // Current mode: "quick", "note", "neighbor"
-    let currentMode = 'quick';
-
-    function updateMode(newMode) {
-      currentMode = newMode;
-
-      // Toggle active styling
-      modeButtons.forEach((btn) => {
-        const btnMode = btn.getAttribute('data-mode');
-        if (btnMode === newMode) {
-          btn.classList.add('rf-glow-mode--active');
-        } else {
-          btn.classList.remove('rf-glow-mode--active');
-        }
-      });
-
-      // Toggle panels
-      if (panelQuick)    panelQuick.style.display    = (newMode === 'quick')    ? 'block' : 'none';
-      if (panelNote)     panelNote.style.display     = (newMode === 'note')     ? 'block' : 'none';
-      if (panelNeighbor) panelNeighbor.style.display = (newMode === 'neighbor') ? 'block' : 'none';
-
-      // Button label per mode
-      if (newMode === 'quick') {
-        button.textContent = btnGlowQuick;
-      } else if (newMode === 'note') {
-        button.textContent = btnGlowNote;
-      } else {
-        button.textContent = btnNeighbor;
-      }
-    }
-
-    modeButtons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const newMode = btn.getAttribute('data-mode') || 'quick';
-        updateMode(newMode);
-      });
-    });
-
-    // Initial mode setup
-    updateMode('quick');
-
-    button.addEventListener('click', async () => {
-      const now = Date.now();
-      if (now - lastGlowTime < GLOW_COOLDOWN_MS) {
-        const remaining = Math.ceil((GLOW_COOLDOWN_MS - (now - lastGlowTime)) / 1000);
-        const rateMsg = lofCopy(
-          'glow_rate_limited',
-          'You just sent a glow — give it a few seconds before sending another. ✨'
-        );
-        showToast(`${rateMsg} (${remaining}s)`, 'error');
-        return;
-      }
-
-      // Validate fields based on mode
-      let payload = {};
-      let endpoint = '';
-      let successMsg = '';
-      let errorMsg   = '';
-
-      if (currentMode === 'quick') {
-        endpoint   = '/wp-json/lof-extras/v1/glow';
-        payload    = { type: 'quick', message: '' };
-        successMsg = lofCopy(
-          'glow_success_toast',
-          'Glow sent. Thanks for sharing the love. 💚'
-        );
-        errorMsg = lofCopy(
-          'glow_error_toast',
-          'Could not send glow. Please try again.'
-        );
-      } else if (currentMode === 'note') {
-        const raw = (msgTextarea && msgTextarea.value || '').trim();
-        if (!raw) {
-          const emptyMsg = lofCopy(
-            'glow_empty_error',
-            'Add a short note before sending your glow.'
-          );
-          showToast(emptyMsg, 'error');
-          return;
-        }
-        endpoint   = '/wp-json/lof-extras/v1/glow';
-        payload    = { type: 'note', message: raw };
-        successMsg = lofCopy(
-          'glow_success_toast',
-          'Glow sent. Thanks for sharing the love. 💚'
-        );
-        errorMsg = lofCopy(
-          'glow_error_toast',
-          'Could not send glow. Please try again.'
-        );
-      } else {
-        // neighbor
-        const storyRaw = (neighStory && neighStory.value || '').trim();
-        if (!storyRaw) {
-          const emptyNeigh = lofCopy(
-            'neighbor_empty_error',
-            'Share a few words about your neighbor before sending.'
-          );
-          showToast(emptyNeigh, 'error');
-          return;
-        }
-        const nameRaw = (neighName && neighName.value || '').trim();
-
-        endpoint = '/wp-json/lof-extras/v1/neighbor';
-        payload  = {
-          name: nameRaw,
-          story: storyRaw
-        };
-        successMsg = lofCopy(
-          'neighbor_success_toast',
-          'Neighbor nomination sent. Thanks for lifting someone up. 💚'
-        );
-        errorMsg = lofCopy(
-          'neighbor_error_toast',
-          'Could not send nomination. Please try again.'
-        );
-      }
-
-      // Lock UI
-      button.disabled = true;
-      const oldLabel = button.textContent;
-      button.textContent = 'Sending…';
-
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          credentials: 'same-origin',
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json().catch(() => null);
-
-        if (res.ok && data && data.success) {
-          lastGlowTime = Date.now();
-
-          if (currentMode === 'note' && msgTextarea) {
-            msgTextarea.value = '';
-          } else if (currentMode === 'neighbor') {
-            if (neighName)   neighName.value = '';
-            if (neighStory)  neighStory.value = '';
-          }
-
-          showToast(data.message || successMsg, 'success');
-        } else {
-          const msg =
-            (data && (data.message || data.error)) ||
-            errorMsg;
-          showToast(msg, 'error');
-        }
-      } catch (e) {
-        showToast(errorMsg, 'error');
-      } finally {
-        button.disabled = false;
-        button.textContent = oldLabel;
-      }
-    });
-  }
   /* -------------------------
    * Speaker control card
    * ------------------------- */
@@ -1191,21 +863,19 @@
     const card = document.createElement('div');
     card.className = 'rf-speaker-card';
 
-    // These come from LOF Extras speaker settings where possible
-    const title       = 'Need sound?'; // Card title – can make this configurable later
-    const timePrefix  = lofCopy('speaker_time_left_prefix', 'Time left:');
-    const buttonLabel = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+    const btnOnLabel   = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+    const timeLabel    = lofCopy('speaker_time_left_prefix', 'Time left:');
 
     card.innerHTML = `
-      <div class="rf-extra-title">${escapeHtml(title)}</div>
+      <div class="rf-extra-title">Need sound?</div>
       <div class="rf-extra-sub" id="rf-speaker-status-text">
         Checking speaker status…
       </div>
       <button id="rf-speaker-btn" class="rf-speaker-btn">
-        ${escapeHtml(buttonLabel)}
+        ${escapeHtml(btnOnLabel)}
       </button>
       <div class="rf-card-timer">
-        <span class="rf-card-timer-label">${escapeHtml(timePrefix)}</span>
+        <span class="rf-card-timer-label">${escapeHtml(timeLabel)}</span>
         <span id="lof-speaker-countdown-inline" class="rf-card-timer-value"></span>
       </div>
     `;
@@ -1217,35 +887,14 @@
     const countdownEl = card.querySelector('#lof-speaker-countdown-inline');
     const timerRow    = card.querySelector('.rf-card-timer');
 
-    // hide timer row by default
     if (timerRow) timerRow.style.display = 'none';
 
-    // Optional: only show button on “mobile-ish” widths
     if (window.innerWidth > 900 && btn) {
       btn.style.display = 'none';
     }
 
     async function refreshSpeakerStatus() {
       if (!statusText) return;
-
-      // Pull status copy from LOF Extras (with sane fallbacks)
-      const textOn       = lofCopy(
-        'speaker_status_on',
-        'Speakers are currently ON near the show.'
-      );
-      const textOff      = lofCopy(
-        'speaker_status_off',
-        'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
-      );
-      const textUnknown  = lofCopy(
-        'speaker_status_unknown',
-        'Unable to read speaker status.'
-      );
-      const genericError = lofCopy(
-        'speaker_error_msg',
-        'Something glitched while talking to the speakers.'
-      );
-
       try {
         const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=status', {
           method: 'GET',
@@ -1258,7 +907,10 @@
           const rem = typeof data.remainingSeconds === 'number' ? data.remainingSeconds : 0;
 
           if (on) {
-            // Speaker ON
+            const baseOnText = lofCopy(
+              'speaker_status_on',
+              'Speakers are currently ON near the show.'
+            );
             if (rem > 0) {
               const minutes = Math.ceil(rem / 60);
               let label;
@@ -1268,33 +920,36 @@
                 label = `about ${minutes} minutes`;
               }
 
-              statusText.textContent = textOn;
+              statusText.textContent = baseOnText;
               if (countdownEl) countdownEl.textContent = label;
               if (timerRow) timerRow.style.display = 'flex';
             } else {
-              // ON but no remaining info → show ON, hide timer
-              statusText.textContent = textOn;
+              statusText.textContent = baseOnText;
               if (countdownEl) countdownEl.textContent = '';
               if (timerRow) timerRow.style.display = 'none';
             }
           } else {
-            // Speaker OFF
-            statusText.textContent = textOff;
+            const offText = lofCopy(
+              'speaker_status_off',
+              'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
+            );
+            statusText.textContent = offText;
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
           }
         } else if (data && data.message) {
-          // Message coming from lof-speaker.php (e.g., "feature limited to on-site")
           statusText.textContent = data.message;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         } else {
-          statusText.textContent = textUnknown;
+          const unknown = lofCopy('speaker_status_unknown', 'Unable to read speaker status.');
+          statusText.textContent = unknown;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         }
       } catch (e) {
-        statusText.textContent = genericError;
+        const unknown = lofCopy('speaker_status_unknown', 'Unable to reach show controller.');
+        statusText.textContent = unknown;
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
       }
@@ -1314,22 +969,16 @@
           const data = await res.json().catch(() => null);
 
           if (res.ok && data && data.success) {
-            // success toast – can later be wired to LOF Extras if we want
             showToast('Speakers should be on now. 🎶', 'success');
           } else {
-            const fallbackErr = lofCopy(
+            const msg = (data && data.message) ? data.message : lofCopy(
               'speaker_error_msg',
               'Something glitched while talking to the speakers.'
             );
-            const msg = (data && data.message) ? data.message : fallbackErr;
             showToast(msg, 'error');
           }
         } catch (e) {
-          const networkErr = lofCopy(
-            'speaker_error_msg',
-            'Something glitched while talking to the speakers.'
-          );
-          showToast(networkErr, 'error');
+          showToast('Network issue — try again in a moment.', 'error');
         } finally {
           setTimeout(() => {
             btn.disabled = false;
@@ -1341,6 +990,129 @@
     }
 
     refreshSpeakerStatus();
+  }
+
+  /* -------------------------
+   * Glow card
+   * ------------------------- */
+
+  function addGlowCard(extra) {
+    // If LOF Extras isn't loaded or glow feature is disabled, bail gracefully.
+    if (!LOFViewer.configLoaded || !getFeatureEnabled('glow')) {
+      return;
+    }
+
+    const title       = lofCopy('glow_title', 'Send a little glow 💚');
+    const subtitle    = lofCopy('glow_sub', 'Drop a short note of thanks, joy, or encouragement.');
+    const msgPlaceholder = lofCopy(
+      'glow_placeholder',
+      'Tell us who made your night, or what made you smile…'
+    );
+    const namePlaceholder = lofCopy(
+      'glow_name_placeholder',
+      'Name or initials (optional)'
+    );
+    const targetPlaceholder = lofCopy(
+      'glow_target_placeholder',
+      'Who is this for? (optional)'
+    );
+    const submitLabel = lofCopy('glow_submit_label', 'Send glow');
+
+    const card = document.createElement('div');
+    card.className = 'rf-glow-card';
+
+    card.innerHTML = `
+      <div class="rf-extra-title">${escapeHtml(title)}</div>
+      <div class="rf-extra-sub">
+        ${escapeHtml(subtitle)}
+      </div>
+      <div class="rf-glow-form">
+        <textarea
+          class="rf-glow-message"
+          rows="3"
+          placeholder="${escapeHtml(msgPlaceholder)}"
+        ></textarea>
+        <input
+          type="text"
+          class="rf-glow-from"
+          placeholder="${escapeHtml(namePlaceholder)}"
+        />
+        <input
+          type="text"
+          class="rf-glow-to"
+          placeholder="${escapeHtml(targetPlaceholder)}"
+        />
+        <button class="rf-glow-submit">
+          ${escapeHtml(submitLabel)}
+        </button>
+      </div>
+    `;
+
+    extra.appendChild(card);
+
+    const textarea = card.querySelector('.rf-glow-message');
+    const fromInput = card.querySelector('.rf-glow-from');
+    const toInput   = card.querySelector('.rf-glow-to');
+    const submitBtn = card.querySelector('.rf-glow-submit');
+
+    if (!textarea || !submitBtn) return;
+
+    submitBtn.addEventListener('click', async () => {
+      const message = textarea.value.trim();
+      const from    = fromInput ? fromInput.value.trim() : '';
+      const to      = toInput ? toInput.value.trim() : '';
+
+      if (!message) {
+        showToast('Please write a short message before sending a glow. 💚', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Sending…';
+
+      try {
+        const res = await fetch('/wp-json/lof-extras/v1/glow', {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: message,
+            from_name: from,
+            to_name: to,
+            relationship: '',
+            mood: '',
+            source: 'viewer_page'
+          })
+        });
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.success) {
+          const successText = lofCopy(
+            'glow_success_toast',
+            'Glow sent. Thanks for sharing the love. 💚'
+          );
+          showToast(successText, 'success');
+          textarea.value = '';
+        } else {
+          const errorText = lofCopy(
+            'glow_error_toast',
+            'Could not send glow. Please try again.'
+          );
+          showToast(errorText, 'error');
+        }
+      } catch (e) {
+        const errorText = lofCopy(
+          'glow_error_toast',
+          'Could not send glow. Please try again.'
+        );
+        showToast(errorText, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
+    });
   }
 
   /* -------------------------
@@ -1385,7 +1157,7 @@
   }
 
   /* -------------------------
-   * Actions (request / vote)
+   * Actions
    * ------------------------- */
 
   function getButtonLabel(mode, controlEnabled) {
@@ -1507,16 +1279,6 @@
    * Utils
    * ------------------------- */
 
-  function formatTonightTemplate(template, context) {
-    if (typeof template !== 'string' || !template) return '';
-    const ctx = context || {};
-    return template
-      .replace(/\{queue_count\}/g, String(ctx.queue_count != null ? ctx.queue_count : '0'))
-      .replace(/\{next_title\}/g, String(ctx.next_title != null ? ctx.next_title : '—'))
-      .replace(/\{mode\}/g, String(ctx.mode != null ? ctx.mode : 'UNKNOWN'))
-      .replace(/\{my_requests\}/g, String(ctx.my_requests != null ? ctx.my_requests : '0'));
-  }
-
   function escapeHtml(str) {
     if (typeof str !== 'string') return '';
     return str
@@ -1530,6 +1292,9 @@
   /* -------------------------
    * Init
    * ------------------------- */
+
+  // Start presence pinging immediately (best effort)
+  startPresencePing();
 
   // LOF Extras config + Remote Falcon data in parallel
   lofLoadConfig();
