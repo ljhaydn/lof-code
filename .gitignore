@@ -13,3 +13,8 @@ themes/*
 uploads/
 cache/
 upgrade/
+updraft/
+integrate-google-drive-cache/
+# Optional safety net:
+*.zip
+*.gz
