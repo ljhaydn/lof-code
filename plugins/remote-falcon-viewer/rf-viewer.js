@@ -11,6 +11,36 @@
   const nextTitleEl = document.getElementById('rf-next-title');
   const modeEl      = document.getElementById('rf-mode-value');
 
+  // -----------------------------
+  // LOF EXTRAS CONFIG
+  // -----------------------------
+  const LOFViewer = {
+    config: null,
+    configLoaded: false
+  };
+
+  function lofLoadConfig() {
+    // If LOF Extras plugin is not installed or the endpoint errors out,
+    // we don't want to break the viewer – just log and move on.
+    fetch('/wp-json/lof-extras/v1/viewer-config', {
+      method: 'GET',
+      credentials: 'same-origin'
+    })
+      .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function (data) {
+        LOFViewer.config = data;
+        LOFViewer.configLoaded = true;
+        console.log('[LOF] Extras viewer-config loaded:', data);
+        // Later we'll hook this into banners, copy, feature toggles, etc.
+      })
+      .catch(function (err) {
+        console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
+      });
+  }
+
   let lastActionTimes = {};
   const ACTION_COOLDOWN = 15000; // 15s
 
@@ -969,6 +999,8 @@
    * Init
    * ------------------------- */
 
+  // NEW: load LOF Extras config in parallel with Remote Falcon data
+  lofLoadConfig();
   fetchShowDetails();
   setInterval(fetchShowDetails, 15000);
 })();
