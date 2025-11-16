@@ -822,6 +822,27 @@
       vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
     }
 
+    // Persona / achievement row
+    const personaLabel = lofCopy(
+      'stats_persona_label',
+      'Tonight you’re acting like'
+    );
+
+    const totalInteractions = (stats.requests || 0) + (stats.surprise || 0);
+    let personaText;
+
+    if (totalInteractions === 0) {
+      personaText = lofCopy('stats_persona_warmup', 'Just warming up.');
+    } else if (totalInteractions <= 2) {
+      personaText = lofCopy('stats_persona_newbie', 'Neighborhood Newbie');
+    } else if (totalInteractions <= 5) {
+      personaText = lofCopy('stats_persona_glow_starter', 'Glow Starter');
+    } else if (totalInteractions <= 9) {
+      personaText = lofCopy('stats_persona_copilot', 'Party Co-Pilot');
+    } else {
+      personaText = lofCopy('stats_persona_chaos', 'Chaos Conductor ⚡');
+    }
+
     const wrapper = document.createElement('div');
     wrapper.className = 'rf-stats';
 
@@ -838,6 +859,10 @@
       <div class="rf-stats-row rf-stats-row--vibe">
         <span>${escapeHtml(vibeLabel)}</span>
         <span>${escapeHtml(vibeText)}</span>
+      </div>
+      <div class="rf-stats-row rf-stats-row--persona">
+        <span>${escapeHtml(personaLabel)}</span>
+        <span>${escapeHtml(personaText)}</span>
       </div>
     `;
 
