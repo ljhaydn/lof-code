@@ -265,28 +265,69 @@
     const locationMethod = prefs.locationCheckMethod || 'NONE';
 
     const late = isLateNight();
-    let phaseLine = '';
+
+    // Determine which banner title/sub to use based on phase
+    let titleKey;
+    let subKey;
 
     if (phase === 'intermission') {
-      phaseLine = 'Intermission: the lights are catching their breath. 🎭 ';
+      titleKey = 'banner_intermission_title';
+      subKey   = 'banner_intermission_sub';
     } else if (phase === 'showtime') {
-      phaseLine = 'Showtime: lights synced, neighbors vibing. ✨ ';
+      titleKey = 'banner_showtime_title';
+      subKey   = 'banner_showtime_sub';
+    } else {
+      // fallback for idle / outside show windows
+      titleKey = 'banner_offseason_title';
+      subKey   = 'banner_offseason_sub';
     }
 
+    const defaultTitle =
+      phase === 'intermission'
+        ? 'Intermission'
+        : phase === 'showtime'
+          ? 'Showtime 🎶'
+          : 'Interactive show controls';
+
+    const defaultSub =
+      phase === 'intermission'
+        ? 'The lights are catching their breath between songs.'
+        : phase === 'showtime'
+          ? 'Lights, audio, and neighbors in sync.'
+          : 'Use the controls below to interact with the Lights on Falcon show in real time.';
+
+    const phaseTitle = lofCopy(titleKey, defaultTitle);
+    const phaseSub   = lofCopy(subKey, defaultSub);
+
+    // If viewer control is OFF, use the "after-hours" banner copy
     if (!enabled) {
-      headlineEl.textContent = 'Viewer control is currently paused';
-      subcopyEl.textContent =
-        phaseLine +
-        'You can still enjoy the show — we’ll turn song requests and voting back on soon.';
+      const pausedTitle = lofCopy(
+        'banner_afterhours_title',
+        'Viewer control is currently paused'
+      );
+
+      const pausedSub = lofCopy(
+        'banner_afterhours_sub',
+        phaseSub + ' You can still enjoy the show — we’ll turn song requests and voting back on soon.'
+      );
+
+      headlineEl.textContent = phaseTitle || pausedTitle;
+      subcopyEl.textContent  = pausedSub;
       return;
     }
 
+    // Viewer control is ON from here down.
     if (mode === 'JUKEBOX') {
-      headlineEl.textContent = 'Tap a song to request it 🎧';
+      // Headline is the current phase title (eg. Showtime / Intermission)
+      headlineEl.textContent = phaseTitle || 'Tap a song to request it 🎧';
 
       const bits = [];
 
-      bits.push(phaseLine + 'Requests join the queue in the order they come in.');
+      // Base phase subcopy from settings
+      bits.push(phaseSub);
+
+      // Interaction instructions
+      bits.push('Tap a song below to add it to the queue.');
 
       if (queueLength > 0) {
         bits.push(
@@ -299,9 +340,11 @@
           `You can request up to ${requestLimit} song${requestLimit > 1 ? 's' : ''} per session.`
         );
       }
+
       if (locationMethod && locationMethod !== 'NONE') {
         bits.push('Viewer control may be limited to guests near the show location.');
       }
+
       if (late) {
         bits.push('Late-night Falcon fans are the real MVPs. 🌙');
       }
@@ -311,13 +354,16 @@
     }
 
     if (mode === 'VOTING') {
-      headlineEl.textContent = 'Vote for your favorites 🗳️';
+      // Voting headline = phase title or generic fallback
+      headlineEl.textContent = phaseTitle || 'Vote for your favorites 🗳️';
 
       const bits = [];
+
       bits.push(
-        phaseLine +
-          'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
+        phaseSub +
+          ' Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
       );
+
       if (late) {
         bits.push('Bonus points for after-dark voting energy. 🌒');
       }
@@ -326,10 +372,9 @@
       return;
     }
 
-    headlineEl.textContent = 'Interactive show controls';
-    subcopyEl.textContent =
-      phaseLine +
-      'Use the controls below to interact with the Lights on Falcon show in real time.';
+    // Fallback: generic interactive header using phase banner copy
+    headlineEl.textContent = phaseTitle;
+    subcopyEl.textContent  = phaseSub;
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
