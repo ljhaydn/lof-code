@@ -1083,155 +1083,214 @@
     });
   }
 
-  /* -------------------------
-   * Speaker control card
-   * ------------------------- */
+/* -------------------------
+ * Speaker control card
+ * ------------------------- */
+function addSpeakerCard(extra) {
+  const btnLabelOn = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
+  const timePrefix = lofCopy('speaker_time_left_prefix', 'Time left:');
+  const fmLabel = lofCopy('speaker_fm_label', 'FM radio');
+  const fmText = lofCopy(
+    'speaker_fm_text',
+    'Prefer the car stereo? Tune to 88.3 FM near the show.'
+  );
+  const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
-  function addSpeakerCard(extra) {
-    const btnLabelOn   = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
-    const timePrefix   = lofCopy('speaker_time_left_prefix', 'Time left:');
+  // TODO: if we later wire this into LOF Extras settings, read from config instead.
+  const pulsemeshUrl = 'https://YOUR_PULSEMESH_EMBED_URL';
 
-    const card = document.createElement('div');
-    card.className = 'rf-speaker-card';
+  const card = document.createElement('div');
+  card.className = 'rf-card rf-speaker-card';
 
-    card.innerHTML = `
-      <div class="rf-extra-title">Need sound?</div>
-      <div class="rf-extra-sub" id="rf-speaker-status-text">
-        Checking speaker status…
+  card.innerHTML = `
+    <div class="rf-card-inner">
+      <div class="rf-card-header">Need sound?</div>
+
+      <div class="rf-card-body">
+        <div id="rf-speaker-status-text" class="rf-speaker-status">
+          Checking speaker status…
+        </div>
+
+        <div class="rf-card-primary-action">
+          <button id="rf-speaker-btn" class="rf-card-btn">
+            ${escapeHtml(btnLabelOn)}
+          </button>
+
+          <div class="rf-card-timer">
+            <span class="rf-card-timer-label">
+              ${escapeHtml(timePrefix)}
+            </span>
+            <span id="lof-speaker-countdown-inline"
+                  class="rf-card-timer-value"></span>
+          </div>
+        </div>
+
+        <div class="rf-card-divider"></div>
+
+        <div class="rf-audio-options">
+          <div class="rf-audio-options-label">
+            Other ways to listen:
+          </div>
+
+          <details class="rf-audio-option rf-audio-option--stream" open>
+            <summary>${escapeHtml(streamLabel)}</summary>
+            <div class="rf-audio-option-body">
+              <iframe
+                src="${pulsemeshUrl}"
+                title="Lights on Falcon live stream"
+                loading="lazy"
+                class="rf-audio-iframe"
+                allow="autoplay"
+              ></iframe>
+            </div>
+          </details>
+
+          <div class="rf-audio-option rf-audio-option--fm">
+            <div class="rf-audio-option-title">${escapeHtml(fmLabel)}</div>
+            <div class="rf-audio-option-body">
+              ${escapeHtml(fmText)}
+            </div>
+          </div>
+        </div>
       </div>
-      <button id="rf-speaker-btn" class="rf-speaker-btn">
-        ${escapeHtml(btnLabelOn)}
-      </button>
-      <div class="rf-card-timer">
-        <span class="rf-card-timer-label">${escapeHtml(timePrefix)}</span>
-        <span id="lof-speaker-countdown-inline" class="rf-card-timer-value"></span>
-      </div>
-    `;
+    </div>
+  `;
 
-    extra.appendChild(card);
+  extra.appendChild(card);
 
-    const btn         = card.querySelector('#rf-speaker-btn');
-    const statusText  = card.querySelector('#rf-speaker-status-text');
-    const countdownEl = card.querySelector('#lof-speaker-countdown-inline');
-    const timerRow    = card.querySelector('.rf-card-timer');
+  const btn = card.querySelector('#rf-speaker-btn');
+  const statusText = card.querySelector('#rf-speaker-status-text');
+  const countdownEl = card.querySelector('#lof-speaker-countdown-inline');
+  const timerRow = card.querySelector('.rf-card-timer');
 
-    // hide timer row by default
-    if (timerRow) timerRow.style.display = 'none';
+  // hide timer row by default
+  if (timerRow) timerRow.style.display = 'none';
 
-    // Optional: only show button on “mobile-ish” widths
-    if (window.innerWidth > 900 && btn) {
-      btn.style.display = 'none';
-    }
+  // Optional: only show speaker button on “mobile-ish” widths
+  if (window.innerWidth > 900 && btn) {
+    btn.style.display = 'none';
+  }
 
-    async function refreshSpeakerStatus() {
-      if (!statusText) return;
-      try {
-        const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=status', {
+  async function refreshSpeakerStatus() {
+    if (!statusText) return;
+
+    try {
+      const res = await fetch(
+        '/wp-content/themes/integrations/lof-speaker.php?action=status',
+        {
           method: 'GET',
-          headers: { Accept: 'application/json' }
-        });
-        const data = await res.json().catch(() => null);
+          headers: { Accept: 'application/json' },
+        }
+      );
 
-        if (res.ok && data && typeof data.speakerOn === 'boolean') {
-          const on  = data.speakerOn;
-          const rem = typeof data.remainingSeconds === 'number' ? data.remainingSeconds : 0;
+      const data = await res.json().catch(() => null);
 
-          if (on) {
-            // Speaker ON
-            const statusOnText = lofCopy(
-              'speaker_status_on',
-              'Speakers are currently ON near the show.'
-            );
-            if (rem > 0) {
-              const minutes = Math.ceil(rem / 60);
-              let label;
-              if (minutes <= 1) {
-                label = 'about 1 minute';
-              } else {
-                label = `about ${minutes} minutes`;
-              }
+      if (res.ok && data && typeof data.speakerOn === 'boolean') {
+        const on = data.speakerOn;
+        const rem = typeof data.remainingSeconds === 'number'
+          ? data.remainingSeconds
+          : 0;
 
-              statusText.textContent = statusOnText;
-              if (countdownEl) countdownEl.textContent = label;
-              if (timerRow) timerRow.style.display = 'flex';
-            } else {
-              statusText.textContent = statusOnText;
-              if (countdownEl) countdownEl.textContent = '';
-              if (timerRow) timerRow.style.display = 'none';
-            }
+        if (on) {
+          // Speaker ON
+          const statusOnText = lofCopy(
+            'speaker_status_on',
+            'Speakers are currently ON near the show.'
+          );
+
+          if (rem > 0) {
+            const minutes = Math.ceil(rem / 60);
+            const label = minutes <= 1
+              ? 'about 1 minute'
+              : `about ${minutes} minutes`;
+
+            statusText.textContent = statusOnText;
+            if (countdownEl) countdownEl.textContent = label;
+            if (timerRow) timerRow.style.display = 'flex';
           } else {
-            // Speaker OFF
-            const statusOffText = lofCopy(
-              'speaker_status_off',
-              'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
-            );
-            statusText.textContent = statusOffText;
+            statusText.textContent = statusOnText;
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
           }
-        } else if (data && data.message) {
-          statusText.textContent = data.message;
-          if (countdownEl) countdownEl.textContent = '';
-          if (timerRow) timerRow.style.display = 'none';
         } else {
-          statusText.textContent = lofCopy(
-            'speaker_status_unknown',
-            'Unable to read speaker status.'
+          // Speaker OFF
+          const statusOffText = lofCopy(
+            'speaker_status_off',
+            'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
           );
+
+          statusText.textContent = statusOffText;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         }
-      } catch (e) {
+      } else if (data && data.message) {
+        statusText.textContent = data.message;
+        if (countdownEl) countdownEl.textContent = '';
+        if (timerRow) timerRow.style.display = 'none';
+      } else {
         statusText.textContent = lofCopy(
           'speaker_status_unknown',
-          'Unable to reach show controller.'
+          'Unable to read speaker status.'
         );
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
       }
+    } catch (e) {
+      statusText.textContent = lofCopy(
+        'speaker_status_unknown',
+        'Unable to reach show controller.'
+      );
+      if (countdownEl) countdownEl.textContent = '';
+      if (timerRow) timerRow.style.display = 'none';
     }
+  }
 
-    if (btn) {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        const oldText = btn.textContent;
-        btn.textContent = 'Talking to the show…';
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = 'Talking to the show…';
 
-        try {
-          const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=on', {
+      try {
+        const res = await fetch(
+          '/wp-content/themes/integrations/lof-speaker.php?action=on',
+          {
             method: 'POST',
-            headers: { Accept: 'application/json' }
-          });
-          const data = await res.json().catch(() => null);
-
-          if (res.ok && data && data.success) {
-            showToast('Speakers should be on now. 🎶', 'success');
-          } else {
-            const errorText = lofCopy(
-              'speaker_error_msg',
-              'Something glitched while talking to the speakers.'
-            );
-            const msg = (data && data.message) ? data.message : errorText;
-            showToast(msg, 'error');
+            headers: { Accept: 'application/json' },
           }
-        } catch (e) {
+        );
+
+        const data = await res.json().catch(() => null);
+
+        if (res.ok && data && data.success) {
+          showToast('Speakers should be on now. ', 'success');
+        } else {
           const errorText = lofCopy(
             'speaker_error_msg',
             'Something glitched while talking to the speakers.'
           );
-          showToast(errorText, 'error');
-        } finally {
-          setTimeout(() => {
-            btn.disabled = false;
-            btn.textContent = oldText;
-            refreshSpeakerStatus();
-          }, 1500);
+          const msg = (data && data.message) ? data.message : errorText;
+          showToast(msg, 'error');
         }
-      });
-    }
-
-    refreshSpeakerStatus();
+      } catch (e) {
+        const errorText = lofCopy(
+          'speaker_error_msg',
+          'Something glitched while talking to the speakers.'
+        );
+        showToast(errorText, 'error');
+      } finally {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = oldText;
+          refreshSpeakerStatus();
+        }, 1500);
+      }
+    });
   }
+
+  refreshSpeakerStatus();
+}
+
 
   /* -------------------------
    * Surprise Me card
