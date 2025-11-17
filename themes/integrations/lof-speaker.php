@@ -37,6 +37,36 @@ function lof_speaker_json_exit($code, $payload) {
     echo json_encode($payload);
     exit;
 }
+function lof_is_lan_ip($ip) {
+    if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+        return false;
+    }
+
+    $parts = explode('.', $ip);
+    if (count($parts) !== 4) {
+        return false;
+    }
+
+    // 10.0.0.0/8
+    if ($parts[0] === '10') {
+        return true;
+    }
+
+    // 192.168.0.0/16
+    if ($parts[0] === '192' && $parts[1] === '168') {
+        return true;
+    }
+
+    // 172.16.0.0 – 172.31.0.0
+    if ($parts[0] === '172') {
+        $second = (int) $parts[1];
+        if ($second >= 16 && $second <= 31) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 // ------------------------------------------------------------
 // Determine action
@@ -77,6 +107,16 @@ $extensionThreshold = 30; // seconds
 // Optional: IP address we expect notify() calls from (your FPP host)
 $notifyIp = '10.9.7.102';
 
+// Speaker mode + override text from LOF Extras
+$lofExtras          = get_option('lof_extras_settings', []);
+$speakerMode        = isset($lofExtras['speaker_mode']) ? $lofExtras['speaker_mode'] : 'automatic';
+$lockedOnStatusText = '';
+if (!empty($lofExtras['speaker_locked_on_status']) && is_string($lofExtras['speaker_locked_on_status'])) {
+    $lockedOnStatusText = trim($lofExtras['speaker_locked_on_status']);
+    if ($lockedOnStatusText === '') {
+        $lockedOnStatusText = '';
+    }
+}
 // ------------------------------------------------------------
 // Duration: admin configurable via LOF Viewer Extras, fallback 300s
 // ------------------------------------------------------------
@@ -309,19 +349,24 @@ if ($action === 'status') {
         lof_call_fpp_run_script($offScriptName, $fppApiKey);
     }
 
-    $msg = $speakerOn
-        ? 'Speakers are currently ON near the show.'
-        : 'Speakers are currently OFF. Tap "Need sound?" to turn them on for a bit.';
+    global $speakerMode, $lockedOnStatusText;
+
+    if ($speakerMode === 'locked_on' && $lockedOnStatusText !== '') {
+        $msg = $lockedOnStatusText;
+    } else {
+        $msg = $speakerOn
+            ? 'Speakers are currently ON near the show.'
+            : 'Speakers are currently OFF. Tap "Need sound?" to turn them on for a bit.';
+    }
 
     lof_speaker_json_exit(200, [
         'success'          => true,
         'speakerOn'        => $speakerOn,
         'remainingSeconds' => $remaining,
-        'source'           => $state['last_source'],
-        'verifiedStatus'   => $state['last_notified_status'],
-        'verifiedAt'       => $state['last_notified_at'],
         'message'          => $msg,
+        'mode'             => $speakerMode,
     ]);
+
 }
 
 // ------------------------------------------------------------
@@ -392,23 +437,58 @@ if ($action === 'notify') {
 // ACTION: on  (viewer / physical "Need sound?")
 // ------------------------------------------------------------
 if ($action === 'on') {
-    global $extensionThreshold, $speakerSecs, $onScriptName, $fppApiKey;
+    global $extensionThreshold, $speakerSecs, $onScriptName, $fppApiKey, $speakerMode, $lockedOnStatusText;
 
     $sourceParam = isset($_REQUEST['source']) ? sanitize_text_field($_REQUEST['source']) : 'viewer';
 
-    // UX-level restriction: viewers must be mobile-ish; physical button bypasses this.
-    if ($sourceParam !== 'physical' && !$isMobileUA) {
+    // Prefer Cloudflare connecting IP if present, fallback to REMOTE_ADDR
+    $remoteIp = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? ($_SERVER['REMOTE_ADDR'] ?? '');
+    $country  = $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '';
+
+    // 1) Manual override: viewer control disabled, speakers handled by show
+    if ($sourceParam !== 'physical' && $speakerMode === 'locked_on') {
+        $msg = $lockedOnStatusText !== ''
+            ? $lockedOnStatusText
+            : 'Speakers are running continuously tonight. Viewer control is disabled.';
+
         lof_speaker_json_exit(403, [
             'success'          => false,
             'speakerOn'        => $speakerOn,
             'remainingSeconds' => $remaining,
-            'message'          => 'Speaker control is only available from mobile devices.',
+            'status'           => 'locked_on',
+            'message'          => $msg,
         ]);
     }
 
-    // Simple per-IP cooldown (60s) for non-physical sources
+    // 2) Geo gating: if we know the country and it's not US, block viewer control
+    if ($sourceParam !== 'physical' && $country !== '' && strtoupper($country) !== 'US') {
+        lof_speaker_json_exit(403, [
+            'success'          => false,
+            'speakerOn'        => $speakerOn,
+            'remainingSeconds' => $remaining,
+            'status'           => 'geo_blocked',
+            'message'          => 'Speaker control is only available to guests near the show. Use the live stream or FM radio instead.',
+        ]);
+    }
+
+    // 3) Device gating: viewer must be mobile OR on LAN; physical button bypasses this.
+    if ($sourceParam !== 'physical') {
+        $isLan = $remoteIp ? lof_is_lan_ip($remoteIp) : false;
+
+        if (!$isMobileUA && !$isLan) {
+            lof_speaker_json_exit(403, [
+                'success'          => false,
+                'speakerOn'        => $speakerOn,
+                'remainingSeconds' => $remaining,
+                'status'           => 'desktop_blocked',
+                'message'          => 'Speaker control is only available from mobile devices at the show.',
+            ]);
+        }
+    }
+
+    // 4) Simple per-IP cooldown (60s) for non-physical sources
     if ($sourceParam !== 'physical' && function_exists('get_transient') && function_exists('set_transient')) {
-        $ip      = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $ip      = $remoteIp ?: 'unknown';
         $coolKey = 'lof_speaker_cooldown_' . md5($ip);
 
         if (get_transient($coolKey)) {
@@ -422,6 +502,9 @@ if ($action === 'on') {
 
         set_transient($coolKey, 1, 60);
     }
+
+    // (rest of the existing ON logic stays the same)
+
 
     // Recompute with latest state and song guard
     $state     = lof_speaker_get_state($stateKey);

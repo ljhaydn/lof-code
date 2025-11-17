@@ -75,6 +75,24 @@ class LOF_Settings {
         self::add_textarea_field('lof_speaker', 'speaker_status_unknown', 'Status Text – Unknown', 'Unable to read speaker status.');
         self::add_text_field('lof_speaker', 'speaker_time_left_prefix', 'Time left prefix', 'Time left:');
         self::add_textarea_field('lof_speaker', 'speaker_error_msg', 'Error Toast', 'Something glitched while talking to the speakers.');
+        // Speaker override / mode
+        self::add_select_field(
+            'lof_speaker',
+            'speaker_mode',
+            'Speaker Control Mode',
+            [
+                'automatic' => 'Automatic – viewer button follows hours & rules',
+                'locked_on' => 'Always on – viewer button disabled (use for Trick-or-Treat, etc.)',
+            ],
+            'automatic'
+        );
+
+        self::add_textarea_field(
+            'lof_speaker',
+            'speaker_locked_on_status',
+            'Status Text – Locked On Override',
+            'Speakers are running continuously tonight for Trick-or-Treat. Viewer control is disabled.'
+        );
 
         // GLOW SETTINGS
         add_settings_section(
@@ -291,6 +309,43 @@ class LOF_Settings {
                 'key' => $key,
             ]
         );
+    }
+    protected static function add_select_field($section, $key, $label, $choices, $default = '') {
+        add_settings_field(
+            $key,
+            esc_html($label),
+            [__CLASS__, 'field_select'],
+            'lof-extras',
+            $section,
+            [
+                'key'     => $key,
+                'choices' => $choices,
+                'default' => $default,
+            ]
+        );
+    }
+    public static function field_select($args) {
+        $key     = $args['key'];
+        $choices = isset($args['choices']) && is_array($args['choices']) ? $args['choices'] : [];
+        $default = isset($args['default']) ? (string) $args['default'] : '';
+        $value   = (string) self::get($key, $default);
+
+        printf(
+            "<select name='%s[%s]'>",
+            esc_attr(self::OPTION_NAME),
+            esc_attr($key)
+        );
+
+        foreach ($choices as $val => $label) {
+            printf(
+                "<option value='%s'%s>%s</option>",
+                esc_attr($val),
+                selected($value, $val, false),
+                esc_html($label)
+            );
+        }
+
+        echo '</select>';
     }
 
     public static function field_text($args) {
