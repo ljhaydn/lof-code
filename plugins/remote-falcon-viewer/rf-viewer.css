@@ -717,9 +717,3 @@
   line-height: 1.4;
   opacity: 0.9;
 }
-/* LOF overlay tweaks (safe, additive) */
-
-/* Tighten card transitions slightly for interactivity */
-.rf-card {
-  transition: transform 0.2s ease, box-shadow 0.25s ease, opacity 0.2s ease;
-}

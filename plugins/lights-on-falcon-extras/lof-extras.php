@@ -1,19 +1,25 @@
 <?php
-/**
- * Plugin Name: Lights on Falcon Extras
- * Plugin URI: https://lightsonfalcon.com
- * Description: Viewer extras (Glow, Speaker, Fog, Tonight panel, and show brain integrations) for Lights on Falcon.
- * Version: 0.4.1
- * Author: Joe Hayden
- * Author URI: https://lightsonfalcon.com
- * Text Domain: lights-on-falcon-extras
- */
+/*
+Plugin Name: Lights On Falcon - Extras
+Description: Core logic, APIs, settings, and viewer enhancements for the the Lights on Falcon experience.
+Version: 1.0.0
+Author: Lights on Falcon
+*/
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
     exit;
 }
 
-// Main plugin bootstrap lives here.
-// This keeps the historical plugin entry at lights-on-falcon-extras/lof-extras.php
-// while letting us organize the real code in lights-on-falcon-extras.php.
-require_once __DIR__ . '/lights-on-falcon-extras.php';
+// Includes
+require_once plugin_dir_path(__FILE__) . 'includes/class-lof-settings.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-lof-api.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-lof-speaker.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-lof-glow.php';
+
+// Bootstrap
+add_action('plugins_loaded', function () {
+    LOF_Settings::init();
+    LOF_API::init();
+    LOF_Speaker::init();
+    LOF_Glow::init();
+});
