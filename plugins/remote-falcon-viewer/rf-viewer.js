@@ -1097,7 +1097,7 @@ function addSpeakerCard(extra) {
   const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
   // TODO: if we later wire this into LOF Extras settings, read from config instead.
-  const pulsemeshUrl = 'https://player.pulsemesh.io/d/G073';
+  const pulsemeshUrl = 'broken link here';
 
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card';
