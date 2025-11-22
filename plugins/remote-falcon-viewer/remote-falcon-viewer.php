@@ -428,7 +428,12 @@ class RF_Viewer_Plugin {
                     • Your pick will glow when it’s playing, then rest.
                 </div>
             </div>
-            <div class="rf-grid" id="rf-grid"></div>
+            <div class="rf-main-layout">
+                <div class="rf-main-left">
+                    <div class="rf-grid" id="rf-grid"></div>
+                </div>
+                <div class="rf-main-right" id="rf-extra-panel"></div>
+            </div>
             <div class="rf-tonight">
                 <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
                 <div id="lof-tonight-body" class="rf-tonight-body"></div>
