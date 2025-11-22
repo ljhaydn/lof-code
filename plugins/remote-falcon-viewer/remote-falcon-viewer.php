@@ -428,6 +428,10 @@ class RF_Viewer_Plugin {
                 </div>
             </div>
             <div class="rf-grid" id="rf-grid"></div>
+            <div class="rf-tonight">
+                <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
+                <div id="lof-tonight-body" class="rf-tonight-body"></div>
+            </div>
             <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
             <div
               id="lof-stream-footer"
