@@ -141,6 +141,43 @@
     } catch (e) {}
   }
 
+function syncRequestedSongsWithStatus(nowSeq, queue) {
+  if (!lastRequestedSequenceName) {
+    requestedSongNames = [];
+    saveRequestedSongs();
+    return;
+  }
+
+  const myName = lastRequestedSequenceName;
+  let isActive = false;
+
+  // Is my song now playing?
+  if (nowSeq && (nowSeq.name === myName || nowSeq.displayName === myName)) {
+    isActive = true;
+  } else if (Array.isArray(queue) && queue.length) {
+    // Is my song still in the RF queue?
+    for (let i = 0; i < queue.length; i++) {
+      const item = queue[i];
+      if (!item || typeof item !== 'object') continue;
+      const seq = item.sequence || {};
+      const sName = seq.name || seq.displayName;
+      if (sName && sName === myName) {
+        isActive = true;
+        break;
+      }
+    }
+  }
+
+  if (isActive) {
+    // Keep just this one as “requested” for the chip
+    requestedSongNames = [myName];
+  } else {
+    // It has run its course – clear the chip state
+    requestedSongNames = [];
+  }
+
+  saveRequestedSongs();
+}
   function getLastGlowTime() {
     try {
       const raw = window.localStorage.getItem(STORAGE_GLOW_KEY);
@@ -602,6 +639,8 @@
 
     myStatusEl.textContent = text;
     myStatusEl.style.display = 'block';
+    // NEW: keep “you picked this” chip in sync with reality
+    syncRequestedSongsWithStatus(nowSeq, queue);
   }
 
   /* -------------------------

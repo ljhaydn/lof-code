@@ -643,10 +643,30 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
             return;
         }
 
-        $settings   = $this->get_settings();
-        $glow_stats = get_option( self::OPTION_GLOW_STATS, [ 'total' => 0 ] );
+        $settings = $this->get_settings();
+        $today    = current_time( 'Y-m-d' );
+
+        $glow_stats = get_option(
+            self::OPTION_GLOW_STATS,
+            [
+                'date'  => $today,
+                'total' => 0,
+            ]
+        );
+
         if ( ! is_array( $glow_stats ) ) {
-            $glow_stats = [ 'total' => 0 ];
+            $glow_stats = [
+                'date'  => $today,
+                'total' => 0,
+            ];
+        }
+
+        // If stats are from a previous day, reset for tonight
+        if ( empty( $glow_stats['date'] ) || $glow_stats['date'] !== $today ) {
+            $glow_stats = [
+                'date'  => $today,
+                'total' => 0,
+            ];
         }
 
         // CSS (if you have lof-viewer-extras.css present)
@@ -763,13 +783,34 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
 
     public function rest_glow( \WP_REST_Request $request ) {
         $settings = $this->get_settings();
-        $stats    = get_option( self::OPTION_GLOW_STATS, [ 'total' => 0 ] );
+        $today    = current_time( 'Y-m-d' );
+
+        $stats = get_option(
+            self::OPTION_GLOW_STATS,
+            [
+                'date'  => $today,
+                'total' => 0,
+            ]
+        );
 
         if ( ! is_array( $stats ) ) {
-            $stats = [ 'total' => 0 ];
+            $stats = [
+                'date'  => $today,
+                'total' => 0,
+            ];
+        }
+
+        // If stored stats are from a previous night, reset
+        if ( empty( $stats['date'] ) || $stats['date'] !== $today ) {
+            $stats = [
+                'date'  => $today,
+                'total' => 0,
+            ];
         }
 
         $stats['total'] = isset( $stats['total'] ) ? (int) $stats['total'] + 1 : 1;
+        $stats['date']  = $today;
+
         update_option( self::OPTION_GLOW_STATS, $stats );
 
         return new \WP_REST_Response(

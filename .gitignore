@@ -18,3 +18,4 @@ integrate-google-drive-cache/
 # Optional safety net:
 *.zip
 *.gz
+.DS_Store

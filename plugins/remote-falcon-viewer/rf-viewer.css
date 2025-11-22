@@ -4,7 +4,36 @@
   margin: 0 auto;
   padding: 12px 0 24px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #FFFEFE;
+  color: var(--lof-text-main);
+  background:
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 60%),
+    linear-gradient(135deg, #061215, #0B1C20);
+}
+
+:root {
+  /* Core background system */
+  --lof-bg: #061215;              /* Midnight Pine */
+  --lof-surface: #0B1C20;         /* Arctic Shadow */
+  --lof-surface-soft: #1C2E33;    /* Frosted Graphite */
+
+  /* Primary accents */
+  --lof-accent-primary: #20E3B2;  /* Evergreen Aurora */
+  --lof-accent-secondary: #F4D06F;/* Candlelight Gold */
+  --lof-accent-cta: #FF5E5E;      /* Sleighbell Red (rare / CTA) */
+
+  /* Glow colors */
+  --lof-glow-evergreen: #16FFAC;  /* Evergreen Neon */
+  --lof-glow-gold: #FFEB8F;       /* Solstice Gold Glow */
+  --lof-glow-ice: #87F2FF;        /* Polar Radiance */
+
+  /* Text and borders */
+  --lof-text-main: #FDFDFC;       /* Snowdrift White */
+  --lof-text-muted: #C3D4D9;
+  --lof-border-soft: rgba(255, 255, 255, 0.14);
+  --lof-border-strong: rgba(244, 208, 111, 0.9);
+
+  /* Common radius */
+  --lof-card-radius: 12px;
 }
 
 /* Header area */
@@ -48,45 +77,45 @@
   opacity: 0.75;
 }
 
-/* NOW PLAYING status card – lime forward */
+/* NOW PLAYING status card – warm evergreen + gold */
 .rf-now {
   border-radius: 10px;
   padding: 10px 12px;
   background:
-    radial-gradient(circle at top left, rgba(231, 254, 0, 0.35), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(231, 254, 0, 0.18), transparent 55%),
-    linear-gradient(135deg, #030305, #18181C);
-  border: 1px solid #E7FE00;
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.32), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.26), transparent 55%),
+    linear-gradient(135deg, #061215, #0B1C20);
+  border: 1px solid var(--lof-accent-secondary);
   box-shadow:
-    0 0 24px #E7FE00,
+    0 0 24px rgba(22, 255, 172, 0.75),
     0 10px 22px rgba(0, 0, 0, 0.8);
 }
 
 /* Dim / intermission / idle state for Now Playing */
 .rf-now.rf-now--dim {
   background:
-    radial-gradient(circle at top left, rgba(231, 254, 0, 0.08), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(231, 254, 0, 0.05), transparent 55%),
-    linear-gradient(135deg, #050507, #111116);
-  border-color: rgba(231, 254, 0, 0.4);
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.14), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.12), transparent 55%),
+    linear-gradient(135deg, #071218, #101A1F);
+  border-color: rgba(244, 208, 111, 0.55);
   box-shadow:
-    0 0 10px rgba(231, 254, 0, 0.25),
+    0 0 10px rgba(22, 255, 172, 0.35),
     0 6px 14px rgba(0, 0, 0, 0.7);
-  opacity: 0.9;
+  opacity: 0.94;
 }
 
-/* NEXT + MODE status cards – keep the purple/gold style */
+/* NEXT + MODE status cards – subtle ice + gold */
 .rf-next,
 .rf-mode {
   border-radius: 10px;
   padding: 10px 12px;
   background:
-    radial-gradient(circle at top left, rgba(188, 33, 225, 0.25), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(222, 208, 46, 0.18), transparent 55%),
-    linear-gradient(135deg, #030305, #141418);
-  border: 1px solid rgba(197, 76, 181, 0.9);
+    radial-gradient(circle at top left, rgba(135, 242, 255, 0.22), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.18), transparent 55%),
+    linear-gradient(135deg, #061215, #0B1C20);
+  border: 1px solid var(--lof-border-soft);
   box-shadow:
-    0 0 14px rgba(188, 33, 225, 0.55),
+    0 0 14px rgba(135, 242, 255, 0.35),
     0 10px 22px rgba(0, 0, 0, 0.7);
 }
 
@@ -161,17 +190,17 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%; /* fill the grid row height */
-  border-radius: 12px;
-  padding: 10px 12px 12px;  /* base padding for cards without badges */
+  height: 100%;
+  border-radius: var(--lof-card-radius);
+  padding: 10px 12px 12px;
   background:
-    radial-gradient(circle at top left, rgba(188, 33, 225, 0.35), transparent 60%),
-    radial-gradient(circle at bottom right, rgba(214, 163, 92, 0.25), transparent 60%),
-    linear-gradient(145deg, #030305, #18181C);
-  border: 1px solid rgba(214, 163, 92, 0.9);
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.26), transparent 60%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.22), transparent 60%),
+    linear-gradient(145deg, #061215, #0B1C20);
+  border: 1px solid var(--lof-border-soft);
   box-shadow:
-    0 0 18px rgba(197, 76, 181, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.8);
+    0 0 18px rgba(32, 227, 178, 0.45),
+    0 10px 24px rgba(0, 0, 0, 0.85);
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
@@ -186,7 +215,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at top, rgba(231, 254, 0, 0.12), transparent 70%);
+  background: radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 70%);
   opacity: 1;
   pointer-events: none;
 }
@@ -194,8 +223,8 @@
 .rf-card:hover {
   transform: translateY(-4px);
   box-shadow:
-    0 0 22px rgba(188, 33, 225, 0.75),
-    0 14px 26px rgba(0, 0, 0, 0.9);
+    0 0 22px rgba(32, 227, 178, 0.7),
+    0 14px 26px rgba(0, 0, 0, 0.95);
 }
 
 .rf-card:active {
@@ -248,31 +277,32 @@
 }
 
 
-/* 🔋 NEON LIME now-playing badge */
+/* 🔋 NOW PLAYING badge – warm gold */
 .rf-card-badge--now {
-  background: #E7FE00;
+  background: var(--lof-accent-secondary);
   color: #030305;
-  box-shadow: 0 0 18px #E7FE00;
+  box-shadow: 0 0 18px rgba(255, 235, 143, 0.95);
 }
 
-/* Purple for next up */
+/* NEXT UP badge – evergreen */
 .rf-card-badge--next {
-  background: rgba(188, 33, 225, 0.95);
-  color: #FFFEFE;
-  box-shadow: 0 0 12px rgba(188, 33, 225, 0.9);
+  background: var(--lof-accent-primary);
+  color: var(--lof-text-main);
+  box-shadow: 0 0 14px rgba(22, 255, 172, 0.85);
 }
 
-/* Now playing card glow – force lime */
+/* Now playing card glow – evergreen + gold */
 .rf-card--now-playing {
   box-shadow:
-    0 0 30px #E7FE00 !important;
-  border-color: #E7FE00 !important;
+    0 0 30px rgba(22, 255, 172, 0.9),
+    0 0 34px rgba(255, 235, 143, 0.9) !important;
+  border-color: var(--lof-accent-secondary) !important;
 }
 
 /* Next up glow */
 .rf-card--next {
   box-shadow:
-    0 0 24px rgba(188, 33, 225, 0.95),
+    0 0 24px rgba(135, 242, 255, 0.85),
     0 16px 30px rgba(0, 0, 0, 0.95);
 }
 
@@ -284,16 +314,15 @@
   justify-content: center;  /* center horizontally */
 }
 
-/* Button */
 .rf-card-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   margin-top: 4px;
-  background: linear-gradient(135deg, #BC21E1, #C54CB5);
-  border: 1px solid rgba(231, 254, 0, 0.7);
-  color: #FFFEFE;
+  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
+  border: 1px solid rgba(244, 208, 111, 0.85);
+  color: var(--lof-text-main);
   padding: 5px 10px;
   border-radius: 999px;
   font-size: 0.78rem;
@@ -304,7 +333,7 @@
     box-shadow 0.15s ease,
     border-color 0.15s ease;
   box-shadow:
-    0 0 10px rgba(188, 33, 225, 0.8),
+    0 0 10px rgba(32, 227, 178, 0.75),
     0 5px 14px rgba(0, 0, 0, 0.8);
   max-width: 100%;
   text-align: center;
@@ -313,10 +342,10 @@
 }
 
 .rf-card-btn:hover {
-  background: linear-gradient(135deg, #C54CB5, #CD7789);
-  border-color: rgba(222, 208, 46, 0.9);
+  background: linear-gradient(135deg, #23f0bf, #ffe08a);
+  border-color: rgba(255, 235, 143, 0.95);
   box-shadow:
-    0 0 14px rgba(188, 33, 225, 0.95),
+    0 0 16px rgba(32, 227, 178, 0.9),
     0 8px 18px rgba(0, 0, 0, 0.9);
 }
 
@@ -324,10 +353,9 @@
   transform: scale(0.96);
 }
 
-/* Disabled state */
 .rf-card-btn[disabled] {
   background: linear-gradient(135deg, #18181C, #141418);
-  border-color: rgba(107, 114, 128, 0.8);
+  border-color: rgba(99, 115, 129, 0.9);
   box-shadow: none;
   opacity: 0.6;
   cursor: not-allowed;
@@ -338,11 +366,11 @@
   border-radius: 12px;
   padding: 10px 12px 12px;
   background:
-    radial-gradient(circle at top, rgba(188, 33, 225, 0.25), transparent 65%),
-    linear-gradient(150deg, #030305, #18181C);
-  border: 1px solid rgba(197, 76, 181, 0.9);
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.2), transparent 65%),
+    linear-gradient(150deg, #061215, #0B1C20);
+  border: 1px solid var(--lof-border-soft);
   box-shadow:
-    0 0 16px rgba(197, 76, 181, 0.6),
+    0 0 16px rgba(135, 242, 255, 0.6),
     0 10px 24px rgba(0, 0, 0, 0.9);
   font-size: 0.85rem;
 }
@@ -406,25 +434,24 @@
   opacity: 0.85;
 }
 
-/* Toast Notification */
 .rf-toast {
   position: fixed;
   bottom: 30px;
   left: 50%;
   transform: translateX(-50%) translateY(10px);
-  background: rgba(3, 3, 5, 0.96);
-  color: #FFFEFE;
+  background: rgba(6, 18, 21, 0.96);
+  color: var(--lof-text-main);
   padding: 12px 18px;
   border-radius: 999px;
   box-shadow:
-    0 0 16px rgba(188, 33, 225, 0.75),
+    0 0 16px rgba(135, 242, 255, 0.75),
     0 10px 24px rgba(0, 0, 0, 0.85);
   font-size: 0.9rem;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
   z-index: 99999;
-  border: 1px solid rgba(214, 163, 92, 0.7);
+  border: 1px solid var(--lof-border-soft);
 }
 
 .rf-toast.show {
@@ -434,18 +461,18 @@
 
 /* Toast variants */
 .rf-toast--success {
-  background: #E7FE00;
+  background: var(--lof-accent-secondary);
   color: #030305;
   box-shadow:
-    0 0 18px rgba(231, 254, 0, 0.9),
+    0 0 18px rgba(255, 235, 143, 0.95),
     0 10px 24px rgba(0, 0, 0, 0.9);
 }
 
 .rf-toast--error {
-  background: rgba(205, 119, 137, 0.98);
+  background: rgba(255, 94, 94, 0.96);
   color: #030305;
   box-shadow:
-    0 0 18px rgba(205, 119, 137, 0.95),
+    0 0 18px rgba(255, 94, 94, 0.95),
     0 10px 24px rgba(0, 0, 0, 0.9);
 }
 
@@ -547,15 +574,17 @@
   margin-top: 14px;
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(214, 163, 92, 0.5);
-  background: radial-gradient(circle at top left, rgba(188, 33, 225, 0.15), transparent 60%);
+  border: 1px solid var(--lof-border-soft);
+  background:
+    radial-gradient(circle at top left, rgba(135, 242, 255, 0.16), transparent 60%),
+    linear-gradient(145deg, #061215, #0B1C20);
   font-size: 0.8rem;
 }
 
 .rf-stats-title {
   font-weight: 600;
   margin-bottom: 4px;
-  color: #f8f3ff;
+  color: var(--lof-accent-secondary);
 }
 
 .rf-stats-row {
@@ -573,9 +602,9 @@
   margin-top: 14px;
   padding: 10px 12px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(133, 255, 179, 0.6);
-  background: linear-gradient(135deg, rgba(5, 35, 20, 0.9), rgba(4, 10, 8, 0.95));
-  box-shadow: 0 0 10px rgba(133, 255, 179, 0.4);
+  border: 1px solid rgba(32, 227, 178, 0.7);
+  background: linear-gradient(135deg, rgba(4, 61, 44, 0.95), rgba(6, 18, 21, 0.96));
+  box-shadow: 0 0 10px rgba(22, 255, 172, 0.5);
 }
 
 .rf-speaker-btn {
@@ -587,27 +616,23 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(135deg, #7dffb0, #35d985);
+  background: linear-gradient(135deg, #20E3B2, #F4D06F);
   color: #020306;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
-.rf-speaker-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-  box-shadow: none;
-}
-
 .rf-speaker-btn:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 14px rgba(133, 255, 179, 0.6);
+  box-shadow: 0 0 14px rgba(22, 255, 172, 0.7);
 }
 .rf-glow-card {
   margin-top: 1.5rem;
   padding: 1rem 1.25rem;
   border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--lof-border-soft);
+  background:
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.14), transparent 65%),
+    rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -697,11 +722,11 @@
   margin-bottom: 1.25rem;
   padding: 0.9rem 1.1rem;
   border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid var(--lof-border-soft);
   background: linear-gradient(
     135deg,
-    rgba(0, 255, 180, 0.18),
-    rgba(111, 66, 193, 0.32)
+    rgba(32, 227, 178, 0.18),
+    rgba(244, 208, 111, 0.32)
   );
   backdrop-filter: blur(10px);
 }
