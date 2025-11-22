@@ -419,6 +419,7 @@ class RF_Viewer_Plugin {
                     <div class="rf-mode-value" id="rf-mode-value">—</div>
                 </div>
             </div>
+            <div class="rf-controls-row" id="rf-controls-row"></div>
             <div class="rf-viewer-header">
                 <div class="rf-viewer-headline">How tonight works</div>
                 <div class="rf-viewer-subcopy">
@@ -431,6 +432,7 @@ class RF_Viewer_Plugin {
             <div class="rf-tonight">
                 <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
                 <div id="lof-tonight-body" class="rf-tonight-body"></div>
+                <div id="rf-footer-glow"></div>
             </div>
             <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
             <div

@@ -718,6 +718,65 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   }
 
   /* -------------------------
+   * Controls row under status
+   * ------------------------- */
+  function renderControlsRow(mode, enabled) {
+    const row = document.getElementById('rf-controls-row');
+    if (!row) return;
+
+    // Clear and rebuild each time to avoid duplicate listeners
+    row.innerHTML = '';
+
+    const makeBtn = (label) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'rf-ctl-link';
+      b.textContent = label;
+      return b;
+    };
+
+    // Need sound? → scroll to the speaker card / extras panel
+    const btnSound = makeBtn('Need sound?');
+    btnSound.addEventListener('click', () => {
+      const target =
+        document.querySelector('.rf-speaker-card') ||
+        document.getElementById('rf-extra-panel');
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    row.appendChild(btnSound);
+
+    // Send a Glow → scroll to footer Glow section
+    const btnGlow = makeBtn('Send a Glow 💛');
+    btnGlow.addEventListener('click', () => {
+      const target =
+        document.querySelector('.rf-tonight') ||
+        document.getElementById('rf-footer-glow');
+      if (target && typeof target.scrollIntoView === 'function') {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    row.appendChild(btnGlow);
+
+    // Surprise me → trigger surprise logic and scroll to the card, when enabled
+    if (enabled) {
+      const btnSurprise = makeBtn('Surprise me ✨');
+      btnSurprise.addEventListener('click', () => {
+        handleSurpriseMe();
+        const target = document.querySelector('.rf-card--surprise');
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      });
+      row.appendChild(btnSurprise);
+      row.classList.remove('rf-controls-row--disabled');
+    } else {
+      row.classList.add('rf-controls-row--disabled');
+    }
+  }
+
+  /* -------------------------
    * Main render
    * ------------------------- */
 
@@ -798,6 +857,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     updateHeaderCopy(currentMode, currentControlEnabled, prefs, queueLength, phase);
     updateBanner(phase);
     updateMyStatusLine(nowSeq, rawRequests, nowKey);
+    renderControlsRow(currentMode, currentControlEnabled);
 
     if (!gridEl) return;
     gridEl.innerHTML = '';
@@ -980,8 +1040,15 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     }
 
     renderStats(extra, queueLength);
-    addGlowCard(extra);
+    addGlowTeaser(extra);
     addSpeakerCard(extra);
+
+    // Ensure the full Glow form lives in the footer,
+    // not in the right-hand extras column.
+    const footerGlow = document.getElementById('rf-footer-glow');
+    if (footerGlow && !footerGlow.hasChildNodes()) {
+      addGlowCard(footerGlow);
+    }
   }
 
   function renderQueue(extra, data) {
@@ -1140,6 +1207,25 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   /* -------------------------
    * Glow card
    * ------------------------- */
+
+  function addGlowTeaser(extra) {
+    if (!extra) return;
+
+    const title = lofCopy('glow_teaser_title', 'Send a Glow 💛');
+    const sub   = lofCopy(
+      'glow_teaser_sub',
+      'Want to leave a note about your favorite moment tonight? Scroll down to the footer to send a Glow.'
+    );
+
+    const wrap = document.createElement('div');
+    wrap.className = 'rf-extra-panel rf-extra-panel--glow-teaser';
+    wrap.innerHTML = `
+      <div class="rf-extra-title">${escapeHtml(title)}</div>
+      <div class="rf-extra-sub">${escapeHtml(sub)}</div>
+    `;
+
+    extra.appendChild(wrap);
+  }
 
   function addGlowCard(extra) {
     const title       = lofCopy('glow_title', 'Send a little glow 💚');
