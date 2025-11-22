@@ -48,10 +48,45 @@
   letter-spacing: 0.02em;
 }
 
+
 .rf-viewer-subcopy {
   margin-top: 4px;
   font-size: 0.85rem;
   opacity: 0.85;
+}
+
+/* Compact controls row under Now Playing */
+.rf-controls-row {
+  margin: 10px auto 10px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.rf-ctl-link {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 70%);
+  color: var(--lof-text-main);
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.rf-ctl-link:hover {
+  background: radial-gradient(circle at top, rgba(244, 208, 111, 0.26), transparent 70%);
+  border-color: rgba(244, 208, 111, 0.9);
+  box-shadow: 0 0 10px rgba(244, 208, 111, 0.7);
+  transform: translateY(-1px);
+}
+
+.rf-controls-row--disabled .rf-ctl-link {
+  opacity: 0.55;
+  cursor: default;
+  box-shadow: none;
 }
 
 /* Optional controls row (for Surprise Me etc.) */
@@ -865,8 +900,8 @@
 /* Tonight at Lights on Falcon footer panel */
 .rf-tonight {
   max-width: 980px;
-  margin: 28px auto 28px;
-  padding: 22px 24px 26px;
+  margin: 24px auto 24px;
+  padding: 18px 22px 22px;
   border-radius: 24px;
   background:
     radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
@@ -876,9 +911,9 @@
 }
 
 .rf-tonight-title {
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   font-weight: 600;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
 }
 
 .rf-tonight-body p {
@@ -886,6 +921,14 @@
   font-size: 0.95rem;
   line-height: 1.5;
   opacity: 0.9;
+}
+
+.rf-tonight-body:empty {
+  margin-bottom: 4px;
+}
+
+.rf-tonight .rf-glow-card {
+  margin-top: 0.85rem;
 }
 
 /* Phase-based subtle background nudges – share the same deep base,
