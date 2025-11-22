@@ -1053,6 +1053,8 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
   function renderQueue(extra, data) {
     const rawRequests = Array.isArray(data.requests) ? data.requests : [];
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rf-extra-panel rf-extra-panel--queue';
 
     const header = document.createElement('div');
     header.innerHTML = `
@@ -1061,7 +1063,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         Songs requested by guests appear here in the order they’re queued.
       </div>
     `;
-    extra.appendChild(header);
+    wrapper.appendChild(header);
 
     const list = document.createElement('ul');
     list.className = 'rf-queue-list';
@@ -1071,8 +1073,9 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       empty.className = 'rf-extra-sub';
       empty.textContent =
         'Requests are handled behind the scenes by Remote Falcon. When your pick is ready, you’ll see it glow as “Next Up.”';
-      extra.appendChild(list);
-      extra.appendChild(empty);
+      wrapper.appendChild(list);
+      wrapper.appendChild(empty);
+      extra.appendChild(wrapper);
       return;
     }
 
@@ -1096,11 +1099,14 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       list.appendChild(li);
     });
 
-    extra.appendChild(list);
+    wrapper.appendChild(list);
+    extra.appendChild(wrapper);
   }
 
   function renderLeaderboard(extra, data) {
     const rawVotes = Array.isArray(data.votes) ? data.votes : [];
+    const wrapper = document.createElement('div');
+    wrapper.className = 'rf-extra-panel rf-extra-panel--leaderboard';
 
     const items = rawVotes
       .map((item) => {
@@ -1135,7 +1141,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         Songs with the most votes are most likely to play next.
       </div>
     `;
-    extra.appendChild(header);
+    wrapper.appendChild(header);
 
     const list = document.createElement('ul');
     list.className = 'rf-leaderboard-list';
@@ -1144,8 +1150,9 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       const empty = document.createElement('div');
       empty.className = 'rf-extra-sub';
       empty.textContent = 'No votes yet — tap a song to send the first one.';
-      extra.appendChild(list);
-      extra.appendChild(empty);
+      wrapper.appendChild(list);
+      wrapper.appendChild(empty);
+      extra.appendChild(wrapper);
       return;
     }
 
@@ -1160,7 +1167,8 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       list.appendChild(li);
     });
 
-    extra.appendChild(list);
+    wrapper.appendChild(list);
+    extra.appendChild(wrapper);
   }
 
   /* -------------------------
@@ -1447,10 +1455,7 @@ function addSpeakerCard(extra) {
   // hide timer row by default
   if (timerRow) timerRow.style.display = 'none';
 
-  // Optional: only show speaker button on “mobile-ish” widths
-  if (window.innerWidth > 900 && btn) {
-    btn.style.display = 'none';
-  }
+  // Speaker button is always visible on all widths now
 
   async function refreshSpeakerStatus() {
     if (!statusText) return;
@@ -1783,7 +1788,7 @@ document.addEventListener('click', function (e) {
     return str
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;/')
+      .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }

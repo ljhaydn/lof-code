@@ -228,6 +228,7 @@
 .rf-main-layout {
   display: flex;
   gap: 16px;
+  align-items: flex-start; /* keep both columns aligned to the top */
 }
 
 .rf-main-left,
@@ -241,11 +242,14 @@
 
 .rf-main-right {
   flex: 1;
-}
-
-/* Keep the right column from jump-shrinking on each poll */
-.rf-main-right {
-  min-height: 280px; /* adjust if you want it taller */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* no background here – card chrome lives on the child panels */
+  background: none;
+  box-shadow: none;
+  min-height: 280px; /* keeps the column from jump-shrinking between polls */
 }
 
 /* On mobile: stack, and show extra panel BEFORE the grid */
@@ -461,6 +465,10 @@
   font-size: 0.85rem;
 }
 
+.rf-extra-panel + .rf-extra-panel {
+  margin-top: 10px;
+}
+
 .rf-extra-title {
   font-size: 0.9rem;
   font-weight: 600;
@@ -657,7 +665,8 @@
 
 #rf-viewer.rf-phase-showtime {
   background:
-    radial-gradient(circle at top, rgba(244, 208, 111, 0.22), transparent 60%),
+    radial-gradient(circle at top, rgba(244, 208, 111, 0.16), transparent 55%),
+    radial-gradient(circle at bottom, rgba(135, 242, 255, 0.16), transparent 65%),
     linear-gradient(135deg, #061215, #0B1C20);
 }
 
@@ -929,18 +938,4 @@
 
 .rf-tonight .rf-glow-card {
   margin-top: 0.85rem;
-}
-
-/* Phase-based subtle background nudges – share the same deep base,
-   just nudge the accent tint per phase so the shell feels consistent */
-#rf-viewer.rf-phase-intermission {
-  background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 60%),
-    linear-gradient(135deg, #061215, #0B1C20);
-}
-
-#rf-viewer.rf-phase-showtime {
-  background:
-    radial-gradient(circle at top, rgba(244, 208, 111, 0.22), transparent 60%),
-    linear-gradient(135deg, #061215, #0B1C20);
 }
