@@ -667,7 +667,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     if (!wrap || !fill || !label) return;
 
-    // No timing info or no active song – hide the bar
+    // No timing info or no active song – clear and hide the bar
     if (!nowInfo || typeof nowInfo.duration !== 'number' || typeof nowInfo.elapsed !== 'number') {
       wrap.style.display = 'none';
       label.textContent = '';
@@ -757,25 +757,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     if (nextTitleEl) nextTitleEl.textContent = nextDisplay;
     if (nowArtistEl) nowArtistEl.textContent = nowArtist;
 
-    // Update Now Playing progress bar, if timing info is available
-    let nowDuration = (nowSeq && typeof nowSeq.duration === 'number')
-      ? nowSeq.duration
-      : null;
-    let nowElapsed = null;
-
-    // Prefer explicit elapsed if Remote Falcon exposes it
-    if (data && typeof data.playingNowElapsed === 'number') {
-      nowElapsed = data.playingNowElapsed;
-    } else if (data && typeof data.playingNowRemaining === 'number' && nowDuration != null) {
-      // Derive elapsed from remaining if provided
-      nowElapsed = Math.max(0, nowDuration - data.playingNowRemaining);
-    }
-
-    if (isPlayingReal && nowDuration != null && nowElapsed != null) {
-      updateNowProgress({ duration: nowDuration, elapsed: nowElapsed });
-    } else {
-      updateNowProgress(null);
-    }
+    // (Now Playing progress bar handled by FPP status polling)
 
     const queueLength = rawRequests.length || 0;
     const phase = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');
@@ -863,6 +845,71 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     addSurpriseCard();
     renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
+  }
+
+  /* -------------------------
+   * FPP Now Playing timing (for progress bar)
+   * ------------------------- */
+  async function fetchFppStatus() {
+    try {
+      const res = await fetch('/wp-json/lof-viewer/v1/fpp/status', {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { Accept: 'application/json' }
+      });
+
+      if (!res.ok) {
+        console.warn('[LOF Viewer] FPP status HTTP error:', res.status);
+        updateNowProgress(null);
+        return;
+      }
+
+      const payload = await res.json().catch(() => null);
+      const data = payload && (payload.data || payload);
+
+      if (!data || typeof data !== 'object') {
+        updateNowProgress(null);
+        return;
+      }
+
+      const statusName = String(data.status_name || '').toLowerCase();
+      const played = parseInt(data.seconds_played, 10);
+      const remaining = parseInt(data.seconds_remaining, 10);
+
+      const hasPlayed = !isNaN(played);
+      const hasRemaining = !isNaN(remaining);
+      const duration = (hasPlayed && hasRemaining) ? (played + remaining) : null;
+
+      // Only show a bar when FPP says we're playing AND the RF side thinks we're in showtime
+      const phase = lastPhase || 'idle';
+      const shouldShow =
+        statusName === 'playing' &&
+        duration != null &&
+        hasPlayed &&
+        phase === 'showtime';
+
+      if (!shouldShow) {
+        window.LOFNowTiming = null;
+        updateNowProgress(null);
+        return;
+      }
+
+      window.LOFNowTiming = {
+        duration: duration,
+        elapsed: played,
+        updatedAt: Date.now()
+      };
+
+      // Use the elapsed value from FPP; bar will be refreshed on each poll
+      updateNowProgress({
+        duration: duration,
+        elapsed: played
+      });
+    } catch (e) {
+      console.warn('[LOF Viewer] FPP status fetch error:', e);
+      window.LOFNowTiming = null;
+      updateNowProgress(null);
+    }
   }
 
   /* -------------------------
@@ -1626,4 +1673,8 @@ document.addEventListener('click', function (e) {
   lofLoadConfig();
   fetchShowDetails();
   setInterval(fetchShowDetails, 15000);
+
+  // FPP timing (for Now Playing progress bar)
+  fetchFppStatus();
+  setInterval(fetchFppStatus, 5000);
 })();
