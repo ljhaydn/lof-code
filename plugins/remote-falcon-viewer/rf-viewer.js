@@ -650,6 +650,42 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   }
 
   /* -------------------------
+   * Now Playing progress helpers
+   * ------------------------- */
+
+  function lofFormatTime(sec) {
+    const s = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return m + ':' + String(r).padStart(2, '0');
+  }
+
+  function updateNowProgress(nowInfo) {
+    const wrap  = document.querySelector('.rf-now-progress');
+    const fill  = document.querySelector('.rf-now-progress-fill');
+    const label = document.querySelector('.rf-now-progress-label');
+
+    if (!wrap || !fill || !label) return;
+
+    // No timing info or no active song – hide the bar
+    if (!nowInfo || typeof nowInfo.duration !== 'number' || typeof nowInfo.elapsed !== 'number') {
+      wrap.style.display = 'none';
+      label.textContent = '';
+      fill.style.width = '0%';
+      return;
+    }
+
+    const total = Math.max(1, nowInfo.duration);
+    const elapsed = Math.min(Math.max(0, nowInfo.elapsed), total);
+    const remaining = total - elapsed;
+    const pct = (elapsed / total) * 100;
+
+    wrap.style.display = 'block';
+    fill.style.width = pct + '%';
+    label.textContent = lofFormatTime(remaining) + ' remaining';
+  }
+
+  /* -------------------------
    * Main render
    * ------------------------- */
 
@@ -720,6 +756,26 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     if (nowTitleEl)  nowTitleEl.textContent  = nowDisplay;
     if (nextTitleEl) nextTitleEl.textContent = nextDisplay;
     if (nowArtistEl) nowArtistEl.textContent = nowArtist;
+
+    // Update Now Playing progress bar, if timing info is available
+    let nowDuration = (nowSeq && typeof nowSeq.duration === 'number')
+      ? nowSeq.duration
+      : null;
+    let nowElapsed = null;
+
+    // Prefer explicit elapsed if Remote Falcon exposes it
+    if (data && typeof data.playingNowElapsed === 'number') {
+      nowElapsed = data.playingNowElapsed;
+    } else if (data && typeof data.playingNowRemaining === 'number' && nowDuration != null) {
+      // Derive elapsed from remaining if provided
+      nowElapsed = Math.max(0, nowDuration - data.playingNowRemaining);
+    }
+
+    if (isPlayingReal && nowDuration != null && nowElapsed != null) {
+      updateNowProgress({ duration: nowDuration, elapsed: nowElapsed });
+    } else {
+      updateNowProgress(null);
+    }
 
     const queueLength = rawRequests.length || 0;
     const phase = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');

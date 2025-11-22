@@ -403,6 +403,12 @@ class RF_Viewer_Plugin {
                     <div class="rf-label">Now Playing</div>
                     <div class="rf-now-title" id="rf-now-title">Loading…</div>
                     <div class="rf-now-artist" id="rf-now-artist"></div>
+                    <div class="rf-now-progress">
+                        <div class="rf-now-progress-bar">
+                            <div class="rf-now-progress-fill"></div>
+                        </div>
+                        <div class="rf-now-progress-label"></div>
+                    </div>
                 </div>
                 <div class="rf-next">
                     <div class="rf-label">Next Up</div>
