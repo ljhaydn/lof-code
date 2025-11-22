@@ -1185,20 +1185,18 @@ function addSpeakerCard(extra) {
         </div>
       </div>
 
-      <!-- STREAM OPTION: lazy-loaded iframe -->
       <div class="rf-audio-option rf-audio-option--stream">
         <div class="rf-label">${escapeHtml(streamLabel)}</div>
         <button
           type="button"
-          class="rf-glow-btn js-open-stream"
+          class="rf-glow-btn js-open-global-stream"
           data-label="${escapeHtml(streamLabel)}"
         >
           ${escapeHtml(streamLabel)} 🎧
         </button>
-        <div
-          class="rf-stream-wrap"
-          data-src="${pulsemeshUrl}"
-        ></div>
+        <div class="rf-audio-help">
+          Opens a small player at the bottom so you can keep exploring the controls.
+        </div>
       </div>
 
       <div class="rf-audio-option rf-audio-option--fm">
@@ -1210,29 +1208,7 @@ function addSpeakerCard(extra) {
     </div>
   `;
 
-  // Restore stream state if the panel has been re-rendered
-  const streamWrap = card.querySelector('.rf-stream-wrap');
-  if (streamWrap) {
-    const src = streamWrap.getAttribute('data-src');
-
-    // If we previously created the iframe, recreate it here
-    if (lofStreamState.init && src) {
-      const iframe = document.createElement('iframe');
-      iframe.src = src;
-      iframe.title = 'Lights on Falcon live stream';
-      iframe.loading = 'lazy';
-      iframe.className = 'rf-audio-iframe';
-      iframe.allow = 'autoplay';
-
-      streamWrap.appendChild(iframe);
-      streamWrap.dataset.init = '1';
-    }
-
-    // If it was visible before, keep it visible
-    if (lofStreamState.visible) {
-      streamWrap.classList.add('rf-stream-wrap--visible');
-    }
-  }
+  // (stream state restore removed)
 
   extra.appendChild(card);
 
@@ -1370,24 +1346,24 @@ function addSpeakerCard(extra) {
   refreshSpeakerStatus();
 }
 
-// Global click handler for stream player (lazy iframe and toggle)
+// Global click handler for stream player (lazy iframe and toggle on persistent footer)
 document.addEventListener('click', function (e) {
-  const btn = e.target.closest('.js-open-stream');
+  const btn = e.target.closest('.js-open-global-stream');
   if (!btn) return;
 
-  const option = btn.closest('.rf-audio-option--stream');
-  if (!option) return;
-
-  const wrap = option.querySelector('.rf-stream-wrap');
-  if (!wrap) return;
+  const footer = document.getElementById('lof-stream-footer');
+  if (!footer) {
+    console.warn('[LOF Viewer] Global stream footer not found.');
+    return;
+  }
 
   const originalLabel = btn.getAttribute('data-label') || 'Listen on your phone';
 
   // First time: create the iframe on demand
-  if (!wrap.dataset.init) {
-    const src = wrap.getAttribute('data-src');
+  if (!lofStreamState.init) {
+    const src = footer.getAttribute('data-src');
     if (!src) {
-      console.warn('[LOF Viewer] No stream URL configured for PulseMesh stream.');
+      console.warn('[LOF Viewer] No stream URL configured on lof-stream-footer.');
       return;
     }
 
@@ -1398,20 +1374,15 @@ document.addEventListener('click', function (e) {
     iframe.className = 'rf-audio-iframe';
     iframe.allow = 'autoplay'; // safe because user clicked to create it
 
-    wrap.appendChild(iframe);
-    wrap.dataset.init = '1';
-
-    // 🔐 remember that we've created the iframe at least once
+    footer.appendChild(iframe);
     lofStreamState.init = true;
   }
 
   // Toggle visibility without destroying the iframe
-  const isVisible = wrap.classList.toggle('rf-stream-wrap--visible');
+  lofStreamState.visible = !lofStreamState.visible;
+  footer.classList.toggle('rf-stream-footer--visible', lofStreamState.visible);
 
-  // 🧠 persist visibility preference
-  lofStreamState.visible = isVisible;
-
-  btn.textContent = isVisible
+  btn.textContent = lofStreamState.visible
     ? 'Hide stream player'
     : originalLabel + ' 🎧';
 });

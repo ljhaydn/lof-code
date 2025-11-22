@@ -758,3 +758,40 @@
   border: none;
   height: 64px; /* or whatever height your PulseMesh player needs */
 }
+
+.rf-stream-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -100px; /* hidden by default */
+  padding: 6px 12px;
+  background: rgba(5, 12, 20, 0.96);
+  border-top: 1px solid var(--lof-border-soft);
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  transition: bottom 0.25s ease-out;
+  z-index: 9999;
+}
+
+.rf-stream-footer--visible {
+  bottom: 0;
+}
+
+.rf-stream-footer .rf-audio-iframe {
+  width: 100%;
+  max-width: 420px;
+  height: 64px;
+  border: none;
+}
+
+@media (min-width: 900px) {
+  .rf-stream-footer {
+    left: auto;
+    right: 24px;
+    bottom: 24px;
+    border-radius: 999px;
+    padding: 6px 14px;
+    max-width: 440px;
+  }
+}

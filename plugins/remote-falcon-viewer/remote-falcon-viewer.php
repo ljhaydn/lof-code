@@ -415,6 +415,12 @@ class RF_Viewer_Plugin {
             </div>
 
             <div class="rf-grid" id="rf-grid"></div>
+            <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
+            <div
+              id="lof-stream-footer"
+              class="rf-stream-footer"
+              data-src="https://player.pulsemesh.io/d/G073"
+            ></div>
         </div>
         <?php
         return ob_get_clean();
