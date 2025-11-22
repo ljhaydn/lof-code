@@ -1142,53 +1142,63 @@ function addSpeakerCard(extra) {
   card.className = 'rf-card rf-speaker-card';
 
   card.innerHTML = `
-    <div class="rf-card-inner">
-      <div class="rf-card-header">Need sound?</div>
-
-      <div class="rf-card-body">
-        <div id="rf-speaker-status-text" class="rf-speaker-status">
-          Checking speaker status…
+    <div class="rf-speaker-card-inner">
+      <div class="rf-speaker-header">
+        <div class="rf-label">${escapeHtml(lofCopy('speaker_label', 'Need sound?'))}</div>
+        <div class="rf-speaker-body">
+          ${escapeHtml(
+            lofCopy(
+              'speaker_intro',
+              'Music plays through outdoor speakers and a phone/car stream. Choose how you want to listen:'
+            )
+          )}
         </div>
+      </div>
 
-        <div class="rf-card-primary-action">
-          <button id="rf-speaker-btn" class="rf-card-btn">
-            ${escapeHtml(btnLabelOn)}
-          </button>
-
-          <div class="rf-card-timer">
-            <span class="rf-card-timer-label">
-              ${escapeHtml(timePrefix)}
-            </span>
-            <span id="lof-speaker-countdown-inline"
-                  class="rf-card-timer-value"></span>
-          </div>
+      <div class="rf-audio-option rf-audio-option--speaker">
+        <div class="rf-label">${escapeHtml(
+          lofCopy('speaker_outdoor_label', 'Speakers outside')
+        )}</div>
+        <button
+          type="button"
+          class="rf-speaker-btn js-speaker-on"
+        >
+          ${escapeHtml(btnLabelOn)}
+        </button>
+        <div class="rf-audio-help">
+          ${escapeHtml(
+            lofCopy(
+              'speaker_outdoor_help',
+              'For visitors standing at the display. Speakers turn off automatically after a bit.'
+            )
+          )}
         </div>
+        <div class="rf-speaker-timer-row">
+          <span class="rf-speaker-timer-label">${escapeHtml(timePrefix)}</span>
+          <span class="rf-speaker-timer-value lof-speaker-countdown-inline"></span>
+        </div>
+      </div>
 
-        <div class="rf-card-divider"></div>
+      <!-- STREAM OPTION: lazy-loaded iframe -->
+      <div class="rf-audio-option rf-audio-option--stream">
+        <div class="rf-label">${escapeHtml(streamLabel)}</div>
+        <button
+          type="button"
+          class="rf-glow-btn js-open-stream"
+          data-label="${escapeHtml(streamLabel)}"
+        >
+          ${escapeHtml(streamLabel)} 🎧
+        </button>
+        <div
+          class="rf-stream-wrap"
+          data-src="${pulsemeshUrl}"
+        ></div>
+      </div>
 
-        <div class="rf-audio-options">
-          <div class="rf-audio-options-label">
-            Other ways to listen:
-          </div>
-
-          <details class="rf-audio-option rf-audio-option--stream">
-            <summary>${escapeHtml(streamLabel)}</summary>
-            <div class="rf-audio-option-body">
-              <iframe
-                src="${pulsemeshUrl}"
-                title="Lights on Falcon live stream"
-                loading="lazy"
-                class="rf-audio-iframe"
-              ></iframe>
-            </div>
-          </details>
-
-          <div class="rf-audio-option rf-audio-option--fm">
-            <div class="rf-audio-option-title">${escapeHtml(fmLabel)}</div>
-            <div class="rf-audio-option-body">
-              ${escapeHtml(fmText)}
-            </div>
-          </div>
+      <div class="rf-audio-option rf-audio-option--fm">
+        <div class="rf-label">${escapeHtml(fmLabel)}</div>
+        <div class="rf-audio-help">
+          ${escapeHtml(fmText)}
         </div>
       </div>
     </div>
@@ -1196,10 +1206,11 @@ function addSpeakerCard(extra) {
 
   extra.appendChild(card);
 
-  const btn = card.querySelector('#rf-speaker-btn');
-  const statusText = card.querySelector('#rf-speaker-status-text');
-  const countdownEl = card.querySelector('#lof-speaker-countdown-inline');
-  const timerRow = card.querySelector('.rf-card-timer');
+  // Updated DOM queries per new markup
+  const btn = card.querySelector('.js-speaker-on');
+  const statusText = card.querySelector('.rf-speaker-body');
+  const countdownEl = card.querySelector('.lof-speaker-countdown-inline');
+  const timerRow = card.querySelector('.rf-speaker-timer-row');
 
   // hide timer row by default
   if (timerRow) timerRow.style.display = 'none';
@@ -1328,6 +1339,46 @@ function addSpeakerCard(extra) {
 
   refreshSpeakerStatus();
 }
+
+// Global click handler for stream player (lazy iframe and toggle)
+document.addEventListener('click', function (e) {
+  const btn = e.target.closest('.js-open-stream');
+  if (!btn) return;
+
+  const option = btn.closest('.rf-audio-option--stream');
+  if (!option) return;
+
+  const wrap = option.querySelector('.rf-stream-wrap');
+  if (!wrap) return;
+
+  const originalLabel = btn.getAttribute('data-label') || 'Listen on your phone';
+
+  // First time: create the iframe on demand
+  if (!wrap.dataset.init) {
+    const src = wrap.getAttribute('data-src');
+    if (!src) {
+      console.warn('[LOF Viewer] No stream URL configured for PulseMesh stream.');
+      return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.title = 'Lights on Falcon live stream';
+    iframe.loading = 'lazy';
+    iframe.className = 'rf-audio-iframe';
+    iframe.allow = 'autoplay'; // safe because user clicked to create it
+
+    wrap.appendChild(iframe);
+    wrap.dataset.init = '1';
+  }
+
+  // Toggle visibility without destroying the iframe
+  const isVisible = wrap.classList.toggle('rf-stream-wrap--visible');
+
+  btn.textContent = isVisible
+    ? 'Hide stream player'
+    : originalLabel + ' 🎧';
+});
 
 
   /* -------------------------

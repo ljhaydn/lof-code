@@ -742,3 +742,19 @@
   line-height: 1.4;
   opacity: 0.9;
 }
+
+.rf-stream-wrap {
+  margin-top: 6px;
+  display: none;
+}
+
+.rf-stream-wrap--visible {
+  display: block;
+}
+
+.rf-audio-iframe {
+  width: 100%;
+  max-width: 100%;
+  border: none;
+  height: 64px; /* or whatever height your PulseMesh player needs */
+}
