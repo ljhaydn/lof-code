@@ -419,7 +419,14 @@ class RF_Viewer_Plugin {
                     <div class="rf-mode-value" id="rf-mode-value">—</div>
                 </div>
             </div>
-
+            <div class="rf-viewer-header">
+                <div class="rf-viewer-headline">How tonight works</div>
+                <div class="rf-viewer-subcopy">
+                    • Tap a song to add it to the queue.<br>
+                    • One request per device so everyone gets a turn.<br>
+                    • Your pick will glow when it’s playing, then rest.
+                </div>
+            </div>
             <div class="rf-grid" id="rf-grid"></div>
             <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
             <div

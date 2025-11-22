@@ -472,6 +472,29 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     bodyEl.textContent  = bodyText || '';
   }
 
+  function applyPersonaToSubcopy(subcopyEl) {
+    if (!subcopyEl) return;
+
+    const count = (viewerStats && typeof viewerStats.requests === 'number')
+      ? viewerStats.requests
+      : 0;
+
+    let extra = '';
+
+    if (count === 1) {
+      extra = ' You just joined the queue — welcome to the chaos. 🎄';
+    } else if (count >= 3 && count < 10) {
+      extra = ' You’re officially part of the neighborhood DJ crew.';
+    } else if (count >= 10) {
+      extra = ' You, friend, are running this street.';
+    }
+
+    if (!extra) return;
+
+    const base = subcopyEl.textContent || '';
+    subcopyEl.textContent = base + extra;
+  }
+
   function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
     const headlineEl = document.getElementById('rf-viewer-headline');
     const subcopyEl  = document.getElementById('rf-viewer-subcopy');
@@ -502,6 +525,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       );
       headlineEl.textContent = title;
       subcopyEl.textContent  = body;
+      applyPersonaToSubcopy(subcopyEl);
       return;
     }
 
@@ -558,6 +582,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       }
 
       subcopyEl.textContent = parts.join(' ');
+      applyPersonaToSubcopy(subcopyEl);
       return;
     }
 
@@ -583,6 +608,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       }
 
       subcopyEl.textContent = parts.join(' ');
+      applyPersonaToSubcopy(subcopyEl);
       return;
     }
 
@@ -597,6 +623,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     headlineEl.textContent = fallbackTitle;
     subcopyEl.textContent  = fallbackBody;
+    applyPersonaToSubcopy(subcopyEl);
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
@@ -682,7 +709,12 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     wrap.style.display = 'block';
     fill.style.width = pct + '%';
-    label.textContent = lofFormatTime(remaining) + ' remaining';
+
+    if (remaining <= 3) {
+      label.textContent = 'Wrapping up…';
+    } else {
+      label.textContent = lofFormatTime(remaining) + ' remaining';
+    }
   }
 
   /* -------------------------
@@ -880,13 +912,18 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       const hasRemaining = !isNaN(remaining);
       const duration = (hasPlayed && hasRemaining) ? (played + remaining) : null;
 
+      // Treat a song that is at or below 1s remaining as effectively done for the bar,
+      // since RF may already be flipping to the next state.
+      const nearlyDone = hasRemaining && remaining <= 1;
+
       // Only show a bar when FPP says we're playing AND the RF side thinks we're in showtime
       const phase = lastPhase || 'idle';
       const shouldShow =
         statusName === 'playing' &&
         duration != null &&
         hasPlayed &&
-        phase === 'showtime';
+        phase === 'showtime' &&
+        !nearlyDone;
 
       if (!shouldShow) {
         window.LOFNowTiming = null;
@@ -1258,7 +1295,7 @@ function addSpeakerCard(extra) {
           ${escapeHtml(
             lofCopy(
               'speaker_intro',
-              'Music plays through outdoor speakers and a phone/car stream. Choose how you want to listen:'
+              'Choose how you want to hear the show — outside speakers, on your phone, or in your car.'
             )
           )}
         </div>
@@ -1278,7 +1315,7 @@ function addSpeakerCard(extra) {
           ${escapeHtml(
             lofCopy(
               'speaker_outdoor_help',
-              'For visitors standing at the display. Speakers turn off automatically after a bit.'
+              'For visitors standing near the lights. Speakers switch off automatically after a few minutes so we don’t blast the block all night.'
             )
           )}
         </div>
@@ -1374,7 +1411,7 @@ function addSpeakerCard(extra) {
           // Speaker OFF
           const statusOffText = lofCopy(
             'speaker_status_off',
-            'Speakers are currently OFF. If you’re standing at the show, you can turn them on.'
+            'Speakers are off by default. If you’re standing at the show, you can turn them on for a bit.'
           );
 
           statusText.textContent = statusOffText;
