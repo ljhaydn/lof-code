@@ -1136,7 +1136,7 @@ function addSpeakerCard(extra) {
   const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
   // TODO: if we later wire this into LOF Extras settings, read from config instead.
-  const pulsemeshUrl = 'broken link here';
+  const pulsemeshUrl = 'https://player.pulsemesh.io/d/G073';
 
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card';
@@ -1171,7 +1171,7 @@ function addSpeakerCard(extra) {
             Other ways to listen:
           </div>
 
-          <details class="rf-audio-option rf-audio-option--stream" open>
+          <details class="rf-audio-option rf-audio-option--stream">
             <summary>${escapeHtml(streamLabel)}</summary>
             <div class="rf-audio-option-body">
               <iframe
@@ -1179,7 +1179,6 @@ function addSpeakerCard(extra) {
                 title="Lights on Falcon live stream"
                 loading="lazy"
                 class="rf-audio-iframe"
-                allow="autoplay"
               ></iframe>
             </div>
           </details>
