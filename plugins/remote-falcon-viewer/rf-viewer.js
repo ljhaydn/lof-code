@@ -11,6 +11,12 @@
   const nextTitleEl = document.getElementById('rf-next-title');
   const modeEl      = document.getElementById('rf-mode-value');
 
+  // Persist stream state across re-renders of the extras panel
+const lofStreamState = {
+  init: false,
+  visible: false
+};
+
   // -----------------------------
   // LOF EXTRAS CONFIG
   // -----------------------------
@@ -1204,6 +1210,30 @@ function addSpeakerCard(extra) {
     </div>
   `;
 
+  // Restore stream state if the panel has been re-rendered
+  const streamWrap = card.querySelector('.rf-stream-wrap');
+  if (streamWrap) {
+    const src = streamWrap.getAttribute('data-src');
+
+    // If we previously created the iframe, recreate it here
+    if (lofStreamState.init && src) {
+      const iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.title = 'Lights on Falcon live stream';
+      iframe.loading = 'lazy';
+      iframe.className = 'rf-audio-iframe';
+      iframe.allow = 'autoplay';
+
+      streamWrap.appendChild(iframe);
+      streamWrap.dataset.init = '1';
+    }
+
+    // If it was visible before, keep it visible
+    if (lofStreamState.visible) {
+      streamWrap.classList.add('rf-stream-wrap--visible');
+    }
+  }
+
   extra.appendChild(card);
 
   // Updated DOM queries per new markup
@@ -1370,10 +1400,16 @@ document.addEventListener('click', function (e) {
 
     wrap.appendChild(iframe);
     wrap.dataset.init = '1';
+
+    // 🔐 remember that we've created the iframe at least once
+    lofStreamState.init = true;
   }
 
   // Toggle visibility without destroying the iframe
   const isVisible = wrap.classList.toggle('rf-stream-wrap--visible');
+
+  // 🧠 persist visibility preference
+  lofStreamState.visible = isVisible;
 
   btn.textContent = isVisible
     ? 'Hide stream player'
