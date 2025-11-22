@@ -541,7 +541,7 @@
 .rf-card {
   display: flex;
   flex-direction: column;
-  padding-bottom: 26px; /* extra room so the "your pick is playing" chip sits above the button */
+  padding-bottom: 30px; /* extra room so the "your pick is playing" chip sits above the button */
 }
 
 /* Meta/content stays at the top; actions go to the bottom */
@@ -588,7 +588,7 @@
 .rf-card-chip {
   position: absolute;
   left: 12px;
-  bottom: 10px;
+  bottom: 12px;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -865,14 +865,14 @@
 /* Tonight at Lights on Falcon footer panel */
 .rf-tonight {
   max-width: 980px;
-  margin: 40px auto 32px;
-  padding: 24px 24px 28px;
+  margin: 28px auto 28px;
+  padding: 22px 24px 26px;
   border-radius: 24px;
-  background: radial-gradient(circle at top left,
-    rgba(255, 255, 255, 0.10),
-    rgba(0, 0, 0, 0.92)
-  );
+  background:
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
+    linear-gradient(135deg, #061215, #0B1C20);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+  border: 1px solid var(--lof-border-soft);
 }
 
 .rf-tonight-title {
@@ -886,4 +886,18 @@
   font-size: 0.95rem;
   line-height: 1.5;
   opacity: 0.9;
+}
+
+/* Phase-based subtle background nudges – share the same deep base,
+   just nudge the accent tint per phase so the shell feels consistent */
+#rf-viewer.rf-phase-intermission {
+  background:
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 60%),
+    linear-gradient(135deg, #061215, #0B1C20);
+}
+
+#rf-viewer.rf-phase-showtime {
+  background:
+    radial-gradient(circle at top, rgba(244, 208, 111, 0.22), transparent 60%),
+    linear-gradient(135deg, #061215, #0B1C20);
 }
