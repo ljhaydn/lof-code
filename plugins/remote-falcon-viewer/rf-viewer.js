@@ -80,17 +80,27 @@ const lofStreamState = {
   let lastActionTimes = {};
   const ACTION_COOLDOWN = 15000; // 15s
 
-  let currentMode = 'UNKNOWN';
-  let currentControlEnabled = false;
-  let currentVisibleSequences = [];
+let currentMode = 'UNKNOWN';
+let currentControlEnabled = false;
+let currentVisibleSequences = [];
+let currentPrefs = {};
+let currentNowKey = null;
+let currentQueueCounts = {};
+let lastCountedNowKey = null;
+
+// Global guardrails
+let lastGlobalActionTime = 0;
+const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
 
   // Local “identity” for this device
   const STORAGE_REQUESTS_KEY = 'lofRequestedSongs_v1';
   const STORAGE_STATS_KEY    = 'lofViewerStats_v1';
   const STORAGE_GLOW_KEY     = 'lofGlowLastTime_v1';
+  const STORAGE_PLAYED_KEY   = 'lofPlayedCounts_v1';
 
   let requestedSongNames = loadRequestedSongs();
   let viewerStats        = loadStats();
+  let playedCounts       = loadPlayedCounts();
 
   // last requested song (name) this session
   let lastRequestedSequenceName = null;
@@ -147,41 +157,85 @@ const lofStreamState = {
     } catch (e) {}
   }
 
+  function loadPlayedCounts() {
+    const today = new Date();
+    const dayKey = today.toISOString().slice(0, 10); // yyyy-mm-dd
+
+    try {
+      const raw = window.localStorage.getItem(STORAGE_PLAYED_KEY);
+      if (!raw) {
+        return { day: dayKey, counts: {} };
+      }
+      const val = JSON.parse(raw) || {};
+      if (val.day !== dayKey || !val.counts || typeof val.counts !== 'object') {
+        return { day: dayKey, counts: {} };
+      }
+      return {
+        day: dayKey,
+        counts: val.counts
+      };
+    } catch (e) {
+      return { day: dayKey, counts: {} };
+    }
+  }
+
+  function savePlayedCounts() {
+    try {
+      window.localStorage.setItem(STORAGE_PLAYED_KEY, JSON.stringify(playedCounts));
+    } catch (e) {}
+  }
+
+  function incrementPlayedCount(key) {
+    if (!key) return;
+    try {
+      const todayKey = new Date().toISOString().slice(0, 10);
+      if (!playedCounts || playedCounts.day !== todayKey || !playedCounts.counts) {
+        playedCounts = { day: todayKey, counts: {} };
+      }
+      const counts = playedCounts.counts;
+      const current = parseInt(counts[key], 10);
+      counts[key] = isNaN(current) ? 1 : current + 1;
+      savePlayedCounts();
+    } catch (e) {}
+  }
+
+  function getPlayedCount(key) {
+    if (!key || !playedCounts || !playedCounts.counts) return 0;
+    const val = playedCounts.counts[key];
+    const n = parseInt(val, 10);
+    return isNaN(n) ? 0 : n;
+  }
+
 function syncRequestedSongsWithStatus(nowSeq, queue) {
-  if (!lastRequestedSequenceName) {
+  if (!Array.isArray(requestedSongNames) || requestedSongNames.length === 0) {
     requestedSongNames = [];
     saveRequestedSongs();
     return;
   }
 
-  const myName = lastRequestedSequenceName;
-  let isActive = false;
+  const active = new Set();
 
-  // Is my song now playing?
-  if (nowSeq && (nowSeq.name === myName || nowSeq.displayName === myName)) {
-    isActive = true;
-  } else if (Array.isArray(queue) && queue.length) {
-    // Is my song still in the RF queue?
+  // Now playing might match one or more requested titles
+  if (nowSeq) {
+    const nowName = nowSeq.name || nowSeq.displayName;
+    if (nowName) active.add(nowName);
+  }
+
+  // Anything still in the RF queue stays active
+  if (Array.isArray(queue)) {
     for (let i = 0; i < queue.length; i++) {
       const item = queue[i];
       if (!item || typeof item !== 'object') continue;
       const seq = item.sequence || {};
       const sName = seq.name || seq.displayName;
-      if (sName && sName === myName) {
-        isActive = true;
-        break;
+      if (sName && requestedSongNames.includes(sName)) {
+        active.add(sName);
       }
     }
   }
 
-  if (isActive) {
-    // Keep just this one as “requested” for the chip
-    requestedSongNames = [myName];
-  } else {
-    // It has run its course – clear the chip state
-    requestedSongNames = [];
-  }
-
+  // Keep only ones still active
+  requestedSongNames = requestedSongNames.filter((name) => active.has(name));
   saveRequestedSongs();
 }
   function getLastGlowTime() {
@@ -627,52 +681,64 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   }
 
   function updateMyStatusLine(nowSeq, queue, nowKey) {
-    const myStatusEl = document.getElementById('rf-viewer-my-status');
-    if (!myStatusEl) return;
+    const el = document.getElementById('rf-viewer-my-status');
+    if (!el) return;
 
-    if (!lastRequestedSequenceName) {
-      myStatusEl.textContent = '';
-      myStatusEl.style.display = 'none';
+    if (!Array.isArray(requestedSongNames) || requestedSongNames.length === 0) {
+      el.textContent = '';
+      el.style.display = 'none';
       return;
     }
 
-    const myName = lastRequestedSequenceName;
-    let queuePos = null;
+    let nowMatches = [];
+    let queueMatches = [];
 
-    if (Array.isArray(queue) && queue.length) {
+    const nowName = nowSeq ? (nowSeq.name || nowSeq.displayName) : null;
+    if (nowName && requestedSongNames.includes(nowName)) {
+      nowMatches.push(nowName);
+    }
+
+    if (Array.isArray(queue)) {
       for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
         if (!item || typeof item !== 'object') continue;
         const seq = item.sequence || {};
         const sName = seq.name || seq.displayName;
-        if (sName && sName === myName) {
-          const pos =
-            typeof item.position === 'number'
-              ? item.position
-              : i + 1;
-          queuePos = pos;
-          break;
+        if (!sName) continue;
+        if (requestedSongNames.includes(sName)) {
+          // Use the current index + 1 so the position tracks live queue order,
+          // even if RF's stored "position" is not updated as the queue drains.
+          const pos = i + 1;
+          queueMatches.push({ name: sName, pos });
         }
       }
     }
 
-    const nowIsMine =
-      nowSeq &&
-      (nowSeq.name === myName || nowSeq.displayName === myName);
-
     let text = '';
-    if (nowIsMine) {
-      text = 'Your request is playing right now. Enjoy the glow ✨';
-    } else if (queuePos != null) {
-      text = `Your song is currently #${queuePos} in the queue.`;
+    if (nowMatches.length > 0) {
+      if (nowMatches.length === 1) {
+        text = `Your request “${nowMatches[0]}” is playing right now. Enjoy the glow ✨`;
+      } else {
+        text = `One of your picks is playing now! (${nowMatches.join(', ')})`;
+      }
+    } else if (queueMatches.length > 0) {
+      if (queueMatches.length === 1) {
+        const item = queueMatches[0];
+        text = `Your song “${item.name}” is currently #${item.pos} in the queue.`;
+      } else {
+        const parts = queueMatches
+          .sort((a, b) => a.pos - b.pos)
+          .map((x) => `“${x.name}” (#${x.pos})`);
+        text = `Your picks are moving up: ${parts.join(', ')}`;
+      }
     } else {
-      text =
-        'Your last request has already run its course. Pick another and keep the show moving. 🎶';
+      text = 'Your previous requests have played. Pick another to keep the show moving. 🎶';
     }
 
-    myStatusEl.textContent = text;
-    myStatusEl.style.display = 'block';
-    // NEW: keep “you picked this” chip in sync with reality
+    el.textContent = text;
+    el.style.display = 'block';
+
+    // Keep requested chips synced
     syncRequestedSongsWithStatus(nowSeq, queue);
   }
 
@@ -803,9 +869,22 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     if (!data || typeof data !== 'object') return;
 
     const prefs        = data.preferences || {};
+    currentPrefs = prefs || {};
     const sequences    = Array.isArray(data.sequences) ? data.sequences : [];
     const rawRequests  = Array.isArray(data.requests) ? data.requests : [];
     const rawVotes     = Array.isArray(data.votes)    ? data.votes    : [];
+
+    // Compute live queue counts by sequence key
+    currentQueueCounts = {};
+    if (Array.isArray(rawRequests)) {
+      rawRequests.forEach(function (item) {
+        if (!item || typeof item !== 'object') return;
+        const seqObj = (item.sequence && typeof item.sequence === 'object') ? item.sequence : {};
+        const key = seqObj.name || seqObj.displayName;
+        if (!key) return;
+        currentQueueCounts[key] = (currentQueueCounts[key] || 0) + 1;
+      });
+    }
 
     currentMode           = prefs.viewerControlMode || 'UNKNOWN';
     currentControlEnabled = !!prefs.viewerControlEnabled;
@@ -847,12 +926,18 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     const nowKey  = nowSeq  ? (nowSeq.name  || nowSeq.displayName) : playingNowRaw;
     const nextKey = nextSeq ? (nextSeq.name || nextSeq.displayName) : playingNextRaw;
+    currentNowKey = nowKey || null;
 
     // DIM LOGIC (uses display title):
     const hasRawNow      = !!(playingNowRaw && playingNowRaw.toString().trim());
     const isIntermission = nowDisplay && /intermission/i.test(nowDisplay);
     const isStandby      = nowDisplay && /standby/i.test(nowDisplay);
     const isPlayingReal  = hasRawNow && !isIntermission && !isStandby;
+
+    if (isPlayingReal && nowKey && nowKey !== lastCountedNowKey) {
+      incrementPlayedCount(nowKey);
+      lastCountedNowKey = nowKey;
+    }
 
     if (viewerRoot) {
       viewerRoot.classList.toggle('rf-phase-intermission', isIntermission);
@@ -933,7 +1018,11 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       if (wasRequested) {
         const chip = document.createElement('div');
         chip.className = 'rf-card-chip';
-        chip.textContent = isNow ? 'Your pick is playing ✨' : 'You picked this';
+        if (isNow) {
+          chip.textContent = 'Your pick is playing ✨';
+        } else {
+          chip.textContent = 'You picked this';
+        }
         card.appendChild(chip);
       }
 
@@ -1108,9 +1197,9 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       const seq = (item.sequence && typeof item.sequence === 'object') ? item.sequence : {};
       const displayTitle = seq.displayName || seq.name || 'Untitled';
       const artist       = seq.artist || '';
-      const pos          = (typeof item.position === 'number')
-        ? item.position
-        : idx + 1;
+      // Always use the current index as the position so the queue number
+      // reflects the live order as songs are played/removed.
+      const pos          = idx + 1;
 
       const li = document.createElement('li');
       li.className = 'rf-queue-item';
@@ -1715,17 +1804,48 @@ document.addEventListener('click', function (e) {
 
   async function handleAction(mode, seq, btn) {
     if (!base) return;
-
+  // Hard guard: if viewer control is disabled, do not send any actions.
+    if (!currentControlEnabled) {
+      const msg = lofCopy(
+        'viewer_action_disabled',
+        'Viewer control is currently paused. You can still enjoy the show!'
+      );
+      showToast(msg, 'error');
+      return;
+    }
+    
     const endpoint = (mode === 'VOTING') ? '/vote' : '/request';
     const sequenceKey = seq.name;
     const now = Date.now();
 
+    // Global per-device cooldown to avoid hammering RF with rapid-fire actions
+    if (lastGlobalActionTime && now - lastGlobalActionTime < GLOBAL_ACTION_COOLDOWN) {
+      const remainingGlobal = Math.ceil((GLOBAL_ACTION_COOLDOWN - (now - lastGlobalActionTime)) / 1000);
+      showToast(`Easy there, DJ. Wait ${remainingGlobal}s before sending another action.`, 'error');
+      return;
+    }
+
+    // Per-song cooldown to prevent spamming the same track
     if (lastActionTimes[sequenceKey] && now - lastActionTimes[sequenceKey] < ACTION_COOLDOWN) {
       const remaining = Math.ceil((ACTION_COOLDOWN - (now - lastActionTimes[sequenceKey])) / 1000);
       showToast(`Please wait ${remaining}s before interacting with this song again.`, 'error');
       return;
     }
 
+    // Enforce optional request limit for JUKEBOX mode
+    if (mode === 'JUKEBOX' && currentPrefs && typeof currentPrefs.jukeboxRequestLimit === 'number') {
+      const limit = currentPrefs.jukeboxRequestLimit;
+      if (limit > 0 && viewerStats && typeof viewerStats.requests === 'number' && viewerStats.requests >= limit) {
+        const msg = lofCopy(
+          'jukebox_limit_reached_toast',
+          'You’ve hit the request limit for this visit. You can still enjoy the show!'
+        );
+        showToast(msg, 'error');
+        return;
+      }
+    }
+
+    lastGlobalActionTime = now;
     lastActionTimes[sequenceKey] = now;
 
     if (btn) {
@@ -1798,6 +1918,63 @@ document.addEventListener('click', function (e) {
       return;
     }
 
+    // Base pool: songs visible & active
+    const basePool = currentVisibleSequences.slice();
+
+    // Prefer songs the visitor has NOT already requested this session
+    const unrequesedPool = basePool.filter((seq) => {
+      const key = seq.name || seq.displayName;
+      if (!key) return false;
+      return !requestedSongNames.includes(key);
+    });
+
+    // Start from unrequesed songs if we have any, otherwise all visible songs
+    let candidateBase = unrequesedPool.length ? unrequesedPool : basePool;
+
+    // Avoid immediately repeating the currently-playing song
+    candidateBase = candidateBase.filter((seq) => {
+      const key = seq.name || seq.displayName;
+      if (!key) return false;
+      if (currentNowKey && key === currentNowKey) return false;
+      return true;
+    });
+
+    // If that wiped everything out, fall back to the original basePool
+    if (!candidateBase.length) {
+      candidateBase = basePool;
+    }
+
+    // Prefer songs that are NOT already in the live RF queue
+    const noQueuePool = candidateBase.filter((seq) => {
+      const key = seq.name || seq.displayName;
+      if (!key) return false;
+      return !currentQueueCounts[key];
+    });
+
+    let candidateList = noQueuePool.length ? noQueuePool : candidateBase;
+
+    if (!candidateList.length) {
+      showToast('No songs available right now.', 'error');
+      return;
+    }
+
+    // Prefer songs that this device hasn't heard much tonight.
+    let minPlay = Infinity;
+    candidateList.forEach((seq) => {
+      const key = seq.name || seq.displayName;
+      const c = key ? getPlayedCount(key) : 0;
+      if (c < minPlay) minPlay = c;
+    });
+
+    // Keep songs within a small band of the least-played to avoid always picking the same one
+    const lowPlayedPool = candidateList.filter((seq) => {
+      const key = seq.name || seq.displayName;
+      const c = key ? getPlayedCount(key) : 0;
+      return c <= minPlay + 1;
+    });
+
+    const finalList = lowPlayedPool.length ? lowPlayedPool : candidateList;
+
     viewerStats.surprise += 1;
     saveStats();
 
@@ -1809,8 +1986,8 @@ document.addEventListener('click', function (e) {
       showToast(fourthMsg, 'success');
     }
 
-    const randomIndex = Math.floor(Math.random() * currentVisibleSequences.length);
-    const seq = currentVisibleSequences[randomIndex];
+    const randomIndex = Math.floor(Math.random() * finalList.length);
+    const seq = finalList[randomIndex];
 
     handleAction(currentMode, seq, null);
   }
