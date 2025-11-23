@@ -37,6 +37,44 @@ function lof_speaker_json_exit($code, $payload) {
     echo json_encode($payload);
     exit;
 }
+
+/**
+ * Build a normalized payload for the front-end.
+ *
+ * @param array $state
+ * @param string $speakerMode
+ * @param string $message
+ * @return array
+ */
+function lof_speaker_build_payload(array $state, $speakerMode, $message = '') {
+    // Derive core booleans and remaining time from state
+    $remaining = lof_speaker_remaining_seconds($state);
+    $speakerOn = ($state['status'] === 'on' && $remaining > 0);
+
+    // Pull FM + stream config from LOF Viewer Extras settings, if available
+    $viewerExtras = get_option('lof_viewer_extras_settings', []);
+    $fmFrequency  = '';
+    $streamUrl    = '';
+
+    if (is_array($viewerExtras)) {
+        if (isset($viewerExtras['fm_frequency']) && is_string($viewerExtras['fm_frequency'])) {
+            $fmFrequency = trim($viewerExtras['fm_frequency']);
+        }
+        if (isset($viewerExtras['stream_url']) && is_string($viewerExtras['stream_url'])) {
+            $streamUrl = trim($viewerExtras['stream_url']);
+        }
+    }
+
+    return [
+        'success'          => true,
+        'speakerOn'        => $speakerOn,
+        'remainingSeconds' => $remaining,
+        'message'          => (string)$message,
+        'mode'             => $speakerMode,
+        'fmFrequency'      => $fmFrequency,
+        'streamUrl'        => $streamUrl,
+    ];
+}
 function lof_is_lan_ip($ip) {
     if (!filter_var($ip, FILTER_VALIDATE_IP)) {
         return false;
@@ -359,31 +397,22 @@ if ($action === 'status') {
             : 'Speakers are currently OFF. Tap "Need sound?" to turn them on for a bit.';
     }
 
-    lof_speaker_json_exit(200, [
-        'success'          => true,
-        'speakerOn'        => $speakerOn,
-        'remainingSeconds' => $remaining,
-        'message'          => $msg,
-        'mode'             => $speakerMode,
-    ]);
-
+    $payload = lof_speaker_build_payload($state, $speakerMode, $msg);
+    lof_speaker_json_exit(200, $payload);
 }
 
 // ------------------------------------------------------------
 // ACTION: notify  (confirmation from FPP scripts)
 // ------------------------------------------------------------
 if ($action === 'notify') {
-    global $speakerSecs;
+    global $speakerSecs, $speakerMode;
 
     $remoteIp = $_SERVER['REMOTE_ADDR'] ?? '';
 
     if (!empty($notifyIp) && $remoteIp !== $notifyIp) {
-        lof_speaker_json_exit(403, [
-            'success'          => false,
-            'speakerOn'        => $speakerOn,
-            'remainingSeconds' => $remaining,
-            'message'          => 'Unauthorized notify source.',
-        ]);
+        $payload = lof_speaker_build_payload($state, $speakerMode, 'Unauthorized notify source.');
+        $payload['success'] = false;
+        lof_speaker_json_exit(403, $payload);
     }
 
     $statusParam = isset($_REQUEST['status']) ? sanitize_text_field($_REQUEST['status']) : '';
@@ -402,12 +431,8 @@ if ($action === 'notify') {
         $state['last_updated'] = $now;
         lof_speaker_save_state($stateKey, $state);
 
-        lof_speaker_json_exit(200, [
-            'success'          => true,
-            'speakerOn'        => true,
-            'remainingSeconds' => lof_speaker_remaining_seconds($state),
-            'message'          => 'Speaker ON confirmed by controller.',
-        ]);
+        $payload = lof_speaker_build_payload($state, $speakerMode, 'Speaker ON confirmed by controller.');
+        lof_speaker_json_exit(200, $payload);
     }
 
     if ($statusParam === 'off') {
@@ -417,20 +442,12 @@ if ($action === 'notify') {
         $state['last_updated'] = $now;
         lof_speaker_save_state($stateKey, $state);
 
-        lof_speaker_json_exit(200, [
-            'success'          => true,
-            'speakerOn'        => false,
-            'remainingSeconds' => 0,
-            'message'          => 'Speaker OFF confirmed by controller.',
-        ]);
+        $payload = lof_speaker_build_payload($state, $speakerMode, 'Speaker OFF confirmed by controller.');
+        lof_speaker_json_exit(200, $payload);
     }
 
-    lof_speaker_json_exit(400, [
-        'success'          => false,
-        'speakerOn'        => $speakerOn,
-        'remainingSeconds' => $remaining,
-        'message'          => 'Invalid notify payload.',
-    ]);
+    $payload = lof_speaker_build_payload($state, $speakerMode, 'Invalid notify payload.');
+    lof_speaker_json_exit(400, $payload);
 }
 
 // ------------------------------------------------------------
@@ -550,7 +567,7 @@ if ($action === 'on') {
     $state['last_updated']= $now;
     lof_speaker_save_state($stateKey, $state);
 
-    $remaining = $speakerSecs;
+    $remaining = lof_speaker_remaining_seconds($state);
     $mins      = ceil($remaining / 60);
 
     if ($speakerOn) {
@@ -578,9 +595,6 @@ if ($action === 'on') {
 $remaining = lof_speaker_remaining_seconds($state);
 $speakerOn = ($state['status'] === 'on' && $remaining > 0);
 
-lof_speaker_json_exit(400, [
-    'success'          => false,
-    'speakerOn'        => $speakerOn,
-    'remainingSeconds' => $remaining,
-    'message'          => 'Unknown action.',
-]);
+$payload = lof_speaker_build_payload($state, $speakerMode, 'Unknown action.');
+$payload['success'] = false;
+lof_speaker_json_exit(400, $payload);

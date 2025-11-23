@@ -1470,8 +1470,9 @@ function addSpeakerCard(extra) {
       );
 
       const data = await res.json().catch(() => null);
+      const msg = (data && typeof data.message === 'string') ? data.message.trim() : '';
 
-      if (res.ok && data && typeof data.speakerOn === 'boolean') {
+      if (res.ok && data && data.success === true && typeof data.speakerOn === 'boolean') {
         const on = data.speakerOn;
         const rem = typeof data.remainingSeconds === 'number'
           ? data.remainingSeconds
@@ -1484,17 +1485,19 @@ function addSpeakerCard(extra) {
             'Speakers are currently ON near the show.'
           );
 
+          const baseText = msg || statusOnText;
+
           if (rem > 0) {
             const minutes = Math.ceil(rem / 60);
             const label = minutes <= 1
               ? 'about 1 minute'
               : `about ${minutes} minutes`;
 
-            statusText.textContent = statusOnText;
+            statusText.textContent = baseText;
             if (countdownEl) countdownEl.textContent = label;
             if (timerRow) timerRow.style.display = 'flex';
           } else {
-            statusText.textContent = statusOnText;
+            statusText.textContent = baseText;
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
           }
@@ -1505,12 +1508,12 @@ function addSpeakerCard(extra) {
             'Speakers are off by default. If you’re standing at the show, you can turn them on for a bit.'
           );
 
-          statusText.textContent = statusOffText;
+          statusText.textContent = msg || statusOffText;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
         }
-      } else if (data && data.message) {
-        statusText.textContent = data.message;
+      } else if (msg) {
+        statusText.textContent = msg;
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
       } else {
@@ -1574,7 +1577,17 @@ function addSpeakerCard(extra) {
     });
   }
 
-  refreshSpeakerStatus();
+  // Initial status fetch and shared polling loop
+  try {
+    refreshSpeakerStatus();
+    if (typeof window !== 'undefined') {
+      if (!window.LOF_SPEAKER_POLL) {
+        window.LOF_SPEAKER_POLL = setInterval(refreshSpeakerStatus, 15000);
+      }
+    }
+  } catch (e) {
+    // Non-fatal; card will show default copy
+  }
 }
 
 // Global click handler for stream player (lazy iframe and toggle on persistent footer)

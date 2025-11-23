@@ -181,6 +181,7 @@
     if (!el) return;
 
     const texts = LOF_VIEWER_CONFIG.text.speaker;
+    const msg   = (data && typeof data.message === 'string') ? data.message.trim() : '';
 
     if (!data || data.success !== true) {
       el.textContent = '';
@@ -188,12 +189,17 @@
       return;
     }
 
-    const on    = !!data.speakerOn;
-    const rem   = typeof data.remainingSeconds === 'number' ? data.remainingSeconds : 0;
+    const on  = !!data.speakerOn;
+    const rem = typeof data.remainingSeconds === 'number' ? data.remainingSeconds : 0;
     const { m, label } = formatMMSS(rem);
 
+    // Speaker OFF
     if (!on) {
-      el.textContent = texts.off;
+      if (msg) {
+        el.textContent = msg;
+      } else {
+        el.textContent = texts.off;
+      }
       el.classList.add('lof-speaker-indicator--off');
       el.classList.remove('lof-speaker-indicator--on');
       return;
@@ -201,9 +207,14 @@
 
     // Speaker ON
     let line;
-    if (rem > 0) {
+    if (msg) {
+      // Prefer backend-provided message, optionally append countdown
+      line = msg;
+      if (rem > 0) {
+        line += ` (about ${label} left)`;
+      }
+    } else if (rem > 0) {
       line = texts.onWithTime(m, rem);
-      // Optionally append the explicit MM:SS
       line += ` (about ${label} left)`;
     } else {
       line = texts.onNoTime;

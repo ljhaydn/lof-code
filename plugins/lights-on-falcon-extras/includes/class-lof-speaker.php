@@ -9,6 +9,17 @@ class LOF_Speaker {
     const OPTION_STATE = 'lof_extras_speaker_state';
 
     public static function init() {
+        // Viewer 1.5:
+        // Freeze LOF_Speaker REST endpoints so we don't have two competing
+        // speaker systems. Speaker control for this season is handled by the
+        // theme-based lof-speaker.php controller.
+        //
+        // This keeps the class available for future use (e.g., Viewer V2),
+        // but prevents its routes from being registered in the current setup.
+        return;
+
+        // Original route registration left here for future reference:
+        /*
         add_action('rest_api_init', function () {
 
             register_rest_route('lof-extras/v1', '/speaker/status', [
@@ -24,6 +35,7 @@ class LOF_Speaker {
             ]);
 
         });
+        */
     }
 
     protected static function get_state() {

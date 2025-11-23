@@ -939,3 +939,23 @@
 .rf-tonight .rf-glow-card {
   margin-top: 0.85rem;
 }
+
+/* Speaker card inline timer layout */
+.lof-speaker-card .lof-speaker-row--timer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    opacity: 0.9;
+}
+
+.lof-speaker-countdown-inline {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Header indicator readability */
+#lof-speaker-indicator {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
