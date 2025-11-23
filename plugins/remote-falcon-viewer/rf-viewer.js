@@ -715,6 +715,25 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     } else {
       label.textContent = lofFormatTime(remaining) + ' remaining';
     }
+  
+  }
+  function tickNowProgress() {
+    if (typeof window === 'undefined') return;
+    const timing = window.LOFNowTiming;
+    if (!timing || typeof timing.duration !== 'number') return;
+
+    const baseElapsed = typeof timing.elapsed === 'number' ? timing.elapsed : 0;
+    const startedAt   = typeof timing.updatedAt === 'number' ? timing.updatedAt : Date.now();
+    const now         = Date.now();
+    const deltaSec    = Math.max(0, (now - startedAt) / 1000);
+
+    const duration = Math.max(1, timing.duration);
+    const elapsed  = Math.min(duration, baseElapsed + deltaSec);
+
+    updateNowProgress({
+      duration: duration,
+      elapsed: elapsed
+    });
   }
 
   /* -------------------------
@@ -832,7 +851,8 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     // DIM LOGIC (uses display title):
     const hasRawNow      = !!(playingNowRaw && playingNowRaw.toString().trim());
     const isIntermission = nowDisplay && /intermission/i.test(nowDisplay);
-    const isPlayingReal  = hasRawNow && !isIntermission;
+    const isStandby      = nowDisplay && /standby/i.test(nowDisplay);
+    const isPlayingReal  = hasRawNow && !isIntermission && !isStandby;
 
     if (viewerRoot) {
       viewerRoot.classList.toggle('rf-phase-intermission', isIntermission);
@@ -956,34 +976,36 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         return;
       }
 
-      const payload = await res.json().catch(() => null);
-      const data = payload && (payload.data || payload);
-
-      if (!data || typeof data !== 'object') {
+      const data = await res.json().catch(() => null);
+      if (!data || typeof data !== 'object' || data.success !== true) {
         updateNowProgress(null);
         return;
       }
 
       const statusName = String(data.status_name || '').toLowerCase();
-      const played = parseInt(data.seconds_played, 10);
-      const remaining = parseInt(data.seconds_remaining, 10);
+      const played     = parseInt(data.seconds_played, 10);
+      const remaining  = parseInt(data.seconds_remaining, 10);
+      const playlist   = String(data.playlist_name || '').toLowerCase();
 
-      const hasPlayed = !isNaN(played);
-      const hasRemaining = !isNaN(remaining);
-      const duration = (hasPlayed && hasRemaining) ? (played + remaining) : null;
+      const hasPlayed     = !isNaN(played);
+      const hasRemaining  = !isNaN(remaining);
+      const duration      = (hasPlayed && hasRemaining) ? (played + remaining) : null;
 
-      // Treat a song that is at or below 1s remaining as effectively done for the bar,
-      // since RF may already be flipping to the next state.
+      // Treat <= 1s remaining as done
       const nearlyDone = hasRemaining && remaining <= 1;
 
-      // Only show a bar when FPP says we're playing AND the RF side thinks we're in showtime
+      // Determine whether we should show the bar:
+      // Only when FPP is playing AND we are in showtime AND not intermission
       const phase = lastPhase || 'idle';
+      const isIntermission = playlist.includes('intermission');
+
       const shouldShow =
         statusName === 'playing' &&
         duration != null &&
         hasPlayed &&
+        !nearlyDone &&
         phase === 'showtime' &&
-        !nearlyDone;
+        !isIntermission;
 
       if (!shouldShow) {
         window.LOFNowTiming = null;
@@ -991,17 +1013,18 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         return;
       }
 
+      // Cache timing
       window.LOFNowTiming = {
         duration: duration,
         elapsed: played,
         updatedAt: Date.now()
       };
 
-      // Use the elapsed value from FPP; bar will be refreshed on each poll
       updateNowProgress({
         duration: duration,
         elapsed: played
       });
+
     } catch (e) {
       console.warn('[LOF Viewer] FPP status fetch error:', e);
       window.LOFNowTiming = null;
@@ -1818,4 +1841,5 @@ document.addEventListener('click', function (e) {
   // FPP timing (for Now Playing progress bar)
   fetchFppStatus();
   setInterval(fetchFppStatus, 5000);
+  setInterval(tickNowProgress, 1000);
 })();
