@@ -944,7 +944,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
    * ------------------------- */
   async function fetchFppStatus() {
     try {
-      const res = await fetch('/wp-json/lof-viewer/v1/fpp/status', {
+      const res = await fetch('/wp-json/lof-extras/v1/fpp/status', {
         method: 'GET',
         credentials: 'same-origin',
         headers: { Accept: 'application/json' }

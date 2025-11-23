@@ -26,6 +26,12 @@ class LOF_API {
                 'callback'            => [__CLASS__, 'handle_speaker_press'],
                 'permission_callback' => '__return_true',
             ]);
+
+            register_rest_route('lof-extras/v1', '/fpp/status', [
+                'methods'             => 'GET',
+                'callback'            => [__CLASS__, 'fpp_status'],
+                'permission_callback' => '__return_true',
+            ]);
         });
     }
 
@@ -86,6 +92,106 @@ class LOF_API {
             'showtimes'    => $showtimes,
             'speaker'      => $speakerConfig,
         ];
+    }
+
+    /**
+     * FPP status proxy for Viewer 1.5.
+     *
+     * This delegates to the existing /lof-viewer/v1/fpp/status endpoint so that
+     * rf-viewer.js can call a stable lof-extras namespace without changing the
+     * underlying implementation during the 2025 season.
+     *
+     * TODO (post-season): Replace this proxy with a direct, minimal FPP integration
+     * that is independent of the Viewer v2 implementation.
+     */
+    public static function fpp_status(\WP_REST_Request $request) {
+        // Mini FPP status endpoint for Viewer 1.5.
+        // This calls FPP directly and returns a minimal, stable shape
+        // so that rf-viewer.js is not coupled to the Viewer v2 implementation.
+
+        // Pull FPP base URL from settings, with a couple of reasonable fallbacks.
+        $settings = get_option(LOF_Settings::OPTION_NAME, []);
+        $base     = '';
+
+        if (isset($settings['fpp_base_url']) && $settings['fpp_base_url'] !== '') {
+            $base = $settings['fpp_base_url'];
+        } elseif (isset($settings['fpp_host']) && $settings['fpp_host'] !== '') {
+            $base = $settings['fpp_host'];
+        } else {
+            // Legacy option key used in some earlier integrations.
+            $legacy = get_option('lof_viewer_fpp_base', '');
+            if (!empty($legacy)) {
+                $base = $legacy;
+            }
+        }
+
+        if (!$base) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'error'   => 'fpp_base_missing',
+                'message' => 'FPP base URL is not configured.',
+            ], 500);
+        }
+
+        $base = rtrim($base, '/');
+        $url  = $base . '/api/fppd/status';
+
+        $response = wp_remote_get($url, [
+            'timeout' => 3,
+        ]);
+
+        if (is_wp_error($response)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'error'   => 'fpp_request_failed',
+                'message' => $response->get_error_message(),
+            ], 502);
+        }
+
+        $code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+
+        if ($code < 200 || $code >= 300) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'error'   => 'fpp_bad_status',
+                'message' => 'FPP returned HTTP ' . $code,
+            ], 502);
+        }
+
+        $decoded = json_decode($body, true);
+        if (!is_array($decoded)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'error'   => 'fpp_invalid_json',
+                'message' => 'Could not decode FPP status JSON.',
+            ], 502);
+        }
+
+        // Shape a minimal, stable payload for the viewer.
+        $statusName       = isset($decoded['status_name']) ? (string) $decoded['status_name'] : '';
+        $secondsRemaining = isset($decoded['seconds_remaining']) ? (int) $decoded['seconds_remaining'] : 0;
+        $secondsPlayed    = isset($decoded['seconds_played']) ? (int) $decoded['seconds_played'] : 0;
+
+        // If scheduler.currentPlaylist exists, prefer its playlistName & secondsRemaining
+        $playlistName = '';
+        if (isset($decoded['scheduler']['currentPlaylist']['playlistName'])) {
+            $playlistName = (string) $decoded['scheduler']['currentPlaylist']['playlistName'];
+        }
+        if (isset($decoded['scheduler']['currentPlaylist']['secondsRemaining'])) {
+            $secondsRemaining = (int) $decoded['scheduler']['currentPlaylist']['secondsRemaining'];
+        }
+
+        $payload = [
+            'success'           => true,
+            'status_name'       => $statusName,
+            'seconds_remaining' => $secondsRemaining,
+            'seconds_played'    => $secondsPlayed,
+            'playlist_name'     => $playlistName,
+            'raw'               => $decoded,
+        ];
+
+        return new \WP_REST_Response($payload, 200);
     }
 
     protected static function parse_showtimes($json) {
