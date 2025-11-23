@@ -1832,8 +1832,15 @@ document.addEventListener('click', function (e) {
       return;
     }
 
-    // Enforce optional request limit for JUKEBOX mode
-    if (mode === 'JUKEBOX' && currentPrefs && typeof currentPrefs.jukeboxRequestLimit === 'number') {
+    // Enforce optional request limit for JUKEBOX mode.
+    // This is OFF by default unless explicitly enabled via LOF Extras / RF prefs
+    // with an `enforceRequestLimit` flag set to true.
+    if (
+      mode === 'JUKEBOX' &&
+      currentPrefs &&
+      currentPrefs.enforceRequestLimit === true &&
+      typeof currentPrefs.jukeboxRequestLimit === 'number'
+    ) {
       const limit = currentPrefs.jukeboxRequestLimit;
       if (limit > 0 && viewerStats && typeof viewerStats.requests === 'number' && viewerStats.requests >= limit) {
         const msg = lofCopy(
