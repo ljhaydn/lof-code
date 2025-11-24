@@ -787,7 +787,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       return;
     }
 
-    const total = Math.max(1, nowInfo.duration);
+        const total = Math.max(1, nowInfo.duration);
     const elapsed = Math.min(Math.max(0, nowInfo.elapsed), total);
     const remaining = total - elapsed;
     const pct = (elapsed / total) * 100;
@@ -795,12 +795,15 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     wrap.style.display = 'block';
     fill.style.width = pct + '%';
 
-    if (remaining <= 3) {
+    // If FPP is only giving us playlist-level timing (very long),
+    // avoid showing a ridiculous numeric time while still showing progress.
+    if (total > 30 * 60) {
+      label.textContent = 'Show in progress';
+    } else if (remaining <= 3) {
       label.textContent = 'Wrapping up…';
     } else {
       label.textContent = lofFormatTime(remaining) + ' remaining';
     }
-  
   }
   function tickNowProgress() {
     if (typeof window === 'undefined') return;
