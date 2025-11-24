@@ -1,5 +1,5 @@
 /* Root viewer container */
-.rf-viewer {
+#rf-viewer.rf-viewer {
   max-width: 1100px;
   margin: 0 auto;
   padding: 12px 0 24px;
@@ -35,71 +35,6 @@
 
   /* Common radius */
   --lof-card-radius: 12px;
-}
-
-/* Header area */
-/* Tighter, more intentional header spacing */
-.rf-viewer-header {
-  margin-bottom: 18px;
-  text-align: center;
-}
-
-@media (max-width: 700px) {
-  .rf-viewer {
-    /* Center the whole shell on smaller screens */
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-.rf-viewer-headline {
-  font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-
-.rf-viewer-subcopy {
-  margin-top: 4px;
-  font-size: 0.85rem;
-  opacity: 0.86;
-  max-width: 640px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Compact controls row under Now Playing */
-.rf-controls-row {
-  margin: 10px auto 10px;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.rf-ctl-link {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  background: radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 70%);
-  color: var(--lof-text-main);
-  font-size: 0.78rem;
-  padding: 4px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease, border-color 0.15s ease;
-}
-
-.rf-ctl-link:hover {
-  background: radial-gradient(circle at top, rgba(244, 208, 111, 0.26), transparent 70%);
-  border-color: rgba(244, 208, 111, 0.9);
-  box-shadow: 0 0 10px rgba(244, 208, 111, 0.7);
-  transform: translateY(-1px);
-}
-
-.rf-controls-row--disabled .rf-ctl-link {
-  opacity: 0.55;
-  cursor: default;
-  box-shadow: none;
 }
 
 /* Optional controls row (for Surprise Me etc.) */
@@ -309,10 +244,6 @@
   cursor: pointer;
 }
 
-/* Extra top padding only for cards that have a badge (Now/Next) */
-.rf-card--with-badge {
-  padding-top: 30px; /* adjust to taste; 28–32px usually looks great */
-}
 
 .rf-card::before {
   content: "";
@@ -409,60 +340,6 @@
     0 16px 30px rgba(0, 0, 0, 0.95);
 }
 
-/* Actions area (button anchored and centered) */
-.rf-card-actions {
-  position: relative;
-  margin-top: auto;  /* push to bottom */
-  display: flex;
-  justify-content: center;  /* center horizontally */
-}
-
-.rf-card-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 4px;
-  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
-  border: 1px solid rgba(244, 208, 111, 0.85);
-  color: var(--lof-text-main);
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
-  box-shadow:
-    0 0 10px rgba(32, 227, 178, 0.75),
-    0 5px 14px rgba(0, 0, 0, 0.8);
-  max-width: 100%;
-  text-align: center;
-  white-space: normal;
-  line-height: 1.2;
-}
-
-.rf-card-btn:hover {
-  background: linear-gradient(135deg, #23f0bf, #ffe08a);
-  border-color: rgba(255, 235, 143, 0.95);
-  box-shadow:
-    0 0 16px rgba(32, 227, 178, 0.9),
-    0 8px 18px rgba(0, 0, 0, 0.9);
-}
-
-.rf-card-btn:active {
-  transform: scale(0.96);
-}
-
-.rf-card-btn[disabled] {
-  background: linear-gradient(135deg, #18181C, #141418);
-  border-color: rgba(99, 115, 129, 0.9);
-  box-shadow: none;
-  opacity: 0.6;
-  cursor: not-allowed;
-}
 
 /* Extra panel for queue / leaderboard */
 .rf-extra-panel {
@@ -591,14 +468,6 @@
 /* ===========================
    LOF viewer tweaks – minimal
    =========================== */
-
-/* 1) Make cards behave like equal-height tiles
-      and pin the button at the bottom */
-.rf-card {
-  display: flex;
-  flex-direction: column;
-  padding-bottom: 30px; /* extra room so the "your pick is playing" chip sits above the button */
-}
 
 /* Meta/content stays at the top; actions go to the bottom */
 .rf-card-actions {
@@ -912,7 +781,7 @@
 
 /* Mobile refinements: keep everything airy but compact */
 @media (max-width: 700px) {
-  .rf-viewer {
+  #rf-viewer.rf-viewer {
     padding: 10px 14px 24px;
   }
 
@@ -1132,6 +1001,7 @@
 #rf-viewer .rf-viewer-header {
   margin-top: 12px;
   margin-bottom: 12px;
+  text-align: center;
 }
 
 #rf-viewer .rf-viewer-headline {
@@ -1144,6 +1014,10 @@
   margin-top: 4px;
   font-size: 0.9rem;
   color: var(--lof-text-muted);
+  max-width: 640px;
+  margin-left: auto;
+  margin-right: auto;
+  opacity: 0.86;
 }
 
 /* Controls row under header */
