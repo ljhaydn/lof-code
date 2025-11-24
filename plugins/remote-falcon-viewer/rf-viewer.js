@@ -1130,12 +1130,6 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         duration = played + remaining;
       }
 
-      // If the computed duration is clearly unreasonable for a single song
-      // (e.g., > 30 minutes), treat it as invalid so we don't show a huge bar.
-      if (duration != null && duration > 30 * 60) {
-        duration = null;
-      }
-
       // Treat <= 1s remaining as done
       const nearlyDone = hasRemaining && remaining <= 1;
 
