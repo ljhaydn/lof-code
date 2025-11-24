@@ -6,8 +6,9 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--lof-text-main);
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 60%),
-    linear-gradient(135deg, #061215, #0B1C20);
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.20), transparent 60%),
+    radial-gradient(circle at bottom, rgba(255, 94, 94, 0.08), transparent 65%),
+    linear-gradient(135deg, #040B0F, #0B1C20);
 }
 
 :root {
@@ -129,13 +130,13 @@
   border-radius: 10px;
   padding: 10px 12px;
   background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.32), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.26), transparent 55%),
-    linear-gradient(135deg, #061215, #0B1C20);
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.36), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.30), transparent 55%),
+    linear-gradient(135deg, #041014, #0B1C20);
   border: 1px solid var(--lof-accent-secondary);
   box-shadow:
-    0 0 24px rgba(22, 255, 172, 0.75),
-    0 10px 22px rgba(0, 0, 0, 0.8);
+    0 0 26px rgba(22, 255, 172, 0.9),
+    0 12px 24px rgba(0, 0, 0, 0.9);
 }
 
 /* Dim / intermission / idle state for Now Playing */
@@ -186,7 +187,7 @@
 .rf-now-progress-bar {
   position: relative;
   width: 100%;
-  height: 5px;
+  height: 6px;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.14);
@@ -296,13 +297,13 @@
   border-radius: var(--lof-card-radius);
   padding: 12px 14px 14px;
   background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.24), transparent 60%),
-    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.2), transparent 60%),
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.26), transparent 60%),
+    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.26), transparent 60%),
     linear-gradient(145deg, #061215, #0B1C20);
   border: 1px solid var(--lof-border-soft);
   box-shadow:
-    0 0 16px rgba(32, 227, 178, 0.4),
-    0 10px 24px rgba(0, 0, 0, 0.88);
+    0 0 18px rgba(32, 227, 178, 0.45),
+    0 12px 26px rgba(0, 0, 0, 0.9);
   overflow: hidden;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   cursor: pointer;
@@ -923,6 +924,9 @@
   .rf-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .rf-extra-panel {
@@ -967,6 +971,7 @@
   border-radius: 24px;
   background:
     radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
+    radial-gradient(circle at bottom, rgba(255, 94, 94, 0.08), transparent 70%),
     linear-gradient(135deg, #061215, #0B1C20);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
   border: 1px solid var(--lof-border-soft);

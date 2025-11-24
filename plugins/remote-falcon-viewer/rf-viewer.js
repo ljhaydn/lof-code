@@ -693,23 +693,29 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     let nowMatches = [];
     let queueMatches = [];
 
-    const nowName = nowSeq ? (nowSeq.name || nowSeq.displayName) : null;
-    if (nowName && requestedSongNames.includes(nowName)) {
-      nowMatches.push(nowName);
+    // Use internal name as the key, but friendly displayName as the label
+    const nowKeyName = nowSeq ? (nowSeq.name || nowSeq.displayName) : null;
+    const nowLabel   = nowSeq ? (nowSeq.displayName || nowSeq.name || '') : '';
+
+    if (nowKeyName && requestedSongNames.includes(nowKeyName)) {
+      nowMatches.push(nowLabel || nowKeyName);
     }
 
     if (Array.isArray(queue)) {
       for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
         if (!item || typeof item !== 'object') continue;
-        const seq = item.sequence || {};
-        const sName = seq.name || seq.displayName;
-        if (!sName) continue;
-        if (requestedSongNames.includes(sName)) {
+
+        const seq   = item.sequence || {};
+        const key   = seq.name || seq.displayName;              // internal key for matching
+        const label = seq.displayName || seq.name || '';        // friendly title for display
+
+        if (!key) continue;
+        if (requestedSongNames.includes(key)) {
           // Use the current index + 1 so the position tracks live queue order,
           // even if RF's stored "position" is not updated as the queue drains.
           const pos = i + 1;
-          queueMatches.push({ name: sName, pos });
+          queueMatches.push({ name: label || key, pos });
         }
       }
     }
