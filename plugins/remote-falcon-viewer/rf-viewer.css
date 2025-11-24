@@ -1017,3 +1017,281 @@
     font-size: 0.9rem;
     line-height: 1.4;
 }
+
+/* ======================================================
+ * Viewer 1.5 – Christmas polish & overrides (Lights on Falcon)
+ * These rules intentionally sit at the end to override any older theme/Remote Falcon styles.
+ * ====================================================== */
+
+#rf-viewer {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--lof-text-main);
+}
+
+/* Layout / grid */
+#rf-viewer .rf-main-layout {
+  align-items: flex-start;
+  gap: 24px;
+}
+
+#rf-viewer .rf-main-left,
+#rf-viewer .rf-main-right {
+  min-width: 0;
+}
+
+#rf-viewer .rf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+/* Song cards – chic aurora look */
+#rf-viewer .rf-card {
+  background:
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
+    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.10), transparent 70%),
+    linear-gradient(145deg, #061215, #0B1C20);
+  border-radius: 20px;
+  border: 1px solid var(--lof-border-soft);
+  padding: 14px 15px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.8);
+}
+
+#rf-viewer .rf-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 20px rgba(32, 227, 178, 0.9),
+    0 14px 26px rgba(0, 0, 0, 0.95);
+}
+
+/* Card text alignment */
+#rf-viewer .rf-card-title,
+#rf-viewer .rf-card-artist,
+#rf-viewer .rf-card-meta {
+  text-align: left;
+}
+
+/* Mobile layout – center the stack */
+@media (max-width: 700px) {
+  #rf-viewer .rf-main-layout {
+    flex-direction: column;
+  }
+
+  #rf-viewer .rf-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #rf-viewer .rf-card {
+    align-items: flex-start;
+  }
+
+  #rf-viewer .rf-extra-panel {
+    margin-top: 18px;
+  }
+}
+
+/* Now playing top panel */
+#rf-viewer .rf-status-panel {
+  border-radius: 20px;
+  padding: 14px 16px 12px;
+  background:
+    radial-gradient(circle at top, rgba(244, 208, 111, 0.25), transparent 60%),
+    linear-gradient(135deg, #061215, #0C2228);
+  border: 1px solid rgba(255, 235, 143, 0.35);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+}
+
+#rf-viewer .rf-now-progress {
+  margin-top: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+#rf-viewer .rf-now-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--lof-accent-primary), var(--lof-accent-secondary));
+}
+
+#rf-viewer .rf-now-progress-label {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--lof-text-muted);
+}
+
+/* Header + subcopy */
+#rf-viewer .rf-viewer-header {
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+#rf-viewer .rf-viewer-headline {
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+#rf-viewer .rf-viewer-subcopy {
+  margin-top: 4px;
+  font-size: 0.9rem;
+  color: var(--lof-text-muted);
+}
+
+/* Controls row under header */
+#rf-viewer .rf-controls-row {
+  margin-top: 8px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Controls row pill buttons */
+#rf-viewer .rf-ctl-link {
+  border-radius: 999px;
+  border: 1px solid rgba(135, 242, 255, 0.5);
+  background: rgba(6, 18, 21, 0.8);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  text-transform: none;
+  color: var(--lof-text-main);
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.15s ease;
+}
+
+#rf-viewer .rf-ctl-link:hover {
+  background: rgba(20, 70, 85, 0.95);
+  border-color: rgba(135, 242, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+#rf-viewer .rf-controls-row--disabled .rf-ctl-link {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Primary card CTA buttons – kill old purple / theme borders */
+#rf-viewer .rf-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 208, 111, 0.85);
+  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
+  color: #021010;
+  box-shadow:
+    0 0 12px rgba(32, 227, 178, 0.8),
+    0 6px 16px rgba(0, 0, 0, 0.9);
+  white-space: normal;
+}
+
+#rf-viewer .rf-card-btn:hover,
+#rf-viewer .rf-card-btn:focus-visible {
+  border-color: rgba(255, 235, 143, 0.95) !important;
+  background: linear-gradient(135deg, #23f0bf, #ffe08a);
+  box-shadow:
+    0 0 18px rgba(32, 227, 178, 0.95),
+    0 10px 22px rgba(0, 0, 0, 0.95);
+  outline: none;
+}
+
+#rf-viewer .rf-card-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+  box-shadow: none;
+}
+
+/* Badges + request chips */
+#rf-viewer .rf-card-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: rgba(6, 18, 21, 0.9);
+  border: 1px solid rgba(244, 208, 111, 0.7);
+  color: var(--lof-text-main);
+}
+
+#rf-viewer .rf-card-badge--now {
+  background: linear-gradient(135deg, rgba(244, 208, 111, 0.18), rgba(32, 227, 178, 0.18));
+}
+
+#rf-viewer .rf-card-badge--next {
+  background: linear-gradient(135deg, rgba(135, 242, 255, 0.14), rgba(244, 208, 111, 0.12));
+}
+
+#rf-viewer .rf-card-chip {
+  margin-top: 8px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  background: rgba(6, 18, 21, 0.9);
+  border: 1px dashed rgba(244, 208, 111, 0.7);
+  color: var(--lof-text-muted);
+}
+
+/* Extras panel, stats, speaker & glow cards */
+#rf-viewer .rf-extra-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#rf-viewer .rf-extra-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+#rf-viewer .rf-extra-sub {
+  font-size: 0.86rem;
+  color: var(--lof-text-muted);
+}
+
+/* Queue & leaderboard lists */
+#rf-viewer .rf-queue-list,
+#rf-viewer .rf-leaderboard-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+#rf-viewer .rf-queue-item,
+#rf-viewer .rf-leaderboard-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 0.86rem;
+}
+
+/* Tonight footer spacing */
+#rf-viewer .rf-tonight {
+  margin-top: 26px;
+}
+
+/* Glow card inside footer */
+#rf-viewer .rf-glow-card {
+  margin-top: 10px;
+}
