@@ -1134,17 +1134,15 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       const nearlyDone = hasRemaining && remaining <= 1;
 
       // Determine whether we should show the bar:
-      // Only when FPP is playing AND we are in showtime AND not intermission
+      // Only when FPP is playing and we have some timing info.
       const phase = lastPhase || 'idle';
       const isIntermission = playlist.includes('intermission');
 
       const shouldShow =
         statusName === 'playing' &&
         duration != null &&
-        hasPlayed &&
-        !nearlyDone &&
-        phase === 'showtime' &&
-        !isIntermission;
+        (hasPlayed || hasRemaining) &&
+        !nearlyDone;
 
       if (!shouldShow) {
         window.LOFNowTiming = null;
@@ -1152,16 +1150,22 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         return;
       }
 
+      // Compute a safe elapsed value even if only remaining time is available
+      let elapsedForTiming = hasPlayed ? played : (hasRemaining ? (duration - remaining) : 0);
+      if (!isFinite(elapsedForTiming) || elapsedForTiming < 0) {
+        elapsedForTiming = 0;
+      }
+
       // Cache timing
       window.LOFNowTiming = {
         duration: duration,
-        elapsed: played,
+        elapsed: elapsedForTiming,
         updatedAt: Date.now()
       };
 
       updateNowProgress({
         duration: duration,
-        elapsed: played
+        elapsed: elapsedForTiming
       });
 
     } catch (e) {
