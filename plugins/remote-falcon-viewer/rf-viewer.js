@@ -772,6 +772,26 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     return m + ':' + String(r).padStart(2, '0');
   }
 
+  // Helper to parse mm:ss or hh:mm:ss time strings (e.g., "2:34" or "1:02:03")
+  function lofParseTimeString(str) {
+    if (typeof str !== 'string') return NaN;
+    const parts = str.split(':');
+    if (parts.length === 2) {
+      const m = parseInt(parts[0], 10);
+      const s = parseInt(parts[1], 10);
+      if (isNaN(m) || isNaN(s)) return NaN;
+      return m * 60 + s;
+    }
+    if (parts.length === 3) {
+      const h = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10);
+      const s = parseInt(parts[2], 10);
+      if (isNaN(h) || isNaN(m) || isNaN(s)) return NaN;
+      return h * 3600 + m * 60 + s;
+    }
+    return NaN;
+  }
+
   function updateNowProgress(nowInfo) {
     const wrap  = document.querySelector('.rf-now-progress');
     const fill  = document.querySelector('.rf-now-progress-fill');
@@ -787,7 +807,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       return;
     }
 
-        const total = Math.max(1, nowInfo.duration);
+    const total = Math.max(1, nowInfo.duration);
     const elapsed = Math.min(Math.max(0, nowInfo.elapsed), total);
     const remaining = total - elapsed;
     const pct = (elapsed / total) * 100;
@@ -795,11 +815,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     wrap.style.display = 'block';
     fill.style.width = pct + '%';
 
-    // If FPP is only giving us playlist-level timing (very long),
-    // avoid showing a ridiculous numeric time while still showing progress.
-    if (total > 30 * 60) {
-      label.textContent = 'Show in progress';
-    } else if (remaining <= 3) {
+    if (remaining <= 3) {
       label.textContent = 'Wrapping up…';
     } else {
       label.textContent = lofFormatTime(remaining) + ' remaining';
@@ -1094,20 +1110,40 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       }
 
       const statusName = String(data.status_name || '').toLowerCase();
+      const rawStatus = (data && typeof data.raw === 'object') ? data.raw : {};
 
       // Prefer per-song timing from the LOF mini endpoint if available.
-      // Fallback to the older playlist-level fields only when necessary.
-      const songPlayedRaw =
+      // We explicitly favor the nested "raw" values for current song over the
+      // top-level playlist seconds_remaining (which can be hours long).
+      let songPlayedRaw =
         data.song_seconds_played ??
         data.current_song_seconds_played ??
         data.sequence_seconds_played ??
-        data.seconds_played;
+        rawStatus.seconds_played ??
+        rawStatus.seconds_elapsed ??
+        data.seconds_played ??
+        data.seconds_elapsed;
 
-      const songRemainingRaw =
+      let songRemainingRaw =
         data.song_seconds_remaining ??
         data.current_song_seconds_remaining ??
         data.sequence_seconds_remaining ??
-        data.seconds_remaining;
+        rawStatus.seconds_remaining ??
+        null;
+
+      // If we still don't have a remaining seconds value, try parsing time strings
+      if (songRemainingRaw == null && typeof rawStatus.time_remaining === 'string') {
+        const parsed = lofParseTimeString(rawStatus.time_remaining);
+        if (!isNaN(parsed)) {
+          songRemainingRaw = parsed;
+        }
+      }
+      if (songRemainingRaw == null && typeof data.time_remaining === 'string') {
+        const parsed = lofParseTimeString(data.time_remaining);
+        if (!isNaN(parsed)) {
+          songRemainingRaw = parsed;
+        }
+      }
 
       const songDurationRaw =
         data.song_duration ??
@@ -1130,19 +1166,19 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         duration = played + remaining;
       }
 
-      // Treat <= 1s remaining as done
-      const nearlyDone = hasRemaining && remaining <= 1;
+      // If we don't have sane per-song timing, don't show the bar.
+      if (!duration || duration <= 1 || !hasPlayed) {
+        window.LOFNowTiming = null;
+        updateNowProgress(null);
+        return;
+      }
 
-      // Determine whether we should show the bar:
-      // Only when FPP is playing and we have some timing info.
       const phase = lastPhase || 'idle';
-      const isIntermission = playlist.includes('intermission');
 
+      // Show the bar only when RF/FPP report "playing" AND the viewer is in SHOWTIME phase.
       const shouldShow =
         statusName === 'playing' &&
-        duration != null &&
-        (hasPlayed || hasRemaining) &&
-        !nearlyDone;
+        phase === 'showtime';
 
       if (!shouldShow) {
         window.LOFNowTiming = null;
@@ -1150,22 +1186,15 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         return;
       }
 
-      // Compute a safe elapsed value even if only remaining time is available
-      let elapsedForTiming = hasPlayed ? played : (hasRemaining ? (duration - remaining) : 0);
-      if (!isFinite(elapsedForTiming) || elapsedForTiming < 0) {
-        elapsedForTiming = 0;
-      }
-
-      // Cache timing
       window.LOFNowTiming = {
         duration: duration,
-        elapsed: elapsedForTiming,
+        elapsed: played,
         updatedAt: Date.now()
       };
 
       updateNowProgress({
         duration: duration,
-        elapsed: elapsedForTiming
+        elapsed: played
       });
 
     } catch (e) {
