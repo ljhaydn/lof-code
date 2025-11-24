@@ -721,22 +721,35 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     }
 
     let text = '';
-    if (nowMatches.length > 0) {
-      if (nowMatches.length === 1) {
-        text = `Your request “${nowMatches[0]}” is playing right now. Enjoy the glow ✨`;
-      } else {
-        text = `One of your picks is playing now! (${nowMatches.join(', ')})`;
+    const hasNowMatches = nowMatches.length > 0;
+    const hasQueueMatches = queueMatches.length > 0;
+
+    if (hasNowMatches || hasQueueMatches) {
+      const parts = [];
+
+      if (hasNowMatches) {
+        if (nowMatches.length === 1) {
+          parts.push(`Your request “${nowMatches[0]}” is playing right now. Enjoy the glow ✨`);
+        } else {
+          parts.push(`One of your picks is playing now! (${nowMatches.join(', ')})`);
+        }
       }
-    } else if (queueMatches.length > 0) {
-      if (queueMatches.length === 1) {
-        const item = queueMatches[0];
-        text = `Your song “${item.name}” is currently #${item.pos} in the queue.`;
-      } else {
-        const parts = queueMatches
-          .sort((a, b) => a.pos - b.pos)
-          .map((x) => `“${x.name}” (#${x.pos})`);
-        text = `Your picks are moving up: ${parts.join(', ')}`;
+
+      if (hasQueueMatches) {
+        if (queueMatches.length === 1) {
+          const item = queueMatches[0];
+          const queueText = `Your song “${item.name}” is currently #${item.pos} in the queue.`;
+          parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
+        } else {
+          const queueParts = queueMatches
+            .sort((a, b) => a.pos - b.pos)
+            .map((x) => `“${x.name}” (#${x.pos})`);
+          const queueText = `Your picks are moving up: ${queueParts.join(', ')}`;
+          parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
+        }
       }
+
+      text = parts.join(' ');
     } else {
       text = 'Your previous requests have played. Pick another to keep the show moving. 🎶';
     }
@@ -1078,13 +1091,47 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       }
 
       const statusName = String(data.status_name || '').toLowerCase();
-      const played     = parseInt(data.seconds_played, 10);
-      const remaining  = parseInt(data.seconds_remaining, 10);
-      const playlist   = String(data.playlist_name || '').toLowerCase();
 
-      const hasPlayed     = !isNaN(played);
-      const hasRemaining  = !isNaN(remaining);
-      const duration      = (hasPlayed && hasRemaining) ? (played + remaining) : null;
+      // Prefer per-song timing from the LOF mini endpoint if available.
+      // Fallback to the older playlist-level fields only when necessary.
+      const songPlayedRaw =
+        data.song_seconds_played ??
+        data.current_song_seconds_played ??
+        data.sequence_seconds_played ??
+        data.seconds_played;
+
+      const songRemainingRaw =
+        data.song_seconds_remaining ??
+        data.current_song_seconds_remaining ??
+        data.sequence_seconds_remaining ??
+        data.seconds_remaining;
+
+      const songDurationRaw =
+        data.song_duration ??
+        data.current_song_duration ??
+        data.sequence_duration ??
+        null;
+
+      const played    = parseInt(songPlayedRaw, 10);
+      const remaining = parseInt(songRemainingRaw, 10);
+      const playlist  = String(data.playlist_name || '').toLowerCase();
+
+      const hasPlayed    = !isNaN(played);
+      const hasRemaining = !isNaN(remaining);
+
+      let duration = null;
+
+      if (songDurationRaw != null && !isNaN(parseInt(songDurationRaw, 10))) {
+        duration = parseInt(songDurationRaw, 10);
+      } else if (hasPlayed && hasRemaining) {
+        duration = played + remaining;
+      }
+
+      // If the computed duration is clearly unreasonable for a single song
+      // (e.g., > 30 minutes), treat it as invalid so we don't show a huge bar.
+      if (duration != null && duration > 30 * 60) {
+        duration = null;
+      }
 
       // Treat <= 1s remaining as done
       const nearlyDone = hasRemaining && remaining <= 1;
