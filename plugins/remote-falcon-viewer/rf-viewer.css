@@ -66,9 +66,9 @@
   padding: 10px 12px;
   background:
     radial-gradient(circle at top left, rgba(32, 227, 178, 0.36), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.30), transparent 55%),
-    linear-gradient(135deg, #041014, #0B1C20);
-  border: 1px solid var(--lof-accent-secondary);
+    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.26), transparent 55%),
+    linear-gradient(135deg, #03161C, #071F26);
+  border: none;
   box-shadow:
     0 0 26px rgba(22, 255, 172, 0.9),
     0 12px 24px rgba(0, 0, 0, 0.9);
@@ -78,9 +78,9 @@
 .rf-now.rf-now--dim {
   background:
     radial-gradient(circle at top left, rgba(32, 227, 178, 0.14), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.12), transparent 55%),
-    linear-gradient(135deg, #071218, #101A1F);
-  border-color: rgba(244, 208, 111, 0.55);
+    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.18), transparent 55%),
+    linear-gradient(135deg, #04151C, #081C22);
+  border: none;
   box-shadow:
     0 0 10px rgba(22, 255, 172, 0.35),
     0 6px 14px rgba(0, 0, 0, 0.7);
@@ -254,7 +254,7 @@
   pointer-events: none;
 }
 
-.rf-card:hover {
+.rf-grid .rf-card:hover {
   transform: translateY(-4px);
   box-shadow:
     0 0 22px rgba(32, 227, 178, 0.7),
@@ -331,6 +331,7 @@
     0 0 30px rgba(22, 255, 172, 0.9),
     0 0 34px rgba(255, 235, 143, 0.9) !important;
   border-color: var(--lof-accent-secondary) !important;
+  animation: lof-now-playing-pulse 3.2s ease-in-out infinite;
 }
 
 /* Next up glow */
@@ -511,9 +512,12 @@
 }
 /* Chip that shows on cards the viewer has requested */
 .rf-card-chip {
-  position: absolute;
-  left: 12px;
-  bottom: 12px;
+  position: relative;
+  left: auto;
+  bottom: auto;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 6px;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -822,6 +826,23 @@
     font-size: 0.8rem;
   }
 }
+@keyframes lof-now-playing-pulse {
+  0% {
+    box-shadow:
+      0 0 16px rgba(22, 255, 172, 0.7),
+      0 0 22px rgba(255, 235, 143, 0.75);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(22, 255, 172, 0.95),
+      0 0 40px rgba(255, 235, 143, 1);
+  }
+  100% {
+    box-shadow:
+      0 0 16px rgba(22, 255, 172, 0.7),
+      0 0 22px rgba(255, 235, 143, 0.75);
+  }
+}
 
 @keyframes lof-progress-shimmer {
   0% {
@@ -929,7 +950,7 @@
   box-shadow: 0 16px 30px rgba(0, 0, 0, 0.8);
 }
 
-#rf-viewer .rf-card:hover {
+#rf-viewer .rf-grid .rf-card:hover {
   transform: translateY(-3px);
   box-shadow:
     0 0 20px rgba(32, 227, 178, 0.9),
@@ -940,7 +961,8 @@
 #rf-viewer .rf-card-title,
 #rf-viewer .rf-card-artist,
 #rf-viewer .rf-card-meta {
-  text-align: left;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 /* Mobile layout – center the stack */
