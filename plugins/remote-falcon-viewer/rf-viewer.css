@@ -43,9 +43,25 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--lof-text-main);
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.24), transparent 60%),
-    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.12), transparent 65%),
-    linear-gradient(135deg, #02080B, #061215);
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.28), transparent 60%),
+    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.18), transparent 65%),
+    linear-gradient(135deg, #01070C, #04131A);
+}
+
+#rf-viewer.rf-viewer::before {
+  content: "";
+  display: block;
+  height: 3px;
+  max-width: 260px;
+  margin: 0 auto 8px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    #FF5E5E 0 10px,
+    #FFFFFF 10px 20px,
+    #FFBFBF 20px 30px
+  );
+  box-shadow: 0 0 10px rgba(255, 235, 143, 0.75);
 }
 
 /* Phase-based subtle variants (used by JS) */
@@ -134,9 +150,9 @@
   border-radius: 20px;
   padding: 14px 16px 12px;
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.20), transparent 60%),
-    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.16), transparent 65%),
-    linear-gradient(135deg, #061215, #0C2228);
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.24), transparent 60%),
+    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.16), transparent 65%),
+    linear-gradient(135deg, #041017, #071A20);
   border: 1px solid rgba(255, 235, 143, 0.35);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
 }
@@ -328,29 +344,29 @@
   font-weight: 600;
   margin-bottom: 4px;
   font-size: 1rem;
-  text-align: left;
+  text-align: center;
 }
 
 #rf-viewer .rf-card-artist {
   font-size: 0.82rem;
   opacity: 0.85;
   margin-bottom: 6px;
-  text-align: left;
+  text-align: center;
 }
 
 #rf-viewer .rf-card-meta {
   font-size: 0.8rem;
   display: flex;
-  justify-content: flex-start;
+  justify-content: center;
   gap: 8px;
   opacity: 0.85;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 /* Badges – now part of normal flow (no overlap) */
 #rf-viewer .rf-card-badge {
   align-self: flex-end;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
   padding: 2px 7px;
   border-radius: 999px;
   font-size: 0.68rem;
@@ -363,6 +379,10 @@
   background: rgba(6, 18, 21, 0.9);
   border: 1px solid rgba(244, 208, 111, 0.7);
   color: var(--lof-text-main);
+}
+
+#rf-viewer .rf-card-badge + .rf-card-badge {
+  margin-top: 4px;
 }
 
 /* NOW / NEXT badge colors */
@@ -392,7 +412,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 6px;
+  margin-top: 10px;
   padding: 6px 14px;
   font-size: 0.8rem;
   border-radius: 999px;
@@ -424,7 +444,7 @@
 
 /* “You picked this” chip */
 #rf-viewer .rf-card-chip {
-  margin-top: 8px;
+  margin-top: 10px;
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 0.75rem;
@@ -548,6 +568,7 @@
     0 0 16px rgba(135, 242, 255, 0.6),
     0 10px 24px rgba(0, 0, 0, 0.9);
   cursor: default;
+  text-align: center;
 }
 
 .rf-speaker-card:hover {
