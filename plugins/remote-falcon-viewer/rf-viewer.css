@@ -48,21 +48,6 @@
     linear-gradient(135deg, #01070C, #04131A);
 }
 
-#rf-viewer.rf-viewer::before {
-  content: "";
-  display: block;
-  height: 3px;
-  max-width: 260px;
-  margin: 0 auto 8px;
-  border-radius: 999px;
-  background: repeating-linear-gradient(
-    90deg,
-    #FF5E5E 0 10px,
-    #FFFFFF 10px 20px,
-    #FFBFBF 20px 30px
-  );
-  box-shadow: 0 0 10px rgba(255, 235, 143, 0.75);
-}
 
 /* Phase-based subtle variants (used by JS) */
 #rf-viewer.rf-phase-intermission {
@@ -166,6 +151,7 @@
 
 /* NOW PLAYING card */
 .rf-now {
+  position: relative;
   border-radius: 16px;
   padding: 10px 12px 12px;
   background:
@@ -176,6 +162,23 @@
   box-shadow:
     0 0 26px rgba(22, 255, 172, 0.9),
     0 12px 24px rgba(0, 0, 0, 0.9);
+}
+
+.rf-now::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  right: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    90deg,
+    #FF5E5E 0 10px,
+    #FFFFFF 10px 20px,
+    #FFBFBF 20px 30px
+  );
+  box-shadow: 0 0 8px rgba(255, 235, 143, 0.85);
 }
 
 /* Dim / intermission */
@@ -365,8 +368,9 @@
 
 /* Badges – now part of normal flow (no overlap) */
 #rf-viewer .rf-card-badge {
-  align-self: flex-end;
-  margin-bottom: 6px;
+  align-self: center;
+  margin-top: 2px;
+  margin-bottom: 8px;
   padding: 2px 7px;
   border-radius: 999px;
   font-size: 0.68rem;
@@ -412,7 +416,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 12px;
   padding: 6px 14px;
   font-size: 0.8rem;
   border-radius: 999px;
@@ -444,7 +448,7 @@
 
 /* “You picked this” chip */
 #rf-viewer .rf-card-chip {
-  margin-top: 10px;
+  margin-top: 12px;
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 0.75rem;
@@ -682,11 +686,13 @@
   padding: 0.9rem 1.1rem;
   border-radius: 0.9rem;
   border: 1px solid var(--lof-border-soft);
-  background: linear-gradient(
-    135deg,
-    rgba(32, 227, 178, 0.18),
-    rgba(244, 208, 111, 0.32)
-  );
+  background:
+    radial-gradient(circle at top left, rgba(135, 242, 255, 0.24), transparent 60%),
+    radial-gradient(circle at bottom right, rgba(32, 227, 178, 0.20), transparent 60%),
+    linear-gradient(135deg, #041018, #071C22);
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.75),
+    0 0 18px rgba(135, 242, 255, 0.45);
   backdrop-filter: blur(10px);
 }
 
