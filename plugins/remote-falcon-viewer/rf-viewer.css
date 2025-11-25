@@ -58,9 +58,9 @@
 
 #rf-viewer.rf-phase-showtime {
   background:
-    radial-gradient(circle at top, rgba(244, 208, 111, 0.16), transparent 55%),
-    radial-gradient(circle at bottom, rgba(135, 242, 255, 0.16), transparent 65%),
-    linear-gradient(135deg, #061215, #0B1C20);
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.28), transparent 55%),
+    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.22), transparent 65%),
+    linear-gradient(135deg, #01070C, #04131A);
 }
 
 /* ---------- Header & controls ---------- */
