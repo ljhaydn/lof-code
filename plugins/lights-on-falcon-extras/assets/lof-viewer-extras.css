@@ -1,10 +1,11 @@
 /* ======================================
  * Lights on Falcon Viewer Extras styles
- * Aligned with Black Forest Christmas skin
+ * Toast + pills, aligned to main skin
  * ====================================== */
 
-/* Toast */
-#lof-toast.lof-toast {
+/* Toast – matches rf-viewer.js (id=rf-toast, class=rf-toast, .show) */
+
+#rf-toast.rf-toast {
   position: fixed;
   left: 50%;
   bottom: 1.5rem;
@@ -13,12 +14,12 @@
   padding: 0.75rem 1.25rem;
   border-radius: 999px;
   font-size: 0.9rem;
-  background: rgba(3, 8, 10, 0.96);
-  color: #FDFBF6;
-  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(3, 8, 10, 0.98);
+  color: #fffdf8;
+  border: 1px solid rgba(255, 216, 116, 0.85);
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.8),
-    0 0 16px rgba(2, 8, 9, 0.9);
+    0 18px 40px rgba(0, 0, 0, 0.9),
+    0 0 18px rgba(0, 0, 0, 0.95);
   opacity: 0;
   pointer-events: none;
   transition:
@@ -27,12 +28,17 @@
   z-index: 9999;
 }
 
-#lof-toast.lof-toast--visible {
+#rf-toast.rf-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0%);
 }
 
-/* Pill bar */
+/* Optional error accent (rf-viewer.js adds rf-toast--error) */
+#rf-toast.rf-toast.rf-toast--error {
+  border-color: rgba(255, 59, 78, 0.9);
+}
+
+/* Pills bar under header (if used) */
 
 #lof-extras-bar.lof-extras-bar {
   display: flex;
@@ -46,14 +52,14 @@
 
 .lof-pill-button {
   border-radius: 999px;
-  border: 1px solid rgba(248, 225, 168, 0.55);
+  border: 1px solid rgba(255, 216, 116, 0.75);
   padding: 0.4rem 0.95rem;
   font-size: 0.82rem;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: rgba(5, 13, 17, 0.96);
-  color: #FDFBF6;
+  background: rgba(5, 13, 17, 0.98);
+  color: #fffdf8;
   cursor: pointer;
   white-space: nowrap;
   justify-content: center;
@@ -67,12 +73,13 @@
 }
 
 .lof-pill-button:hover {
-  background: linear-gradient(135deg, #07161C, #0D232A);
-  border-color: rgba(248, 225, 168, 0.9);
+  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 60%),
+              linear-gradient(135deg, #061621, #0b2732);
+  border-color: rgba(255, 216, 116, 0.95);
   transform: translateY(-1px);
   box-shadow:
-    0 0 14px rgba(248, 225, 168, 0.8),
-    0 12px 26px rgba(0, 0, 0, 0.96);
+    0 0 16px rgba(255, 216, 116, 0.9),
+    0 12px 26px rgba(0, 0, 0, 0.98);
 }
 
 .lof-pill-button:active {
@@ -84,23 +91,23 @@
 /* Sub accents */
 
 .lof-pill-button--glow {
-  border-color: rgba(248, 225, 168, 0.95);
+  border-color: rgba(255, 216, 116, 0.98);
 }
 
 .lof-pill-button--speaker {
-  border-color: rgba(168, 223, 255, 0.8);
+  border-color: rgba(184, 232, 255, 0.9);
 }
 
 .lof-pill-button--surprise {
-  border-color: rgba(197, 50, 50, 0.95);
+  border-color: rgba(255, 59, 78, 0.95);
 }
 
 /* Tiny chaos for Surprise */
 
 .lof-pill-button--surprise:hover span {
   text-shadow:
-    0 0 6px rgba(197, 50, 50, 0.9),
-    0 0 10px rgba(248, 225, 168, 0.95);
+    0 0 7px rgba(255, 59, 78, 0.9),
+    0 0 10px rgba(255, 255, 255, 1);
 }
 
 /* Layout helpers */
