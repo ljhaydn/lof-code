@@ -208,13 +208,11 @@
   width: 0%;
   border-radius: 999px;
   background: repeating-linear-gradient(
-    90deg,
+    135deg,
     #FF5E5E 0 10px,
     #FFFFFF 10px 20px
   );
-  background-size: 200% 100%;
   transition: width 0.25s linear;
-  animation: lof-progress-shimmer 3s linear infinite;
   box-shadow: 0 0 10px rgba(255, 235, 143, 0.6);
 }
 
