@@ -15,13 +15,13 @@
   --lof-surface-soft: #1C2E33;    /* Frosted Graphite */
 
   /* Primary accents */
-  --lof-accent-primary: #20E3B2;  /* Evergreen Aurora */
-  --lof-accent-secondary: #F4D06F;/* Candlelight Gold */
+  --lof-accent-primary: #16B86B;  /* Deep Evergreen */
+  --lof-accent-secondary: #FFDE8A;/* Soft Candlelight Gold */
   --lof-accent-cta: #FF5E5E;      /* Sleighbell Red (rare / CTA) */
 
   /* Glow colors */
-  --lof-glow-evergreen: #16FFAC;  /* Evergreen Neon */
-  --lof-glow-gold: #FFEB8F;       /* Solstice Gold Glow */
+  --lof-glow-evergreen: #42F4A4;  /* Evergreen Glow */
+  --lof-glow-gold: #FFECAA;       /* Warm Solstice Glow */
   --lof-glow-ice: #87F2FF;        /* Polar Radiance */
 
   /* Text and borders */
@@ -413,7 +413,8 @@
   background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
   color: #021010;
   box-shadow:
-    0 0 12px rgba(32, 227, 178, 0.8),
+    0 0 10px rgba(66, 244, 164, 0.8),
+    0 0 18px rgba(255, 236, 170, 0.75),
     0 6px 16px rgba(0, 0, 0, 0.9);
   white-space: normal;
   text-align: center;
@@ -422,9 +423,10 @@
 #rf-viewer .rf-card-btn:hover,
 #rf-viewer .rf-card-btn:focus-visible {
   border-color: rgba(255, 235, 143, 0.95) !important;
-  background: linear-gradient(135deg, #23f0bf, #ffe08a);
+  background: linear-gradient(135deg, #1ACB76, #FFE39A);
   box-shadow:
-    0 0 18px rgba(32, 227, 178, 0.95),
+    0 0 16px rgba(66, 244, 164, 0.9),
+    0 0 22px rgba(255, 236, 170, 0.9),
     0 10px 22px rgba(0, 0, 0, 0.95);
   outline: none;
 }
@@ -449,8 +451,8 @@
 /* Now playing / next card glows */
 #rf-viewer .rf-card--now-playing {
   box-shadow:
-    0 0 30px rgba(22, 255, 172, 0.9),
-    0 0 34px rgba(255, 235, 143, 0.9) !important;
+    0 0 20px rgba(22, 255, 172, 0.75),
+    0 0 26px rgba(255, 235, 143, 0.85) !important;
   border-color: var(--lof-accent-secondary) !important;
   animation: lof-now-playing-pulse 3.2s ease-in-out infinite;
 }
@@ -580,14 +582,16 @@
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(135deg, #20E3B2, #F4D06F);
+  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
   color: #020306;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 .rf-speaker-btn:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 0 14px rgba(22, 255, 172, 0.7);
+  box-shadow:
+    0 0 14px rgba(66, 244, 164, 0.8),
+    0 0 18px rgba(255, 236, 170, 0.8);
 }
 
 /* Glow card (Send a Glow) */
