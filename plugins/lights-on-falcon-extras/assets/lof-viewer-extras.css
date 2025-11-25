@@ -154,3 +154,189 @@
     font-size: 0.85rem;
   }
 }
+
+/* =====================================================
+ * Lights on Falcon Extras – Midnight Evergreen alignment
+ * =================================================== */
+
+/* Pills row (Need sound / Send a glow / Surprise me) */
+.lof-pill-group {
+  gap: 0.5rem;
+}
+
+/* Base pill button aligned with main viewer palette */
+.lof-pill-button {
+  border-radius: 999px;
+  background: rgba(6, 18, 21, 0.92);
+  border: 1px solid rgba(244, 211, 138, 0.55);
+  color: #FDFBF6;
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.9);
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out,
+    transform 100ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.lof-pill-button:hover {
+  background: linear-gradient(135deg, #0B1C21, #12252C);
+  border-color: rgba(244, 211, 138, 0.9);
+  transform: translateY(-1px);
+  box-shadow:
+    0 0 14px rgba(244, 211, 138, 0.7),
+    0 12px 26px rgba(0, 0, 0, 0.95);
+}
+
+.lof-pill-button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.9);
+}
+
+/* Subtle accent by type (no neon) */
+.lof-pill-button--glow {
+  border-color: rgba(244, 211, 138, 0.9);
+}
+
+.lof-pill-button--speaker {
+  border-color: rgba(180, 229, 255, 0.7);
+}
+
+.lof-pill-button--surprise {
+  border-color: rgba(210, 58, 58, 0.85);
+}
+
+/* Tiny “chaos” micro-moment on Surprise Me (CSS-only) */
+.lof-pill-button--surprise:hover span {
+  text-shadow:
+    0 0 6px rgba(210, 58, 58, 0.8),
+    0 0 10px rgba(244, 211, 138, 0.9);
+}
+
+/* Tonight panel – same console, softer glow */
+#lof-tonight-panel.lof-tonight-panel {
+  background:
+    radial-gradient(circle at top, rgba(244, 211, 138, 0.18), transparent 70%),
+    linear-gradient(145deg, #050D11, #09171F);
+  border-radius: 18px;
+  border: 1px solid rgba(244, 211, 138, 0.38);
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.9);
+}
+
+/* Aurora edge on Tonight panel (subtle northern lights) */
+#lof-tonight-panel.lof-tonight-panel::before {
+  content: "";
+  position: absolute;
+  inset: -1px -2px auto -2px;
+  height: 12px;
+  border-radius: 18px 18px 40px 40px;
+  background: linear-gradient(90deg,
+    rgba(180, 229, 255, 0.18),
+    rgba(244, 211, 138, 0.35),
+    rgba(210, 58, 58, 0.22)
+  );
+  opacity: 0.9;
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+/* Tonight heading + body */
+.lof-tonight-heading {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FDFBF6;
+}
+
+#lof-tonight-body.lof-tonight-body p {
+  color: #C5D1D5;
+}
+
+/* Send-a-Glow form / inputs */
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-input,
+#lof-tonight-panel.lof-tonight-panel textarea,
+#lof-tonight-panel.lof-tonight-panel input[type="text"],
+#lof-tonight-panel.lof-tonight-panel input[type="email"] {
+  background: rgba(2, 8, 9, 0.9);
+  border-radius: 999px;
+  border: 1px solid rgba(34, 51, 57, 0.9);
+  color: #FDFBF6;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+  transition:
+    border-color 140ms ease-out,
+    box-shadow 140ms ease-out,
+    background 140ms ease-out;
+}
+
+#lof-tonight-panel.lof-tonight-panel textarea {
+  border-radius: 14px;
+  resize: vertical;
+}
+
+/* Focus – micro magic, not neon */
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-input:focus,
+#lof-tonight-panel.lof-tonight-panel textarea:focus,
+#lof-tonight-panel.lof-tonight-panel input[type="text"]:focus,
+#lof-tonight-panel.lof-tonight-panel input[type="email"]:focus {
+  outline: none;
+  border-color: rgba(244, 211, 138, 0.9);
+  box-shadow:
+    0 0 0 1px rgba(244, 211, 138, 0.8),
+    0 0 18px rgba(244, 211, 138, 0.7);
+}
+
+/* “Send this glow ✨” button aligned with main CTA style */
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit {
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0F7A4A, #1E915C);
+  border: 1px solid rgba(244, 211, 138, 0.9);
+  color: #FDFBF6;
+  font-weight: 600;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.95),
+    0 0 14px rgba(244, 211, 138, 0.8);
+  transition:
+    transform 90ms ease-out,
+    box-shadow 120ms ease-out,
+    background 140ms ease-out;
+}
+
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #145F3B, #1A7B4B);
+}
+
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.9);
+}
+
+/* Tiny “breath” animation hook when JS wants to celebrate a send */
+#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit.lof-glow-sent {
+  animation: lof-glow-send-pulse 420ms ease-out;
+}
+
+@keyframes lof-glow-send-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow:
+      0 10px 26px rgba(0, 0, 0, 0.95),
+      0 0 14px rgba(244, 211, 138, 0.8);
+  }
+  40% {
+    transform: scale(1.03);
+    box-shadow:
+      0 0 26px rgba(244, 211, 138, 1),
+      0 0 40px rgba(210, 58, 58, 0.7);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 10px 26px rgba(0, 0, 0, 0.95),
+      0 0 14px rgba(244, 211, 138, 0.8);
+  }
+}
