@@ -65,9 +65,9 @@
   border-radius: 10px;
   padding: 10px 12px;
   background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.36), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.26), transparent 55%),
-    linear-gradient(135deg, #03161C, #071F26);
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.4), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.3), transparent 55%),
+    linear-gradient(135deg, #021218, #041F25);
   border: none;
   box-shadow:
     0 0 26px rgba(22, 255, 172, 0.9),
@@ -77,9 +77,9 @@
 /* Dim / intermission / idle state for Now Playing */
 .rf-now.rf-now--dim {
   background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.14), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.18), transparent 55%),
-    linear-gradient(135deg, #04151C, #081C22);
+    radial-gradient(circle at top left, rgba(32, 227, 178, 0.18), transparent 55%),
+    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.22), transparent 55%),
+    linear-gradient(135deg, #03151E, #071F26);
   border: none;
   box-shadow:
     0 0 10px rgba(22, 255, 172, 0.35),
@@ -267,12 +267,6 @@
   transform: scale(0.97);
 }
 
-/* Center text content */
-.rf-card-title,
-.rf-card-artist,
-.rf-card-meta {
-  text-align: center;
-}
 
 .rf-card-title {
   position: relative;
@@ -303,12 +297,16 @@
   position: absolute;
   top: 8px;
   right: 10px;
-  padding: 2px 8px;
+  padding: 2px 7px;
   border-radius: 999px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  max-width: 64%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
   z-index: 5;
 }
 
@@ -533,8 +531,8 @@
 
 /* Extra padding for cards with badges so text never collides on wrap */
 .rf-card--with-badge {
-  padding-top: 30px;
-  padding-right: 80px;
+  padding-top: 32px;
+  padding-right: 88px;
 }
 
 @media (min-width: 900px) {
@@ -889,8 +887,8 @@
   padding: 18px 22px 22px;
   border-radius: 24px;
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
-    radial-gradient(circle at bottom, rgba(255, 94, 94, 0.08), transparent 70%),
+    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 65%),
+    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.12), transparent 70%),
     linear-gradient(135deg, #061215, #0B1C20);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
   border: 1px solid var(--lof-border-soft);
