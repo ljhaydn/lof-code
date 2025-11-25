@@ -1,6 +1,6 @@
 /* ======================================================
  * Lights on Falcon – Remote Falcon Viewer 1.5
- * Black Forest Christmas Skin
+ * Black Forest Christmas – Chaos Edition
  * ====================================================== */
 
 /* ---------- Design tokens ---------- */
@@ -33,30 +33,50 @@
 /* ---------- Root viewer shell ---------- */
 
 #rf-viewer.rf-viewer {
+  position: relative;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 14px 0 26px;
+  padding: 14px 0 28px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--lof-text-main);
   background:
-    radial-gradient(circle at top, rgba(8, 38, 44, 0.8), transparent 60%),
-    radial-gradient(circle at bottom, rgba(5, 13, 17, 0.9), transparent 70%),
+    radial-gradient(circle at top, rgba(15, 63, 74, 0.85), transparent 60%),
+    radial-gradient(circle at bottom, rgba(3, 9, 11, 0.9), transparent 70%),
     linear-gradient(180deg, #020309, #020309);
+  overflow: visible;
 }
 
-/* Phase-based variants: cool + dim vs warm + alive */
+/* subtle static aurora */
+#rf-viewer.rf-viewer::before {
+  content: "";
+  position: absolute;
+  inset: -40px -5%;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(168, 223, 255, 0.16), transparent 60%),
+    radial-gradient(circle at 80% 0%, rgba(248, 225, 168, 0.18), transparent 60%),
+    radial-gradient(circle at 50% 100%, rgba(31, 138, 91, 0.24), transparent 70%);
+  opacity: 0.9;
+  filter: blur(6px);
+  pointer-events: none;
+  z-index: -1;
+}
 
+/* Showtime = slow moving aurora for a bit of chaos */
+#rf-viewer.rf-phase-showtime::before {
+  animation: lof-aurora-sway 24s ease-in-out infinite alternate;
+}
+
+@keyframes lof-aurora-sway {
+  0%   { transform: translateX(-4%) translateY(0);   opacity: 0.85; }
+  50%  { transform: translateX(3%) translateY(4px); opacity: 1; }
+  100% { transform: translateX(0) translateY(-3px); opacity: 0.9; }
+}
+
+/* Intermission = cooler, calmer */
 #rf-viewer.rf-phase-intermission {
   background:
-    radial-gradient(circle at top, rgba(78, 123, 143, 0.7), transparent 60%),
-    radial-gradient(circle at bottom, rgba(5, 13, 17, 0.9), transparent 70%),
-    linear-gradient(180deg, #020309, #020309);
-}
-
-#rf-viewer.rf-phase-showtime {
-  background:
-    radial-gradient(circle at center, rgba(3, 63, 52, 0.75), transparent 70%),
-    radial-gradient(circle at bottom, rgba(197, 50, 50, 0.4), transparent 75%),
+    radial-gradient(circle at top, rgba(67, 115, 132, 0.65), transparent 60%),
+    radial-gradient(circle at bottom, rgba(3, 9, 11, 0.9), transparent 70%),
     linear-gradient(180deg, #020309, #020309);
 }
 
@@ -80,7 +100,6 @@
   gap: 12px;
 }
 
-/* stacked fallback */
 #rf-viewer .rf-main-layout.rf-main-stacked {
   display: flex;
   flex-direction: column;
@@ -95,7 +114,7 @@
 #rf-viewer .rf-viewer-headline {
   font-size: 1.2rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
 }
 
 #rf-viewer .rf-viewer-subcopy {
@@ -111,7 +130,7 @@
 
 .rf-status-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.5fr) minmax(0, 1.1fr);
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -121,15 +140,15 @@
   border-radius: 22px;
   padding: 14px 16px 12px;
   background:
-    radial-gradient(circle at top, rgba(38, 84, 91, 0.6), transparent 70%),
+    radial-gradient(circle at top, rgba(25, 77, 88, 0.65), transparent 70%),
     linear-gradient(145deg, #050D11, #09151B);
   border: 1px solid rgba(80, 115, 125, 0.7);
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.85),
+    0 20px 40px rgba(0, 0, 0, 0.9),
     0 0 36px rgba(0, 0, 0, 0.95);
 }
 
-/* faint top aurora line */
+/* top rig glow */
 #rf-viewer .rf-status-panel::before {
   content: "";
   position: absolute;
@@ -137,11 +156,11 @@
   height: 8px;
   border-radius: 999px;
   background: linear-gradient(90deg,
-    rgba(168, 223, 255, 0.3),
-    rgba(244, 211, 138, 0.4),
+    rgba(168, 223, 255, 0.35),
+    rgba(248, 225, 168, 0.5),
     rgba(31, 138, 91, 0.5)
   );
-  opacity: 0.8;
+  opacity: 0.9;
   filter: blur(7px);
   pointer-events: none;
 }
@@ -174,14 +193,15 @@
     radial-gradient(circle at top, rgba(168, 223, 255, 0.28), transparent 65%),
     radial-gradient(circle at bottom, rgba(31, 138, 91, 0.35), transparent 70%),
     linear-gradient(145deg, #040B0F, #08171F);
-  border: 1px solid rgba(168, 223, 255, 0.55);
+  border: 1px solid rgba(168, 223, 255, 0.6);
   box-shadow:
-    0 0 26px rgba(168, 223, 255, 0.7),
-    0 0 40px rgba(31, 138, 91, 0.9);
+    0 0 26px rgba(168, 223, 255, 0.8),
+    0 0 40px rgba(31, 138, 91, 0.95);
+  overflow: hidden;
 }
 
-/* stage-light sweep only in showtime */
-.rf-phase-showtime .rf-now::before {
+/* moving stage sweep only in showtime */
+#rf-viewer.rf-phase-showtime .rf-now::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -189,30 +209,30 @@
   background:
     linear-gradient(120deg,
       transparent 0%,
-      rgba(244, 211, 138, 0.25) 35%,
-      rgba(168, 223, 255, 0.25) 60%,
+      rgba(248, 225, 168, 0.16) 32%,
+      rgba(168, 223, 255, 0.26) 55%,
       transparent 100%);
   mix-blend-mode: screen;
   opacity: 0.9;
-  animation: lof-now-sweep 8s ease-in-out infinite;
+  animation: lof-now-sweep 9s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes lof-now-sweep {
   0% {
     transform: translateX(-30%);
-    opacity: 0;
+    opacity: 0.2;
   }
   20% {
-    opacity: 1;
+    opacity: 0.95;
   }
   60% {
-    transform: translateX(25%);
+    transform: translateX(18%);
     opacity: 0.9;
   }
   100% {
-    transform: translateX(45%);
-    opacity: 0;
+    transform: translateX(40%);
+    opacity: 0.2;
   }
 }
 
@@ -231,7 +251,7 @@
   padding: 2px 9px;
   border-radius: 999px;
   background: rgba(2, 8, 9, 0.96);
-  border: 1px solid rgba(244, 211, 138, 0.95);
+  border: 1px solid rgba(248, 225, 168, 0.95);
   font-size: 0.72rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -254,6 +274,34 @@
   color: var(--lof-text-muted);
 }
 
+/* Next / Mode */
+
+#rf-viewer .rf-next {
+  padding: 8px 10px 10px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top, rgba(168, 223, 255, 0.18), transparent 70%),
+    linear-gradient(145deg, #050D11, #08141B);
+  border: 1px solid rgba(80, 115, 125, 0.75);
+}
+
+#rf-viewer .rf-next-title {
+  font-size: 0.86rem;
+}
+
+#rf-viewer .rf-mode {
+  padding: 8px 10px 10px;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top, rgba(31, 138, 91, 0.22), transparent 70%),
+    linear-gradient(145deg, #050D11, #08141B);
+  border: 1px solid rgba(80, 115, 125, 0.75);
+}
+
+#rf-viewer #rf-mode-value {
+  font-size: 0.9rem;
+}
+
 /* ---------- Countdown bar ---------- */
 
 .rf-now-progress {
@@ -266,7 +314,7 @@
   height: 7px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(1, 4, 6, 0.85);
+  background: rgba(1, 4, 6, 0.9);
   box-shadow:
     0 0 10px rgba(0, 0, 0, 0.85),
     0 0 18px rgba(0, 0, 0, 0.9);
@@ -285,7 +333,7 @@
   transition: width 0.35s linear;
   box-shadow:
     0 0 8px rgba(197, 50, 50, 0.9),
-    0 0 16px rgba(248, 225, 168, 0.9);
+    0 0 16px rgba(248, 225, 168, 0.95);
 }
 
 #rf-viewer .rf-now-progress-label {
@@ -293,6 +341,91 @@
   font-size: 0.78rem;
   letter-spacing: 0.03em;
   text-transform: uppercase;
+  color: var(--lof-text-muted);
+}
+
+/* ---------- Controls row ---------- */
+
+#rf-viewer #rf-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 2px 6px;
+  justify-content: flex-start;
+}
+
+#rf-viewer #rf-controls-row.rf-controls-row--disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+#rf-viewer .rf-ctl-link {
+  border-radius: 999px;
+  border: 1px solid rgba(248, 225, 168, 0.75);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(5, 13, 17, 0.96);
+  color: var(--lof-text-main);
+  cursor: pointer;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.9);
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out,
+    transform 100ms ease-out,
+    box-shadow 140ms ease-out;
+}
+
+/* Need sound? */
+#rf-viewer .rf-ctl-link:nth-child(1) {
+  border-color: rgba(168, 223, 255, 0.9);
+}
+
+/* Send a Glow */
+#rf-viewer .rf-ctl-link:nth-child(2) {
+  border-color: rgba(248, 225, 168, 0.95);
+}
+
+/* Surprise me – little chaos */
+#rf-viewer .rf-ctl-link:nth-child(3) {
+  border-color: rgba(197, 50, 50, 0.95);
+}
+
+#rf-viewer .rf-ctl-link:hover {
+  background: linear-gradient(135deg, #07161C, #0D232A);
+  box-shadow:
+    0 0 14px rgba(248, 225, 168, 0.8),
+    0 12px 26px rgba(0, 0, 0, 0.97);
+  transform: translateY(-1px);
+}
+
+/* Surprise me shimmer */
+#rf-viewer .rf-ctl-link:nth-child(3):hover span,
+#rf-viewer .rf-ctl-link:nth-child(3):hover {
+  text-shadow:
+    0 0 6px rgba(197, 50, 50, 0.9),
+    0 0 10px rgba(248, 225, 168, 0.95);
+}
+
+/* ---------- How tonight works ---------- */
+
+#rf-viewer .rf-viewer-header {
+  margin: 8px 2px 10px;
+}
+
+#rf-viewer .rf-viewer-headline {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#rf-viewer .rf-viewer-subcopy {
+  margin-top: 4px;
+  font-size: 0.85rem;
   color: var(--lof-text-muted);
 }
 
@@ -318,7 +451,7 @@
   border-radius: var(--lof-card-radius);
   padding: 20px 18px 16px;
   background:
-    radial-gradient(circle at bottom, rgba(24, 75, 64, 0.35), transparent 72%),
+    radial-gradient(circle at bottom, rgba(24, 75, 64, 0.4), transparent 74%),
     linear-gradient(145deg, #050D11, #0B171C);
   border: 1px solid rgba(16, 39, 46, 0.95);
   box-shadow: 0 18px 32px rgba(0, 0, 0, 0.95);
@@ -368,8 +501,8 @@
   padding: 6px 14px;
   font-size: 0.8rem;
   border-radius: 999px;
-  border: 1px solid rgba(244, 211, 138, 0.85);
-  background: rgba(5, 13, 17, 0.96);
+  border: 1px solid rgba(248, 225, 168, 0.9);
+  background: rgba(5, 13, 17, 0.98);
   color: var(--lof-text-main);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.9);
@@ -380,7 +513,7 @@
 #rf-viewer .rf-card-btn:hover,
 #rf-viewer .rf-card-btn:focus-visible {
   background: linear-gradient(135deg, #07161C, #0D232A);
-  border-color: rgba(244, 211, 138, 0.96);
+  border-color: rgba(248, 225, 168, 0.98);
   box-shadow:
     0 0 14px rgba(248, 225, 168, 0.85),
     0 12px 24px rgba(0, 0, 0, 0.98);
@@ -398,9 +531,9 @@
 #rf-viewer .rf-grid .rf-card:hover {
   transform: translateY(-3px);
   box-shadow:
-    0 0 20px rgba(24, 75, 64, 0.85),
+    0 0 20px rgba(24, 75, 64, 0.9),
     0 18px 32px rgba(0, 0, 0, 0.98);
-  border-color: rgba(80, 151, 132, 0.9);
+  border-color: rgba(80, 151, 132, 0.95);
 }
 
 #rf-viewer .rf-grid .rf-card:active {
@@ -413,7 +546,7 @@
 
 #rf-viewer .rf-card-badge {
   align-self: center;
-  margin-top: 2px;
+  margin-top: 0;
   margin-bottom: 8px;
   padding: 2px 7px;
   border-radius: 999px;
@@ -425,7 +558,7 @@
   text-overflow: ellipsis;
   overflow: hidden;
   background: rgba(5, 13, 17, 0.96);
-  border: 1px solid rgba(244, 211, 138, 0.75);
+  border: 1px solid rgba(248, 225, 168, 0.75);
   color: var(--lof-text-main);
 }
 
@@ -460,8 +593,8 @@
 #rf-viewer .rf-card--now-playing {
   box-shadow:
     0 0 28px rgba(168, 223, 255, 0.95),
-    0 0 46px rgba(31, 138, 91, 0.95);
-  border-color: rgba(248, 225, 168, 0.95);
+    0 0 46px rgba(31, 138, 91, 0.98);
+  border-color: rgba(248, 225, 168, 0.98);
   animation: lof-now-playing-pulse 3.4s ease-in-out infinite;
 }
 
@@ -473,41 +606,41 @@
 }
 
 #rf-viewer .rf-card--from-this-device {
-  border-color: rgba(248, 225, 168, 0.95);
+  border-color: rgba(248, 225, 168, 0.98);
   box-shadow:
     0 0 20px rgba(248, 225, 168, 0.8),
     0 16px 30px rgba(0, 0, 0, 0.98);
 }
 
-#rf-viewer .rf-card--from-this-device .rf-card-btn {
-  position: relative;
-  overflow: visible;
-}
-
-#rf-viewer .rf-card--from-this-device .rf-card-btn::before {
+/* gentle glow orbit around your own pick */
+#rf-viewer .rf-card--from-this-device::before {
   content: "";
   position: absolute;
-  inset: -6px;
+  inset: -10px;
   border-radius: inherit;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 0%, rgba(248, 225, 168, 0.7), transparent 60%),
-    radial-gradient(circle at 80% 100%, rgba(168, 223, 255, 0.6), transparent 65%);
+  border: 1px solid rgba(248, 225, 168, 0.35);
   filter: blur(4px);
-  opacity: 0.95;
-  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+  animation: lof-your-pick-orbit 7s ease-in-out infinite;
 }
 
-/* Surprise card – thin glint frame */
+@keyframes lof-your-pick-orbit {
+  0%, 15%   { opacity: 0; transform: scale(0.98); }
+  25%, 55%  { opacity: 0.9; transform: scale(1); }
+  65%, 100% { opacity: 0; transform: scale(1.02); }
+}
+
+/* Surprise card – glint frame */
 #rf-viewer .rf-card--surprise::after {
   content: "";
   position: absolute;
   inset: 3px;
   border-radius: inherit;
-  border: 1px dashed rgba(248, 225, 168, 0.7);
+  border: 1px dashed rgba(248, 225, 168, 0.75);
   box-shadow:
-    0 0 12px rgba(248, 225, 168, 0.7),
-    0 0 18px rgba(168, 223, 255, 0.4);
+    0 0 14px rgba(248, 225, 168, 0.9),
+    0 0 18px rgba(168, 223, 255, 0.55);
   pointer-events: none;
 }
 
@@ -580,15 +713,142 @@
   font-weight: 600;
 }
 
-/* Speaker text */
-#rf-viewer .rf-speaker-status {
+/* Speaker & Glow text */
+#rf-viewer .rf-speaker-status,
+#rf-viewer .rf-glow-summary {
   font-size: 0.82rem;
   color: var(--lof-text-muted);
 }
 
-/* Glow summary */
-#rf-viewer .rf-glow-summary {
-  font-size: 0.82rem;
+/* ---------- Tonight at Lights on Falcon ---------- */
+
+#rf-viewer .rf-tonight {
+  position: relative;
+  margin-top: 20px;
+  border-radius: 22px;
+  padding: 16px 18px 18px;
+  background:
+    radial-gradient(circle at top, rgba(24, 75, 64, 0.45), transparent 70%),
+    linear-gradient(145deg, #050D11, #09171F);
+  border: 1px solid rgba(80, 115, 125, 0.9);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.95);
+}
+
+/* aurora edge */
+#rf-viewer .rf-tonight::before {
+  content: "";
+  position: absolute;
+  inset: -2px 18px auto 18px;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(90deg,
+    rgba(168, 223, 255, 0.35),
+    rgba(248, 225, 168, 0.55),
+    rgba(31, 138, 91, 0.6));
+  opacity: 0.9;
+  filter: blur(7px);
+  pointer-events: none;
+}
+
+#rf-viewer .rf-tonight-title {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#rf-viewer #lof-tonight-body {
+  margin-top: 4px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: #C5D1D5;
+}
+
+#rf-viewer #lof-tonight-body p {
+  margin: 0.25rem 0;
+}
+
+/* make first paragraph feel like the show host speaking */
+#rf-viewer #lof-tonight-body p:first-child {
+  color: var(--lof-text-main);
+  font-weight: 500;
+}
+
+/* Glow form injected into #rf-footer-glow */
+#rf-viewer #rf-footer-glow {
+  margin-top: 6px;
+}
+
+/* Assume RF injects a form with inputs + button */
+#rf-viewer #rf-footer-glow textarea,
+#rf-viewer #rf-footer-glow input[type="text"],
+#rf-viewer #rf-footer-glow input[type="email"] {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(3, 8, 10, 0.96);
+  border-radius: 14px;
+  border: 1px solid rgba(33, 52, 59, 0.95);
+  color: var(--lof-text-main);
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  transition:
+    border-color 140ms ease-out,
+    box-shadow 140ms ease-out,
+    background 140ms ease-out;
+}
+
+#rf-viewer #rf-footer-glow textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Inputs focus */
+#rf-viewer #rf-footer-glow textarea:focus,
+#rf-viewer #rf-footer-glow input[type="text"]:focus,
+#rf-viewer #rf-footer-glow input[type="email"]:focus {
+  outline: none;
+  border-color: rgba(248, 225, 168, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(248, 225, 168, 0.9),
+    0 0 18px rgba(248, 225, 168, 0.8);
+}
+
+/* Glow submit button – class is set by RF plugin; we just target a generic button under this container */
+#rf-viewer #rf-footer-glow button {
+  margin-top: 6px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0F6A45, #1E8A5B);
+  border: 1px solid rgba(248, 225, 168, 0.95);
+  color: var(--lof-text-main);
+  font-weight: 600;
+  padding: 0.55rem 1.3rem;
+  font-size: 0.9rem;
+  box-shadow:
+    0 10px 26px rgba(0, 0, 0, 0.97),
+    0 0 14px rgba(248, 225, 168, 0.85);
+  transition:
+    transform 90ms ease-out,
+    box-shadow 120ms ease-out,
+    background 140ms ease-out;
+}
+
+#rf-viewer #rf-footer-glow button:hover {
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #0E5236, #196F47);
+}
+
+#rf-viewer #rf-footer-glow button:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.9);
+}
+
+/* ---------- Misc ---------- */
+
+#rf-viewer .rf-muted {
   color: var(--lof-text-muted);
 }
 
@@ -608,7 +868,13 @@
   }
 
   #rf-viewer .rf-status-panel {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
     margin-bottom: 14px;
+  }
+
+  #rf-viewer #rf-controls-row {
+    justify-content: center;
   }
 
   #rf-viewer .rf-grid {

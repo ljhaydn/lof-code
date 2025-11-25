@@ -1,6 +1,6 @@
 /* ======================================
  * Lights on Falcon Viewer Extras styles
- * Black Forest Christmas alignment
+ * Aligned with Black Forest Christmas skin
  * ====================================== */
 
 /* Toast */
@@ -46,7 +46,7 @@
 
 .lof-pill-button {
   border-radius: 999px;
-  border: 1px solid rgba(244, 211, 138, 0.55);
+  border: 1px solid rgba(248, 225, 168, 0.55);
   padding: 0.4rem 0.95rem;
   font-size: 0.82rem;
   display: inline-flex;
@@ -68,7 +68,7 @@
 
 .lof-pill-button:hover {
   background: linear-gradient(135deg, #07161C, #0D232A);
-  border-color: rgba(244, 211, 138, 0.9);
+  border-color: rgba(248, 225, 168, 0.9);
   transform: translateY(-1px);
   box-shadow:
     0 0 14px rgba(248, 225, 168, 0.8),
@@ -84,18 +84,18 @@
 /* Sub accents */
 
 .lof-pill-button--glow {
-  border-color: rgba(244, 211, 138, 0.9);
+  border-color: rgba(248, 225, 168, 0.95);
 }
 
 .lof-pill-button--speaker {
-  border-color: rgba(168, 223, 255, 0.7);
+  border-color: rgba(168, 223, 255, 0.8);
 }
 
 .lof-pill-button--surprise {
-  border-color: rgba(197, 50, 50, 0.9);
+  border-color: rgba(197, 50, 50, 0.95);
 }
 
-/* Tiny chaos */
+/* Tiny chaos for Surprise */
 
 .lof-pill-button--surprise:hover span {
   text-shadow:
@@ -103,148 +103,12 @@
     0 0 10px rgba(248, 225, 168, 0.95);
 }
 
-/* Tonight panel */
+/* Layout helpers */
 
-#lof-tonight-panel.lof-tonight-panel {
-  position: relative;
-  background:
-    radial-gradient(circle at top, rgba(24, 75, 64, 0.35), transparent 70%),
-    linear-gradient(145deg, #050D11, #09161E);
-  border-radius: 18px;
-  border: 1px solid rgba(80, 115, 125, 0.8);
-  box-shadow:
-    0 18px 32px rgba(0, 0, 0, 0.95);
-  padding: 1.1rem 1.25rem 1.0rem;
-}
-
-/* Aurora edge */
-
-#lof-tonight-panel.lof-tonight-panel::before {
-  content: "";
-  position: absolute;
-  inset: -1px -2px auto -2px;
-  height: 11px;
-  border-radius: 18px 18px 40px 40px;
-  background: linear-gradient(90deg,
-    rgba(168, 223, 255, 0.3),
-    rgba(248, 225, 168, 0.5),
-    rgba(31, 138, 91, 0.5));
-  opacity: 0.85;
-  filter: blur(7px);
-  pointer-events: none;
-}
-
-.lof-tonight-heading {
-  margin: 0 0 0.5rem;
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #FDFBF6;
-}
-
-#lof-tonight-body.lof-tonight-body {
-  margin-top: 0.25rem;
-}
-
-#lof-tonight-body.lof-tonight-body p {
-  margin: 0.2rem 0;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  color: #C5D1D5;
-}
-
-/* Inputs / textarea */
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-input,
-#lof-tonight-panel.lof-tonight-panel textarea,
-#lof-tonight-panel.lof-tonight-panel input[type="text"],
-#lof-tonight-panel.lof-tonight-panel input[type="email"] {
-  background: rgba(3, 8, 10, 0.96);
-  border-radius: 999px;
-  border: 1px solid rgba(33, 52, 59, 0.95);
-  color: #FDFBF6;
-  padding: 0.55rem 0.9rem;
-  font-size: 0.9rem;
-  transition:
-    border-color 140ms ease-out,
-    box-shadow 140ms ease-out,
-    background 140ms ease-out;
-}
-
-#lof-tonight-panel.lof-tonight-panel textarea {
-  border-radius: 14px;
-  resize: vertical;
-  min-height: 80px;
-}
-
-/* Focus */
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-input:focus,
-#lof-tonight-panel.lof-tonight-panel textarea:focus,
-#lof-tonight-panel.lof-tonight-panel input[type="text"]:focus,
-#lof-tonight-panel.lof-tonight-panel input[type="email"]:focus {
-  outline: none;
-  border-color: rgba(248, 225, 168, 0.95);
-  box-shadow:
-    0 0 0 1px rgba(248, 225, 168, 0.9),
-    0 0 18px rgba(248, 225, 168, 0.8);
-}
-
-/* Send this glow CTA */
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit {
-  border-radius: 999px;
-  background: linear-gradient(135deg, #0F6A45, #1E8A5B);
-  border: 1px solid rgba(248, 225, 168, 0.95);
-  color: #FDFBF6;
-  font-weight: 600;
-  padding: 0.55rem 1.3rem;
-  box-shadow:
-    0 10px 26px rgba(0, 0, 0, 0.97),
-    0 0 14px rgba(248, 225, 168, 0.85);
-  transition:
-    transform 90ms ease-out,
-    box-shadow 120ms ease-out,
-    background 140ms ease-out;
-}
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit:hover {
-  transform: translateY(-1px);
-  background: linear-gradient(135deg, #0E5236, #196F47);
-}
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit:active {
-  transform: translateY(0);
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.9);
-}
-
-/* Glow sent “breath” */
-
-#lof-tonight-panel.lof-tonight-panel .lof-tonight-submit.lof-glow-sent {
-  animation: lof-glow-send-pulse 420ms ease-out;
-}
-
-@keyframes lof-glow-send-pulse {
-  0% {
-    transform: scale(1);
-    box-shadow:
-      0 10px 26px rgba(0, 0, 0, 0.97),
-      0 0 14px rgba(248, 225, 168, 0.85);
-  }
-  40% {
-    transform: scale(1.03);
-    box-shadow:
-      0 0 26px rgba(248, 225, 168, 1),
-      0 0 40px rgba(168, 223, 255, 0.8);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow:
-      0 10px 26px rgba(0, 0, 0, 0.97),
-      0 0 14px rgba(248, 225, 168, 0.85);
-  }
+.lof-pill-button span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* Responsive */
@@ -252,9 +116,5 @@
 @media (max-width: 700px) {
   #lof-extras-bar.lof-extras-bar {
     justify-content: center;
-  }
-
-  #lof-tonight-panel.lof-tonight-panel {
-    margin-top: 0.75rem;
   }
 }
