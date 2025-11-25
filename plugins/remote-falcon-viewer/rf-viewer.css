@@ -10,25 +10,25 @@
 
 :root {
   /* Core background system */
-  --lof-bg: #061215;              /* Midnight Pine */
-  --lof-surface: #0B1C20;         /* Arctic Shadow */
-  --lof-surface-soft: #1C2E33;    /* Frosted Graphite */
+  --lof-bg: #020809;              /* Deep Night */
+  --lof-surface: #071215;         /* Midnight Evergreen */
+  --lof-surface-soft: #13252B;    /* Pine Shadow */
 
   /* Primary accents */
-  --lof-accent-primary: #16B86B;  /* Deep Evergreen */
-  --lof-accent-secondary: #FFDE8A;/* Soft Candlelight Gold */
-  --lof-accent-cta: #FF5E5E;      /* Sleighbell Red (rare / CTA) */
+  --lof-accent-primary: #0F7A4A;  /* Deep Evergreen */
+  --lof-accent-secondary: #F4D38A;/* Candlelight Gold */
+  --lof-accent-cta: #D23A3A;      /* Sleigh Run Red (rare / CTA) */
 
-  /* Glow colors */
-  --lof-glow-evergreen: #42F4A4;  /* Evergreen Glow */
-  --lof-glow-gold: #FFECAA;       /* Warm Solstice Glow */
-  --lof-glow-ice: #87F2FF;        /* Polar Radiance */
+  /* Glow colors (de-neoned) */
+  --lof-glow-evergreen: #209060;  /* Soft Evergreen Glow */
+  --lof-glow-gold: #F8E1A8;       /* Warm Solstice Glow */
+  --lof-glow-ice: #B4E5FF;        /* Frost Edge */
 
   /* Text and borders */
-  --lof-text-main: #FDFDFC;       /* Snowdrift White */
-  --lof-text-muted: #C3D4D9;
-  --lof-border-soft: rgba(255, 255, 255, 0.14);
-  --lof-border-strong: rgba(244, 208, 111, 0.9);
+  --lof-text-main: #FDFBF6;       /* Snowdrift White */
+  --lof-text-muted: #A8B7BD;
+  --lof-border-soft: rgba(255, 255, 255, 0.10);
+  --lof-border-strong: rgba(244, 211, 138, 0.9);
 
   /* Common radius */
   --lof-card-radius: 16px;
@@ -43,32 +43,56 @@
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--lof-text-main);
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.28), transparent 60%),
-    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.18), transparent 65%),
-    linear-gradient(135deg, #01070C, #04131A);
+    radial-gradient(circle at top, rgba(244, 211, 138, 0.18), transparent 60%),
+    radial-gradient(circle at bottom, rgba(10, 58, 42, 0.55), transparent 72%),
+    linear-gradient(135deg, #020809, #071215);
 }
-
 
 /* Phase-based subtle variants (used by JS) */
 #rf-viewer.rf-phase-intermission {
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 60%),
-    linear-gradient(135deg, #061215, #0B1C20);
+    radial-gradient(circle at top, rgba(180, 229, 255, 0.18), transparent 60%),
+    radial-gradient(circle at bottom, rgba(9, 35, 31, 0.50), transparent 70%),
+    linear-gradient(135deg, #02070B, #07171D);
 }
 
 #rf-viewer.rf-phase-showtime {
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.28), transparent 55%),
-    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.22), transparent 65%),
-    linear-gradient(135deg, #01070C, #04131A);
+    radial-gradient(circle at top, rgba(244, 211, 138, 0.22), transparent 55%),
+    radial-gradient(circle at bottom, rgba(210, 58, 58, 0.28), transparent 70%),
+    linear-gradient(135deg, #020809, #071215);
 }
 
-/* ---------- Header & controls ---------- */
+/* ---------- Layout ---------- */
 
-#rf-viewer .rf-viewer-header {
-  margin-top: 12px;
-  margin-bottom: 12px;
-  text-align: center;
+#rf-viewer .rf-main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: 18px;
+}
+
+#rf-viewer .rf-main-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#rf-viewer .rf-main-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* When stacked by JS on mobile */
+#rf-viewer .rf-main-layout.rf-main-stacked {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header copy ---------- */
+
+#rf-viewer .rf-header {
+  margin-bottom: 10px;
 }
 
 #rf-viewer .rf-viewer-headline {
@@ -84,42 +108,6 @@
   max-width: 640px;
   margin-left: auto;
   margin-right: auto;
-  opacity: 0.86;
-}
-
-/* Optional controls row (Need sound / Surprise me etc.) */
-#rf-viewer .rf-controls-row {
-  margin-top: 8px;
-  margin-bottom: 4px;
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-#rf-viewer .rf-ctl-link {
-  border-radius: 999px;
-  border: 1px solid rgba(135, 242, 255, 0.5);
-  background: rgba(6, 18, 21, 0.8);
-  padding: 4px 12px;
-  font-size: 0.8rem;
-  color: var(--lof-text-main);
-  cursor: pointer;
-  transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.15s ease;
-}
-
-#rf-viewer .rf-ctl-link:hover {
-  background: rgba(20, 70, 85, 0.95);
-  border-color: rgba(135, 242, 255, 0.9);
-  transform: translateY(-1px);
-}
-
-#rf-viewer .rf-controls-row--disabled .rf-ctl-link {
-  opacity: 0.5;
-  cursor: default;
 }
 
 /* ---------- Top status band (Now / Next / Mode) ---------- */
@@ -135,60 +123,128 @@
   border-radius: 20px;
   padding: 14px 16px 12px;
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.24), transparent 60%),
-    radial-gradient(circle at bottom, rgba(32, 227, 178, 0.16), transparent 65%),
-    linear-gradient(135deg, #041017, #071A20);
-  border: 1px solid rgba(255, 235, 143, 0.35);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.75);
+    radial-gradient(circle at top, rgba(244, 211, 138, 0.20), transparent 60%),
+    radial-gradient(circle at bottom, rgba(10, 58, 42, 0.45), transparent 65%),
+    linear-gradient(135deg, #041017, #071821);
+  border: 1px solid rgba(244, 211, 138, 0.45);
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.85),
+    0 0 36px rgba(0, 0, 0, 0.9);
+}
+
+.rf-status-panel > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .rf-label {
   font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.75;
+  letter-spacing: 0.12em;
+  color: var(--lof-text-muted);
 }
 
-/* NOW PLAYING card */
+.rf-value {
+  font-size: 0.98rem;
+  font-weight: 500;
+}
+
+/* ---------- NOW PLAYING section ---------- */
+
 .rf-now {
   position: relative;
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 10px 12px 12px;
   background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.4), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.3), transparent 55%),
-    linear-gradient(135deg, #021218, #041F25);
+    radial-gradient(circle at top, rgba(244, 211, 138, 0.24), transparent 65%),
+    radial-gradient(circle at bottom, rgba(210, 58, 58, 0.18), transparent 65%),
+    linear-gradient(145deg, #050D11, #091720);
   border: none;
   box-shadow:
-    0 0 26px rgba(22, 255, 172, 0.9),
-    0 12px 24px rgba(0, 0, 0, 0.9);
+    0 0 26px rgba(210, 58, 58, 0.75),
+    0 0 40px rgba(244, 211, 138, 0.95);
+}
+
+/* Subtle stage-light sweep while playing */
+.rf-phase-showtime .rf-now::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(115deg,
+      transparent 0%,
+      rgba(244, 211, 138, 0.18) 30%,
+      rgba(180, 229, 255, 0.18) 55%,
+      transparent 90%);
+  mix-blend-mode: screen;
+  opacity: 0.7;
+  animation: lof-now-sweep 7.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes lof-now-sweep {
+  0% {
+    transform: translateX(-22%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateX(12%);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(38%);
+    opacity: 0;
+  }
 }
 
 /* Dim / intermission */
 .rf-now.rf-now--dim {
-  background:
-    radial-gradient(circle at top left, rgba(32, 227, 178, 0.18), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(135, 242, 255, 0.22), transparent 55%),
-    linear-gradient(135deg, #03151E, #071F26);
-  box-shadow:
-    0 0 10px rgba(22, 255, 172, 0.35),
-    0 6px 14px rgba(0, 0, 0, 0.7);
-  opacity: 0.95;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.9);
 }
 
-.rf-now-title {
-  font-weight: 600;
+/* Now playing labels */
+#rf-viewer .rf-now-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(2, 8, 9, 0.9);
+  border: 1px solid rgba(244, 211, 138, 0.9);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+#rf-viewer .rf-now-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin-top: 6px;
-  font-size: 1.05rem;
 }
 
-.rf-now-artist {
-  font-size: 0.82rem;
-  opacity: 0.85;
-  margin-top: 2px;
+#rf-viewer #rf-now-title {
+  font-weight: 600;
+  font-size: 0.98rem;
 }
 
-/* Progress bar */
+#rf-viewer #rf-now-artist {
+  font-size: 0.86rem;
+  color: var(--lof-text-muted);
+}
+
+/* Mode / banner items in status panel */
+#rf-viewer #rf-mode-value {
+  font-size: 0.9rem;
+}
+
+/* ---------- Countdown progress bar ---------- */
+
 .rf-now-progress {
   margin-top: 8px;
 }
@@ -196,10 +252,10 @@
 .rf-now-progress-bar {
   position: relative;
   width: 100%;
-  height: 6px;
+  height: 7px;
   border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.10);
 }
 
 .rf-now-progress-fill {
@@ -209,11 +265,13 @@
   border-radius: 999px;
   background: repeating-linear-gradient(
     135deg,
-    #FF5E5E 0 10px,
+    #D23A3A 0 10px,
     #FFFFFF 10px 20px
   );
-  transition: width 0.25s linear;
-  box-shadow: 0 0 10px rgba(255, 235, 143, 0.6);
+  transition: width 0.35s linear;
+  box-shadow:
+    0 0 8px rgba(210, 58, 58, 0.7),
+    0 0 14px rgba(244, 211, 138, 0.9);
 }
 
 #rf-viewer .rf-now-progress-label {
@@ -224,72 +282,29 @@
   color: var(--lof-text-muted);
 }
 
-/* Slightly softer in dim mode */
-.rf-now.rf-now--dim .rf-now-progress-bar {
-  background: rgba(255, 255, 255, 0.08);
+/* ---------- Queue / “Up Next” ---------- */
+
+#rf-viewer .rf-queue-label {
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lof-text-muted);
 }
 
-.rf-now.rf-now--dim .rf-now-progress-fill {
-  opacity: 0.7;
+#rf-viewer #rf-next-title {
+  font-size: 0.86rem;
 }
 
-/* NEXT + MODE cards (Mode is hidden from viewers) */
-.rf-next,
-.rf-mode {
-  border-radius: 16px;
-  padding: 10px 12px;
-  background:
-    radial-gradient(circle at top left, rgba(135, 242, 255, 0.22), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(244, 208, 111, 0.18), transparent 55%),
-    linear-gradient(135deg, #061215, #0B1C20);
-  border: 1px solid var(--lof-border-soft);
-  box-shadow:
-    0 0 14px rgba(135, 242, 255, 0.35),
-    0 10px 22px rgba(0, 0, 0, 0.7);
+/* ---------- Song grid ---------- */
+
+#rf-viewer #rf-grid {
+  margin-top: 4px;
 }
 
-.rf-next-title,
-.rf-mode-value {
-  margin-top: 6px;
-  font-weight: 500;
-  font-size: 0.95rem;
-}
-
-.rf-mode {
-  display: none;
-}
-
-/* ---------- Layout: grid + side panels ---------- */
-
-#rf-viewer .rf-main-layout {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-}
-
-#rf-viewer .rf-main-left,
-#rf-viewer .rf-main-right {
-  min-width: 0;
-}
-
-#rf-viewer .rf-main-left {
-  flex: 2.3;
-}
-
-#rf-viewer .rf-main-right {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-height: 280px;
-}
-
-/* Sequence grid */
 #rf-viewer .rf-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(235px, 1fr));
+  gap: 12px;
 }
 
 /* ---------- Song cards ---------- */
@@ -299,55 +314,103 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  border-radius: 20px;
-  padding: 16px 18px 16px;
+  border-radius: 18px;
+  padding: 20px 18px 16px;
   background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.16), transparent 65%),
-    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.10), transparent 70%),
-    linear-gradient(145deg, #061215, #0B1C20);
-  border: 1px solid var(--lof-border-soft);
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.8);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+    radial-gradient(circle at bottom, rgba(244, 211, 138, 0.18), transparent 72%),
+    linear-gradient(145deg, #071215, #0E1C22);
+  border: 1px solid rgba(12, 35, 39, 0.9);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.9);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   cursor: pointer;
 }
 
-/* Glow on hover: ONLY song cards in the grid */
-#rf-viewer .rf-grid .rf-card:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    0 0 20px rgba(32, 227, 178, 0.9),
-    0 14px 26px rgba(0, 0, 0, 0.95);
-}
+/* Card titles / meta */
 
-#rf-viewer .rf-grid .rf-card:active {
-  transform: scale(0.97);
-}
-
-/* Content: title / artist / runtime row */
 #rf-viewer .rf-card-title {
+  margin: 0;
+  font-size: 0.98rem;
   font-weight: 600;
-  margin-bottom: 4px;
-  font-size: 1rem;
-  text-align: center;
 }
 
 #rf-viewer .rf-card-artist {
+  margin: 3px 0 0;
   font-size: 0.82rem;
-  opacity: 0.85;
-  margin-bottom: 6px;
-  text-align: center;
+  color: var(--lof-text-muted);
 }
 
 #rf-viewer .rf-card-meta {
-  font-size: 0.8rem;
   display: flex;
-  justify-content: center;
-  gap: 8px;
-  opacity: 0.85;
-  margin-bottom: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--lof-text-muted);
 }
 
-/* Badges – now part of normal flow (no overlap) */
+/* Card footer & CTA */
+
+#rf-viewer .rf-card-actions {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+}
+
+/* Primary CTA button */
+
+#rf-viewer .rf-card-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 211, 138, 0.85);
+  background: rgba(6, 18, 21, 0.9);
+  color: var(--lof-text-main);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.85);
+  white-space: normal;
+  text-align: center;
+}
+
+#rf-viewer .rf-card-btn:hover,
+#rf-viewer .rf-card-btn:focus-visible {
+  background: linear-gradient(135deg, #0E1C22, #132A31);
+  border-color: rgba(244, 211, 138, 0.96);
+  box-shadow:
+    0 0 14px rgba(244, 211, 138, 0.75),
+    0 12px 24px rgba(0, 0, 0, 0.98);
+  outline: none;
+}
+
+#rf-viewer .rf-card-btn:active {
+  transform: translateY(0);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.9);
+}
+
+/* Hover / active card */
+
+#rf-viewer .rf-grid .rf-card:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 0 20px rgba(244, 211, 138, 0.65),
+    0 18px 32px rgba(0, 0, 0, 0.95);
+  border-color: rgba(244, 211, 138, 0.6);
+}
+
+#rf-viewer .rf-grid .rf-card:active {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.95);
+}
+
+/* ---------- Badges ---------- */
+
 #rf-viewer .rf-card-badge {
   align-self: center;
   margin-top: 2px;
@@ -372,725 +435,67 @@
 
 /* NOW / NEXT badge colors */
 #rf-viewer .rf-card-badge--now {
-  background: linear-gradient(135deg, rgba(244, 208, 111, 0.18), rgba(32, 227, 178, 0.18));
+  background: linear-gradient(
+    135deg,
+    rgba(244, 208, 111, 0.3),
+    rgba(22, 184, 107, 0.45)
+  );
 }
 
 #rf-viewer .rf-card-badge--next {
-  background: linear-gradient(135deg, rgba(135, 242, 255, 0.14), rgba(244, 208, 111, 0.12));
+  background: linear-gradient(
+    135deg,
+    rgba(135, 242, 255, 0.3),
+    rgba(32, 227, 178, 0.38)
+  );
 }
 
-/* Extra breathing room when a badge exists */
+/* Surprise persona badge */
+#rf-viewer .rf-card-badge--surprise {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 236, 170, 0.32),
+    rgba(255, 94, 94, 0.45)
+  );
+}
+
 #rf-viewer .rf-card--with-badge {
   padding-top: 18px;
 }
 
-#rf-viewer .rf-card--with-badge .rf-card-btn {
-  margin-top: 10px;
-}
+/* ---------- Card meta ---------- */
 
-#rf-viewer .rf-card--with-badge .rf-card-chip {
-  margin-top: 10px;
-}
-
-/* Card actions at the bottom */
-#rf-viewer .rf-card-actions {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-}
-
-/* Primary CTA button */
-#rf-viewer .rf-card-btn {
+#rf-viewer .rf-card-votes {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 6px;
-  padding: 6px 14px;
-  font-size: 0.8rem;
-  border-radius: 999px;
-  border: 1px solid rgba(244, 208, 111, 0.85);
-  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
-  color: #021010;
-  box-shadow:
-    0 0 10px rgba(66, 244, 164, 0.8),
-    0 0 18px rgba(255, 236, 170, 0.75),
-    0 6px 16px rgba(0, 0, 0, 0.9);
-  white-space: normal;
-  text-align: center;
+  align-items: baseline;
+  gap: 4px;
 }
 
-#rf-viewer .rf-card-btn:hover,
-#rf-viewer .rf-card-btn:focus-visible {
-  border-color: rgba(255, 235, 143, 0.95) !important;
-  background: linear-gradient(135deg, #1ACB76, #FFE39A);
-  box-shadow:
-    0 0 16px rgba(66, 244, 164, 0.9),
-    0 0 22px rgba(255, 236, 170, 0.9),
-    0 10px 22px rgba(0, 0, 0, 0.95);
-  outline: none;
+#rf-viewer .rf-card-vote-count {
+  font-weight: 600;
 }
 
-#rf-viewer .rf-card-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-  box-shadow: none;
+#rf-viewer .rf-card-vote-label {
+  font-size: 0.72rem;
 }
 
-/* “You picked this” chip */
-#rf-viewer .rf-card-chip {
-  margin-top: 8px;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 0.75rem;
-  background: rgba(6, 18, 21, 0.9);
-  border: 1px dashed rgba(244, 208, 111, 0.7);
-  color: var(--lof-text-muted);
-}
+/* ---------- Card states (Now/Next/Selected/Unavailable) ---------- */
 
-/* Now playing / next card glows */
 #rf-viewer .rf-card--now-playing {
   box-shadow:
-    0 0 20px rgba(22, 255, 172, 0.75),
-    0 0 26px rgba(255, 235, 143, 0.85) !important;
-  border-color: var(--lof-accent-secondary) !important;
-  animation: lof-now-playing-pulse 3.2s ease-in-out infinite;
+    0 0 26px rgba(210, 58, 58, 0.9),
+    0 0 46px rgba(244, 211, 138, 1);
+  border-color: var(--lof-accent-secondary);
+  animation: lof-now-playing-pulse 3.4s ease-in-out infinite;
 }
 
 #rf-viewer .rf-card--next {
   box-shadow:
     0 0 24px rgba(135, 242, 255, 0.85),
     0 16px 30px rgba(0, 0, 0, 0.95);
+  border-color: rgba(135, 242, 255, 0.8);
 }
 
-/* Hide RF's old "Next" status card – queue already shows this */
-.rf-next {
-  display: none;
-}
-
-/* ---------- Extra panel: queue / stats / tonight / speaker ---------- */
-
-#rf-viewer .rf-extra-panel {
-  border-radius: 12px;
-  padding: 10px 13px 13px;
-  background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.2), transparent 65%),
-    linear-gradient(150deg, #061215, #0B1C20);
-  border: 1px solid var(--lof-border-soft);
-  box-shadow:
-    0 0 16px rgba(135, 242, 255, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-  font-size: 0.85rem;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-#rf-viewer .rf-extra-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-#rf-viewer .rf-extra-sub {
-  font-size: 0.86rem;
-  color: var(--lof-text-muted);
-}
-
-/* Queue & leaderboard lists */
-#rf-viewer .rf-queue-list,
-#rf-viewer .rf-leaderboard-list {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-}
-
-#rf-viewer .rf-queue-item,
-#rf-viewer .rf-leaderboard-item {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 0;
-  font-size: 0.86rem;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
-}
-
-#rf-viewer .rf-queue-item:last-child,
-#rf-viewer .rf-leaderboard-item:last-child {
-  border-bottom: none;
-}
-
-/* Stats block (Tonight from this device) */
-.rf-stats {
-  margin-top: 4px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--lof-border-soft);
-  background:
-    radial-gradient(circle at top left, rgba(135, 242, 255, 0.16), transparent 60%),
-    linear-gradient(145deg, #061215, #0B1C20);
-  font-size: 0.8rem;
-}
-
-.rf-stats-title {
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: var(--lof-accent-secondary);
-}
-
-.rf-stats-row {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2px;
-}
-
-.rf-stats-row--vibe span:last-child {
-  font-weight: 600;
-}
-
-/* Speaker card – NEED SOUND block (status, not a song tile) */
-.rf-speaker-card {
-  margin-top: 4px;
-  padding: 10px 12px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--lof-border-soft);
-  background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 65%),
-    linear-gradient(150deg, #061215, #0B1C20);
-  box-shadow:
-    0 0 16px rgba(135, 242, 255, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-  cursor: default;
-  text-align: center;
-}
-
-.rf-speaker-card:hover {
-  transform: none;
-  box-shadow:
-    0 0 16px rgba(135, 242, 255, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-}
-
-.rf-speaker-btn {
-  margin-top: 6px;
-  width: 100%;
-  border-radius: 999px;
-  padding: 6px 10px;
-  border: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: linear-gradient(135deg, var(--lof-accent-primary), var(--lof-accent-secondary));
-  color: #020306;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.rf-speaker-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 14px rgba(66, 244, 164, 0.8),
-    0 0 18px rgba(255, 236, 170, 0.8);
-}
-
-/* Glow card (Send a Glow) */
-.rf-glow-card {
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--lof-border-soft);
-  background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.14), transparent 65%),
-    rgba(0, 0, 0, 0.4);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-/* ---------- Tonight at Lights on Falcon footer ---------- */
-
-.rf-tonight {
-  max-width: 980px;
-  margin: 24px auto 24px;
-  padding: 18px 22px 22px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at top, rgba(135, 242, 255, 0.18), transparent 65%),
-    radial-gradient(circle at bottom, rgba(244, 208, 111, 0.12), transparent 70%),
-    linear-gradient(135deg, #061215, #0B1C20);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
-  border: 1px solid var(--lof-border-soft);
-}
-
-.rf-tonight-title {
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin: 0 0 6px;
-}
-
-/* ---------- Toast ---------- */
-
-.rf-toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  background: rgba(6, 18, 21, 0.96);
-  color: var(--lof-text-main);
-  padding: 12px 18px;
-  border-radius: 999px;
-  box-shadow:
-    0 0 16px rgba(135, 242, 255, 0.75),
-    0 10px 24px rgba(0, 0, 0, 0.85);
-  font-size: 0.9rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
-  z-index: 99999;
-  border: 1px solid var(--lof-border-soft);
-}
-
-.rf-toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.rf-toast--success {
-  background: var(--lof-accent-secondary);
-  color: #030305;
-  box-shadow:
-    0 0 18px rgba(255, 235, 143, 0.95),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-}
-
-.rf-toast--error {
-  background: rgba(255, 94, 94, 0.96);
-  color: #030305;
-  box-shadow:
-    0 0 18px rgba(255, 94, 94, 0.95),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-}
-
-/* ---------- Phase banner (resting up / tonight’s vibe) ---------- */
-
-.rf-phase-banner {
-  margin-bottom: 1.25rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 0.9rem;
-  border: 1px solid var(--lof-border-soft);
-  background:
-    radial-gradient(circle at top left, rgba(135, 242, 255, 0.24), transparent 60%),
-    radial-gradient(circle at bottom right, rgba(32, 227, 178, 0.20), transparent 60%),
-    linear-gradient(135deg, #041018, #071C22);
-  box-shadow:
-    0 10px 26px rgba(0, 0, 0, 0.75),
-    0 0 18px rgba(135, 242, 255, 0.45);
-  backdrop-filter: blur(10px);
-}
-
-.rf-phase-banner-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-/* ---------- Stream footer (listen on your phone) ---------- */
-
-.rf-stream-wrap {
-  margin-top: 6px;
-  display: none;
-}
-
-.rf-stream-wrap--visible {
-  display: block;
-}
-
-.rf-audio-iframe {
-  width: 100%;
-  max-width: 100%;
-  border: none;
-  height: 64px;
-}
-
-.rf-stream-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: -100px;
-  padding: 6px 12px;
-  background: rgba(5, 12, 20, 0.96);
-  border-top: 1px solid var(--lof-border-soft);
-  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.85);
-  display: flex;
-  justify-content: center;
-  transition: bottom 0.25s ease-out;
-  z-index: 9999;
-}
-
-.rf-stream-footer--visible {
-  bottom: 0;
-}
-
-.rf-stream-footer .rf-audio-iframe {
-  width: 100%;
-  max-width: 420px;
-  height: 64px;
-}
-
-@media (min-width: 900px) {
-  .rf-stream-footer {
-    left: auto;
-    right: 24px;
-    bottom: 24px;
-    border-radius: 999px;
-    padding: 6px 14px;
-    max-width: 440px;
-  }
-}
-
-/* ---------- Animations ---------- */
-
-@keyframes lof-now-playing-pulse {
-  0% {
-    box-shadow:
-      0 0 16px rgba(22, 255, 172, 0.7),
-      0 0 22px rgba(255, 235, 143, 0.75);
-  }
-  50% {
-    box-shadow:
-      0 0 30px rgba(22, 255, 172, 0.95),
-      0 0 40px rgba(255, 235, 143, 1);
-  }
-  100% {
-    box-shadow:
-      0 0 16px rgba(22, 255, 172, 0.7),
-      0 0 22px rgba(255, 235, 143, 0.75);
-  }
-}
-
-@keyframes lof-progress-shimmer {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 100% 50%;
-  }
-}
-
-/* ---------- Responsive ---------- */
-
-@media (max-width: 900px) {
-  #rf-viewer .rf-main-layout {
-    flex-direction: column;
-  }
-
-  #rf-viewer .rf-main-right {
-    order: 1;
-  }
-
-  #rf-viewer .rf-main-left {
-    order: 2;
-  }
-}
-
-@media (max-width: 700px) {
-  #rf-viewer.rf-viewer {
-    padding: 10px 14px 24px;
-  }
-
-  .rf-status-panel {
-    gap: 10px;
-    margin-bottom: 14px;
-  }
-
-  #rf-viewer .rf-grid {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: 420px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  #rf-viewer .rf-card {
-    padding: 14px 14px 16px;
-  }
-
-  #rf-viewer .rf-extra-panel {
-    margin-top: 18px;
-  }
-
-  #rf-viewer .rf-viewer-headline {
-    font-size: 1.05rem;
-  }
-
-  #rf-viewer .rf-viewer-subcopy {
-    font-size: 0.82rem;
-  }
-
-  #rf-viewer .rf-card-title,
-  #rf-viewer .rf-card-artist,
-  #rf-viewer .rf-card-meta {
-    text-align: center;
-  }
-
-  #rf-viewer .rf-card-meta {
-    justify-content: center;
-  }
-
-  #rf-viewer .rf-card-badge {
-    align-self: center;
-  }
-}
-
-/* ============================================================
- * MIDNIGHT EVERGREEN + FALCON MAGIC OVERRIDES (V1.5 XMAS SKIN)
- * Append-only: overrides earlier teal / neon styles gracefully
- * ========================================================== */
-
-/* --- Palette hard reset (no teal margarita) --- */
-:root {
-  /* Core background system */
-  --lof-bg: #020809;              /* Deep Night */
-  --lof-surface: #071215;         /* Midnight Evergreen */
-  --lof-surface-soft: #13252B;    /* Pine Shadow */
-
-  /* Primary accents */
-  --lof-accent-primary: #0F7A4A;  /* Deep Evergreen */
-  --lof-accent-secondary: #F4D38A;/* Candlelight Gold */
-  --lof-accent-cta: #D23A3A;      /* Sleigh Red (use sparingly) */
-
-  /* Glow colors (de-neoned) */
-  --lof-glow-evergreen: #209060;  /* Soft evergreen glow */
-  --lof-glow-gold: #F8E1A8;       /* Warm solstice glow */
-  --lof-glow-ice: #B4E5FF;        /* Frost edge, not blue rave */
-
-  /* Text + borders */
-  --lof-text-main: #FDFBF6;
-  --lof-text-muted: #A8B7BD;
-  --lof-border-soft: rgba(244, 211, 138, 0.32);
-}
-
-/* --- Overall viewer background: kill teal radials --- */
-#rf-viewer.rf-viewer,
-#rf-viewer.rf-viewer.rf-phase-intermission,
-#rf-viewer.rf-viewer.rf-phase-showtime {
-  background:
-    radial-gradient(circle at top, rgba(210, 58, 58, 0.14), transparent 60%),
-    radial-gradient(circle at bottom, rgba(244, 211, 138, 0.16), transparent 65%),
-    linear-gradient(135deg, #020809, #061215);
-}
-
-/* Slightly cooler during intermission – but still on-brand */
-#rf-viewer.rf-phase-intermission {
-  background:
-    radial-gradient(circle at top, rgba(180, 229, 255, 0.14), transparent 60%),
-    radial-gradient(circle at bottom, rgba(244, 211, 138, 0.14), transparent 65%),
-    linear-gradient(135deg, #02070B, #06151B);
-}
-
-/* --- Top status / hero band (Now / Next / Mode) --- */
-#rf-viewer .rf-status-panel {
-  border-radius: 20px;
-  padding: 14px 16px 12px;
-  background:
-    radial-gradient(circle at top, rgba(244, 211, 138, 0.18), transparent 60%),
-    radial-gradient(circle at bottom, rgba(178, 57, 57, 0.18), transparent 60%),
-    linear-gradient(135deg, #041017, #071821);
-  border: 1px solid rgba(244, 211, 138, 0.4);
-  box-shadow:
-    0 0 40px rgba(0, 0, 0, 0.85),
-    0 20px 60px rgba(0, 0, 0, 0.9);
-}
-
-/* NOW PLAYING card surface */
-#rf-viewer .rf-now {
-  background:
-    radial-gradient(circle at top, rgba(244, 211, 138, 0.24), transparent 65%),
-    radial-gradient(circle at bottom, rgba(210, 58, 58, 0.24), transparent 65%),
-    linear-gradient(145deg, #050D11, #091720);
-  box-shadow:
-    0 0 26px rgba(210, 58, 58, 0.65),
-    0 0 40px rgba(244, 211, 138, 0.85);
-  border-radius: 18px;
-}
-
-/* NOW PLAYING label pill */
-#rf-viewer .rf-now-label {
-  background: rgba(2, 8, 9, 0.9);
-  border-radius: 999px;
-  padding: 4px 10px;
-  border: 1px solid rgba(244, 211, 138, 0.8);
-  color: var(--lof-text-main);
-}
-
-/* --- Candy cane progress bar: “Sleigh runway” --- */
-.rf-now-progress {
-  margin-top: 8px;
-}
-
-.rf-now-progress-bar {
-  position: relative;
-  width: 100%;
-  height: 7px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.10);
-}
-
-.rf-now-progress-fill {
-  position: absolute;
-  inset: 0;
-  width: 0%;
-  border-radius: 999px;
-  background: repeating-linear-gradient(
-    135deg,
-    #D23A3A 0 10px,
-    #FFFFFF 10px 20px
-  );
-  /* No jitter: width only, stripes stay put */
-  transition: width 0.35s linear;
-  box-shadow:
-    0 0 8px rgba(210, 58, 58, 0.7),
-    0 0 14px rgba(244, 211, 138, 0.9);
-}
-
-/* Softer when dimmed */
-.rf-now.rf-now--dim .rf-now-progress-bar {
-  background: rgba(255, 255, 255, 0.06);
-}
-.rf-now.rf-now--dim .rf-now-progress-fill {
-  opacity: 0.8;
-}
-
-/* Label for remaining time */
-#rf-viewer .rf-now-progress-label {
-  margin-top: 4px;
-  font-size: 0.78rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  color: var(--lof-text-muted);
-}
-
-/* --- Song cards: from teal arcade to lodge console --- */
-#rf-viewer .rf-card {
-  position: relative;
-  border-radius: 18px;
-  padding: 20px 18px 16px;
-  background:
-    radial-gradient(circle at bottom, rgba(244, 211, 138, 0.18), transparent 72%),
-    linear-gradient(145deg, #071215, #0E1C22);
-  border: 1px solid rgba(12, 35, 39, 0.9);
-  box-shadow:
-    0 16px 30px rgba(0, 0, 0, 0.9);
-  transition:
-    transform 150ms ease-out,
-    box-shadow 150ms ease-out,
-    border-color 150ms ease-out;
-}
-
-/* Hover – small, focused glow (no neon blast) */
-#rf-viewer .rf-grid .rf-card:hover {
-  transform: translateY(-3px);
-  box-shadow:
-    0 0 20px rgba(244, 211, 138, 0.65),
-    0 18px 32px rgba(0, 0, 0, 0.95);
-  border-color: rgba(244, 211, 138, 0.6);
-}
-
-#rf-viewer .rf-grid .rf-card:active {
-  transform: translateY(-1px);
-  box-shadow:
-    0 10px 24px rgba(0, 0, 0, 0.95);
-}
-
-/* Titles & artist in cards – slightly brighter and crisper */
-#rf-viewer .rf-card-title {
-  color: var(--lof-text-main);
-}
-#rf-viewer .rf-card-artist {
-  color: var(--lof-text-muted);
-}
-
-/* --- Badges: reserved top-left, never colliding --- */
-#rf-viewer .rf-card {
-  padding-top: 28px; /* reserve vertical space */
-}
-
-#rf-viewer .rf-card-badge {
-  position: absolute;
-  top: 10px;
-  left: 14px;
-  margin: 0;
-  align-self: flex-start;
-}
-
-/* When badges exist, keep breathing room above text */
-#rf-viewer .rf-card--with-badge {
-  padding-top: 32px;
-}
-
-/* Badge styling – gold / evergreen pills */
-#rf-viewer .rf-card-badge span,
-#rf-viewer .rf-card-badge .rf-badge-pill {
-  font-size: 0.72rem;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(6, 18, 21, 0.94);
-  border: 1px solid rgba(244, 211, 138, 0.75);
-  color: var(--lof-text-main);
-}
-
-/* Center text on mobile but keep badges pinned in corner */
-@media (max-width: 900px) {
-  #rf-viewer .rf-card-title,
-  #rf-viewer .rf-card-artist,
-  #rf-viewer .rf-card-meta {
-    text-align: center;
-  }
-
-  #rf-viewer .rf-card-meta {
-    justify-content: center;
-  }
-
-  #rf-viewer .rf-card-badge {
-    left: 12px;
-    top: 8px;
-  }
-}
-
-/* --- Card states: default / your pick / now playing / next --- */
-
-/* Default CTA button – matte dark with gold edge */
-#rf-viewer .rf-card-btn {
-  border-radius: 999px;
-  background: rgba(6, 18, 21, 0.9);
-  border: 1px solid rgba(244, 211, 138, 0.7);
-  color: var(--lof-text-main);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.8);
-  transition:
-    background 120ms ease-out,
-    border-color 120ms ease-out,
-    box-shadow 120ms ease-out,
-    transform 80ms ease-out;
-}
-
-#rf-viewer .rf-card-btn:hover {
-  background: linear-gradient(135deg, #0E1C22, #132A31);
-  border-color: rgba(244, 211, 138, 0.9);
-  box-shadow:
-    0 0 14px rgba(244, 211, 138, 0.7),
-    0 10px 22px rgba(0, 0, 0, 0.95);
-  transform: translateY(-1px);
-}
-
-#rf-viewer .rf-card-btn:active {
-  transform: translateY(0);
-  box-shadow:
-    0 6px 16px rgba(0, 0, 0, 0.9);
-}
-
-/* “Your pick” state – subtle orbit glow under CTA */
 #rf-viewer .rf-card--from-this-device {
   border-color: rgba(244, 211, 138, 0.95);
   box-shadow:
@@ -1109,32 +514,30 @@
   inset: -6px;
   border-radius: inherit;
   pointer-events: none;
-  opacity: 0.9;
   background:
     radial-gradient(circle at 20% 0%, rgba(244, 211, 138, 0.65), transparent 60%),
     radial-gradient(circle at 80% 100%, rgba(210, 58, 58, 0.55), transparent 65%);
   filter: blur(4px);
+  opacity: 0.9;
   z-index: -1;
 }
 
-/* NOW PLAYING card – strongest glow, uses pulse animation */
-#rf-viewer .rf-card--now-playing {
-  box-shadow:
-    0 0 26px rgba(210, 58, 58, 0.9),
-    0 0 46px rgba(244, 211, 138, 1) !important;
-  border-color: var(--lof-accent-secondary) !important;
-  animation: lof-now-playing-pulse 3.4s ease-in-out infinite;
+/* Surprise card – keep subtle for now */
+#rf-viewer .rf-card--surprise {
+  border-style: dashed;
 }
 
-/* NEXT in queue – softer halo, no red */
-#rf-viewer .rf-card--next {
-  box-shadow:
-    0 0 22px rgba(244, 211, 138, 0.6),
-    0 16px 32px rgba(0, 0, 0, 0.95);
-  border-color: rgba(244, 211, 138, 0.7);
+/* Unavailable / cooldown */
+#rf-viewer .rf-card--unavailable {
+  opacity: 0.55;
 }
 
-/* Replace old teal-heavy pulse with warm aurora */
+#rf-viewer .rf-card--unavailable .rf-card-btn {
+  opacity: 0.8;
+  cursor: default;
+}
+
+/* Pulse for now-playing */
 @keyframes lof-now-playing-pulse {
   0% {
     box-shadow:
@@ -1153,15 +556,21 @@
   }
 }
 
-/* --- Right-rail / extra panels so they feel like same console --- */
+/* ---------- Right-rail panels (stats / speaker / glow) ---------- */
+
 #rf-viewer .rf-extra-panel {
+  border-radius: 18px;
+  padding: 10px 13px 13px;
   background:
     radial-gradient(circle at top, rgba(244, 211, 138, 0.14), transparent 65%),
-    linear-gradient(145deg, #050F13, #0A181F);
-  border-radius: 18px;
+    linear-gradient(150deg, #050F13, #0A181F);
   border: 1px solid rgba(22, 42, 48, 0.9);
   box-shadow:
     0 14px 26px rgba(0, 0, 0, 0.9);
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 #rf-viewer .rf-extra-panel h3,
@@ -1172,11 +581,82 @@
   color: var(--lof-text-main);
 }
 
-/* Weather strip: no more rainbow */
-#rf-viewer .rf-weather-strip {
-  border-radius: 999px;
-  padding: 4px 10px;
-  background: linear-gradient(90deg, #071E19, #2B1A1A);
+/* Stats rows */
+#rf-viewer .rf-stats-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.82rem;
+}
+
+#rf-viewer .rf-stat-label {
   color: var(--lof-text-muted);
-  border: 1px solid rgba(244, 211, 138, 0.45);
+}
+
+#rf-viewer .rf-stat-value {
+  font-weight: 600;
+}
+
+/* Speaker card */
+#rf-viewer .rf-speaker-status {
+  font-size: 0.82rem;
+  color: var(--lof-text-muted);
+}
+
+#rf-viewer .rf-speaker-cta {
+  margin-top: 6px;
+}
+
+/* Glow summary */
+#rf-viewer .rf-glow-summary {
+  font-size: 0.82rem;
+  color: var(--lof-text-muted);
+}
+
+/* ---------- Misc ---------- */
+
+#rf-viewer .rf-muted {
+  color: var(--lof-text-muted);
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 900px) {
+  #rf-viewer .rf-main-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 700px) {
+  #rf-viewer.rf-viewer {
+    padding: 10px 0 22px;
+  }
+
+  #rf-viewer .rf-status-panel {
+    margin-bottom: 14px;
+  }
+
+  #rf-viewer .rf-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  #rf-viewer .rf-main-right {
+    order: -1;
+  }
+
+  #rf-viewer .rf-card-title,
+  #rf-viewer .rf-card-artist,
+  #rf-viewer .rf-card-meta {
+    text-align: center;
+  }
+
+  #rf-viewer .rf-card-meta {
+    justify-content: center;
+  }
+
+  #rf-viewer .rf-card-badge {
+    align-self: center;
+  }
 }
