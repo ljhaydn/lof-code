@@ -164,23 +164,6 @@
     0 12px 24px rgba(0, 0, 0, 0.9);
 }
 
-.rf-now::before {
-  content: "";
-  position: absolute;
-  top: 6px;
-  left: 12px;
-  right: 12px;
-  height: 3px;
-  border-radius: 999px;
-  background: repeating-linear-gradient(
-    90deg,
-    #FF5E5E 0 10px,
-    #FFFFFF 10px 20px,
-    #FFBFBF 20px 30px
-  );
-  box-shadow: 0 0 8px rgba(255, 235, 143, 0.85);
-}
-
 /* Dim / intermission */
 .rf-now.rf-now--dim {
   background:
@@ -224,15 +207,15 @@
   inset: 0;
   width: 0%;
   border-radius: 999px;
-  background: linear-gradient(
+  background: repeating-linear-gradient(
     90deg,
-    var(--lof-accent-primary),
-    var(--lof-accent-secondary),
-    var(--lof-glow-ice)
+    #FF5E5E 0 10px,
+    #FFFFFF 10px 20px
   );
   background-size: 200% 100%;
   transition: width 0.25s linear;
   animation: lof-progress-shimmer 3s linear infinite;
+  box-shadow: 0 0 10px rgba(255, 235, 143, 0.6);
 }
 
 #rf-viewer .rf-now-progress-label {
@@ -363,7 +346,7 @@
   justify-content: center;
   gap: 8px;
   opacity: 0.85;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 /* Badges – now part of normal flow (no overlap) */
@@ -403,6 +386,14 @@
   padding-top: 18px;
 }
 
+#rf-viewer .rf-card--with-badge .rf-card-btn {
+  margin-top: 10px;
+}
+
+#rf-viewer .rf-card--with-badge .rf-card-chip {
+  margin-top: 10px;
+}
+
 /* Card actions at the bottom */
 #rf-viewer .rf-card-actions {
   margin-top: auto;
@@ -416,7 +407,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 6px;
   padding: 6px 14px;
   font-size: 0.8rem;
   border-radius: 999px;
@@ -448,7 +439,7 @@
 
 /* “You picked this” chip */
 #rf-viewer .rf-card-chip {
-  margin-top: 12px;
+  margin-top: 8px;
   border-radius: 999px;
   padding: 3px 10px;
   font-size: 0.75rem;
