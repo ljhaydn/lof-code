@@ -1,63 +1,60 @@
 /* ================================================================
  * LIGHTS ON FALCON VIEWER V1.5
- * Design: "Boutique Holiday Speakeasy"
- * Aesthetic: Sophisticated Christmas with confident energy
+ * Design: "GRAND BUDAPEST CHRISTMAS"
  * 
- * Martha Stewart (refined craft) × Snoop Dogg (personality) × Red Bull (intensity)
+ * Wes Anderson × Kate Spade × Anthropologie Holiday
+ * Bold. Playful. Sophisticated. Unmistakably Christmas.
  * ================================================================ */
 
 /* ----------------------------------------------------------------
- * TYPOGRAPHY IMPORTS
+ * TYPOGRAPHY - Dramatic & Memorable
  * ---------------------------------------------------------------- */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700&display=swap');
 
 /* ----------------------------------------------------------------
- * 1. DESIGN TOKENS - Sophisticated Christmas Palette
+ * 1. DESIGN TOKENS - Grand Budapest Palette
  * ---------------------------------------------------------------- */
 
 :root {
-  /* Sophisticated Christmas Palette */
-  --lof-cardinal: #C41E3A;        /* Deep cardinal red */
-  --lof-burgundy: #6B1C23;        /* Rich burgundy (darker red) */
-  --lof-champagne: #D4AF37;       /* Champagne gold */
-  --lof-gold: #B8860B;            /* Deep gold */
-  --lof-copper: #B87333;          /* Warm copper */
-  --lof-ice: #F8FEFF;             /* Cool ice white */
-  --lof-frost: #E0F2F7;           /* Soft frost blue */
+  /* Primary Colors - Bold & Unexpected */
+  --lof-pink: #E91E63;            /* Hot Pink (Wes Anderson signature) */
+  --lof-forest: #0F3A2C;          /* Deep Forest Green */
+  --lof-gold: #FFD700;            /* Pure Gold */
+  --lof-cream: #FFF8E7;           /* Warm Cream */
+  --lof-white: #FFFFFF;           /* Pure White */
   
-  /* Forest Foundation (keep what works) */
-  --lof-forest: #0A1F14;          /* Deep forest green */
-  --lof-pine: #142D20;            /* Forest pine */
-  --lof-moss: #1C3A2B;            /* Soft moss */
-  
-  /* Depths & Shadows */
-  --lof-plum: #4A1942;            /* Deep plum for shadows */
-  --lof-shadow: #020A07;          /* Near-black with green tint */
+  /* Supporting Colors */
+  --lof-burgundy: #8B0A1A;        /* Deep Red */
+  --lof-mint: #D4F1E8;            /* Soft Mint */
+  --lof-copper: #B87333;          /* Warm Copper */
+  --lof-pine: #1A4D3A;            /* Mid Forest */
   
   /* Text */
   --lof-text-main: #FFFFFF;
-  --lof-text-muted: #C5D4CF;
-  --lof-text-dim: #8A9B95;
-  --lof-text-gold: #E5C56A;
+  --lof-text-dark: #2C1810;       /* Dark brown for light backgrounds */
+  --lof-text-muted: #C5E5D8;
+  --lof-text-dim: #8FA89E;
   
-  /* Borders */
-  --lof-border-soft: rgba(212, 175, 55, 0.15);
-  --lof-border-medium: rgba(212, 175, 55, 0.35);
-  --lof-border-strong: rgba(212, 175, 55, 0.65);
+  /* Borders & Accents */
+  --lof-border-gold: rgba(255, 215, 0, 0.4);
+  --lof-border-pink: rgba(233, 30, 99, 0.4);
+  --lof-border-cream: rgba(255, 248, 231, 0.2);
   
   /* Typography */
-  --font-display: 'Cormorant Garamond', Georgia, serif;
-  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-ui: 'DM Sans', -apple-system, system-ui, sans-serif;
   
-  /* Radius */
-  --radius-card: 12px;
-  --radius-button: 8px;
-  --radius-pill: 999px;
+  /* Spacing & Sizing */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
   
-  /* Glow intensity (restrained) */
-  --glow-subtle: 15px;
-  --glow-medium: 25px;
-  --glow-strong: 35px;
+  /* Effects */
+  --glow-pink: 0 0 30px rgba(233, 30, 99, 0.6);
+  --glow-gold: 0 0 25px rgba(255, 215, 0, 0.5);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-float: 0 12px 36px rgba(0, 0, 0, 0.4);
 }
 
 /* ----------------------------------------------------------------
@@ -67,67 +64,51 @@
 #rf-viewer.rf-viewer {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 16px 12px 32px;
+  padding: 20px 16px 40px;
   font-family: var(--font-ui);
   color: var(--lof-text-main);
   
-  /* Sophisticated forest backdrop with warm undertones */
+  /* Warm cream to deep forest gradient */
   background:
-    radial-gradient(ellipse at top, rgba(212, 175, 55, 0.08), transparent 60%),
-    radial-gradient(ellipse at bottom, rgba(196, 30, 58, 0.05), transparent 65%),
-    linear-gradient(180deg, var(--lof-shadow), var(--lof-forest) 40%, var(--lof-pine));
+    radial-gradient(circle at top, rgba(255, 215, 0, 0.1), transparent 50%),
+    radial-gradient(circle at bottom, rgba(233, 30, 99, 0.08), transparent 60%),
+    linear-gradient(180deg, var(--lof-cream) 0%, var(--lof-pine) 30%, var(--lof-forest) 100%);
   
   min-height: 100vh;
 }
 
 /* ----------------------------------------------------------------
- * 3. STATUS PANEL (Now / Next / Mode)
+ * 3. STATUS PANEL - The Command Center
  * ---------------------------------------------------------------- */
 
 .rf-status-panel {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 14px;
-  margin-bottom: 20px;
-  padding: 20px 24px;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 24px 28px;
   
-  /* Elevated surface with warm glow */
+  /* Hot pink top stripe - Wes Anderson accent */
+  border-top: 6px solid var(--lof-pink);
+  border-bottom: 2px solid var(--lof-gold);
+  
   background:
-    radial-gradient(ellipse at bottom, rgba(212, 175, 55, 0.12), transparent 70%),
-    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+    linear-gradient(135deg, var(--lof-forest), var(--lof-pine));
   
-  border: 2px solid var(--lof-border-medium);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-lg);
   
-  /* Refined glow - single color, elegant */
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.4),
-    0 20px 50px rgba(0, 0, 0, 0.8);
-  
-  /* Subtle breathing animation */
-  animation: lof-panel-breathe 4s ease-in-out infinite;
-}
-
-@keyframes lof-panel-breathe {
-  0%, 100% {
-    box-shadow:
-      0 0 var(--glow-medium) rgba(212, 175, 55, 0.4),
-      0 20px 50px rgba(0, 0, 0, 0.8);
-  }
-  50% {
-    box-shadow:
-      0 0 var(--glow-strong) rgba(212, 175, 55, 0.5),
-      0 20px 50px rgba(0, 0, 0, 0.8);
-  }
+    var(--glow-pink),
+    var(--shadow-float);
 }
 
 .rf-label {
   font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--lof-text-gold);
-  font-weight: 600;
-  margin-bottom: 6px;
+  letter-spacing: 0.15em;
+  color: var(--lof-gold);
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
 /* NOW PLAYING section */
@@ -140,43 +121,41 @@
 
 .rf-now-title {
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.25rem;
-  line-height: 1.3;
-  margin-bottom: 4px;
-  color: var(--lof-ice);
-  
-  /* Subtle text glow */
-  text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  font-weight: 900;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  color: var(--lof-white);
+  text-shadow: 2px 2px 0 rgba(233, 30, 99, 0.3);
 }
 
 .rf-now-artist {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--lof-text-muted);
   font-weight: 500;
   font-style: italic;
 }
 
-/* Dim state for intermission */
+/* Dim state */
 .rf-now.rf-now--dim .rf-now-title {
   color: var(--lof-text-muted);
   text-shadow: none;
 }
 
-/* NOW PLAYING progress bar - liquid gold shimmer */
+/* NOW PLAYING progress bar - CHUNKY & BOLD */
 .rf-now-progress {
-  margin-top: 10px;
+  margin-top: 12px;
 }
 
 .rf-now-progress-bar {
   position: relative;
   width: 100%;
-  height: 8px;
-  border-radius: var(--radius-pill);
+  height: 18px;
+  border-radius: 999px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 .rf-now-progress-fill {
@@ -185,24 +164,25 @@
   top: 0;
   bottom: 0;
   width: 0%;
-  border-radius: var(--radius-pill);
+  border-radius: 999px;
   
-  /* Smooth burgundy to champagne gradient */
+  /* Bold pink to gold gradient */
   background: linear-gradient(
     90deg,
-    var(--lof-burgundy),
-    var(--lof-cardinal),
-    var(--lof-champagne)
+    var(--lof-pink),
+    var(--lof-burgundy) 30%,
+    var(--lof-gold)
   );
   
-  transition: width 0.3s ease-out;
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
   
-  /* Traveling highlight shimmer */
-  position: relative;
-  overflow: hidden;
+  /* Glossy highlight */
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
 }
 
-/* Shimmer effect - subtle traveling highlight */
+/* Shimmer overlay */
 .rf-now-progress-fill::after {
   content: '';
   position: absolute;
@@ -213,13 +193,13 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.3),
+    rgba(255, 255, 255, 0.4),
     transparent
   );
-  animation: lof-shimmer-travel 3s ease-in-out infinite;
+  animation: lof-shimmer 2.5s ease-in-out infinite;
 }
 
-@keyframes lof-shimmer-travel {
+@keyframes lof-shimmer {
   0% { left: -100%; }
   50% { left: 100%; }
   100% { left: 100%; }
@@ -234,7 +214,6 @@
   font-weight: 600;
 }
 
-/* Dimmed progress */
 .rf-now.rf-now--dim .rf-now-progress-fill {
   opacity: 0.5;
 }
@@ -243,7 +222,7 @@
   animation-play-state: paused;
 }
 
-/* NEXT + MODE sections */
+/* NEXT + MODE */
 .rf-next,
 .rf-mode {
   padding: 0;
@@ -254,9 +233,9 @@
 .rf-next-title,
 .rf-mode-value {
   margin-top: 2px;
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--lof-text-main);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--lof-white);
 }
 
 .rf-mode {
@@ -268,22 +247,23 @@
  * ---------------------------------------------------------------- */
 
 .rf-viewer-header {
-  margin: 18px 0 16px;
+  margin: 20px 0 18px;
   text-align: center;
 }
 
 .rf-viewer-headline {
   font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 900;
   font-style: italic;
   letter-spacing: 0.02em;
-  color: var(--lof-text-main);
-  margin-bottom: 10px;
+  color: var(--lof-white);
+  margin-bottom: 12px;
+  text-shadow: 3px 3px 0 rgba(233, 30, 99, 0.4);
 }
 
 .rf-viewer-subcopy {
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.6;
   color: var(--lof-text-muted);
   max-width: 640px;
@@ -298,36 +278,36 @@
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 14px 0 20px;
+  gap: 12px;
+  margin: 16px 0 24px;
 }
 
 .rf-ctl-link {
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--lof-border-soft);
-  background: rgba(20, 45, 32, 0.6);
-  padding: 9px 18px;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: var(--lof-text-main);
+  border-radius: 999px;
+  border: 2px solid var(--lof-pink);
+  background: var(--lof-forest);
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--lof-white);
   cursor: pointer;
   
-  transition:
-    all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
 }
 
 .rf-ctl-link:hover {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: var(--lof-border-medium);
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  background: var(--lof-pink);
+  border-color: var(--lof-gold);
+  transform: translateY(-3px);
+  box-shadow:
+    var(--glow-pink),
+    0 6px 18px rgba(0, 0, 0, 0.4);
 }
 
 .rf-ctl-link:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 .rf-controls-row--disabled .rf-ctl-link {
@@ -337,9 +317,9 @@
 
 .rf-controls-row--disabled .rf-ctl-link:hover {
   transform: none;
-  background: rgba(20, 45, 32, 0.6);
-  border-color: var(--lof-border-soft);
-  box-shadow: none;
+  background: var(--lof-forest);
+  border-color: var(--lof-pink);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
 }
 
 /* ----------------------------------------------------------------
@@ -348,7 +328,7 @@
 
 .rf-main-layout {
   display: flex;
-  gap: 22px;
+  gap: 24px;
   align-items: flex-start;
 }
 
@@ -362,8 +342,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  min-height: 300px;
+  gap: 16px;
+  min-height: 320px;
 }
 
 @media (max-width: 900px) {
@@ -381,26 +361,25 @@
 }
 
 /* ----------------------------------------------------------------
- * 7. SEQUENCE GRID
+ * 7. SEQUENCE GRID - Pattern System
  * ---------------------------------------------------------------- */
 
 .rf-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  grid-auto-rows: 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
 }
 
 @media (max-width: 700px) {
   .rf-grid {
     grid-template-columns: minmax(0, 1fr);
-    max-width: 440px;
+    max-width: 460px;
     margin: 0 auto;
   }
 }
 
 /* ----------------------------------------------------------------
- * 8. SONG CARDS - Refined elegance
+ * 8. SONG CARDS - Playful Pattern System
  * ---------------------------------------------------------------- */
 
 .rf-card {
@@ -408,51 +387,54 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 16px 18px 18px;
-  border-radius: var(--radius-card);
+  padding: 18px 20px 20px;
+  border-radius: var(--radius-md);
   
-  /* Subtle gradient with texture */
-  background:
-    radial-gradient(circle at top, rgba(212, 175, 55, 0.06), transparent 65%),
-    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
   
-  border: 1px solid var(--lof-border-soft);
+  border: 2px solid var(--lof-border-cream);
   
-  box-shadow:
-    0 0 var(--glow-subtle) rgba(212, 175, 55, 0.2),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-card);
   
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
   
   transition:
-    transform 0.3s ease,
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 0.3s ease,
     border-color 0.3s ease;
 }
 
-/* Subtle top accent */
-.rf-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 50%;
-  background: radial-gradient(ellipse at top, rgba(212, 175, 55, 0.08), transparent 60%);
-  pointer-events: none;
+/* Alternating pattern backgrounds */
+.rf-card:nth-child(odd) {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.02) 10px,
+      rgba(255, 255, 255, 0.02) 11px
+    ),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+}
+
+.rf-card:nth-child(even) {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  background-size: 20px 20px, 100% 100%;
 }
 
 .rf-card:hover {
-  transform: translateY(-6px);
-  border-color: var(--lof-border-medium);
+  transform: translateY(-8px) scale(1.02);
+  border-color: var(--lof-gold);
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.4),
-    0 16px 40px rgba(0, 0, 0, 0.8);
+    var(--glow-gold),
+    var(--shadow-float);
 }
 
 .rf-card:active {
-  transform: translateY(-3px);
+  transform: translateY(-4px) scale(1.01);
 }
 
 /* Card content */
@@ -460,31 +442,32 @@
   position: relative;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   line-height: 1.3;
   margin-bottom: 6px;
-  color: var(--lof-text-main);
+  color: var(--lof-white);
+  padding-top: 8px; /* Space for floating badge */
 }
 
 .rf-card-artist {
   position: relative;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   color: var(--lof-text-muted);
   font-weight: 500;
   font-style: italic;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .rf-card-meta {
   position: relative;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--lof-text-dim);
   display: flex;
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-weight: 600;
 }
 
 .rf-card-actions {
@@ -494,43 +477,41 @@
   margin-top: auto;
 }
 
-/* CTA Button - refined gradient */
+/* CTA Button - Bold gradient */
 .rf-card-btn {
   flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 11px 18px;
-  font-size: 0.88rem;
+  padding: 12px 20px;
+  font-size: 0.9rem;
   font-weight: 700;
-  border-radius: var(--radius-button);
+  border-radius: var(--radius-sm);
   
-  /* Refined Christmas gradient */
-  background: linear-gradient(135deg, var(--lof-cardinal), var(--lof-champagne));
-  border: 1px solid var(--lof-border-strong);
-  color: var(--lof-ice);
+  background: linear-gradient(135deg, var(--lof-pink), var(--lof-burgundy));
+  border: 2px solid var(--lof-gold);
+  color: var(--lof-white);
   
   box-shadow:
-    0 0 20px rgba(196, 30, 58, 0.4),
-    0 8px 20px rgba(0, 0, 0, 0.6);
+    0 0 20px rgba(233, 30, 99, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.3);
   
   cursor: pointer;
-  transition:
-    all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .rf-card-btn:hover {
-  background: linear-gradient(135deg, #D4284A, #E5C56A);
-  border-color: var(--lof-champagne);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #FF2970, #A00D1E);
+  border-color: var(--lof-white);
+  transform: translateY(-3px);
   box-shadow:
-    0 0 var(--glow-medium) rgba(196, 30, 58, 0.6),
-    0 10px 25px rgba(0, 0, 0, 0.7);
+    var(--glow-pink),
+    0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .rf-card-btn:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 .rf-card-btn:disabled {
@@ -538,269 +519,261 @@
   cursor: not-allowed;
   background: linear-gradient(135deg, var(--lof-forest), var(--lof-pine));
   color: var(--lof-text-dim);
-  border-color: var(--lof-border-soft);
+  border-color: var(--lof-border-cream);
   box-shadow: none;
 }
 
 /* ----------------------------------------------------------------
- * 9. CARD STATE VARIANTS
+ * 9. CARD STATE VARIANTS - THE HERO MOMENTS
  * ---------------------------------------------------------------- */
 
-/* NOW PLAYING - Elevated with liquid gold accent */
+/* NOW PLAYING - The Star of the Show */
 .rf-card--now-playing {
-  transform: scale(1.03);
+  transform: scale(1.08) rotate(-0.5deg);
   
-  /* Warmer background with burgundy undertone */
-  background:
-    radial-gradient(circle at bottom, rgba(107, 28, 35, 0.25), transparent 70%),
-    radial-gradient(circle at top, rgba(212, 175, 55, 0.15), transparent 65%),
-    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  /* Candy cane stripe HEADER */
+  border-top: 8px solid transparent;
+  border-image: repeating-linear-gradient(
+    90deg,
+    var(--lof-pink) 0,
+    var(--lof-pink) 12px,
+    var(--lof-white) 12px,
+    var(--lof-white) 24px
+  ) 8;
   
-  border: 2px solid var(--lof-champagne);
+  /* Warm cream background for contrast */
+  background: var(--lof-cream);
   
-  /* Strong champagne glow */
+  border-left: 2px solid var(--lof-gold);
+  border-right: 2px solid var(--lof-gold);
+  border-bottom: 2px solid var(--lof-gold);
+  
   box-shadow:
-    0 0 var(--glow-strong) rgba(212, 175, 55, 0.7),
-    0 0 50px rgba(212, 175, 55, 0.4),
-    0 20px 50px rgba(0, 0, 0, 0.9);
+    var(--glow-pink),
+    0 0 40px rgba(255, 215, 0, 0.4),
+    var(--shadow-float);
   
-  /* Gentle pulsing */
   animation: lof-now-pulse 3s ease-in-out infinite;
-}
-
-/* Liquid gold accent stripe on left edge */
-.rf-card--now-playing::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(
-    180deg,
-    var(--lof-champagne),
-    var(--lof-gold),
-    var(--lof-champagne)
-  );
-  box-shadow: 0 0 12px rgba(212, 175, 55, 0.8);
+  
+  z-index: 10;
 }
 
 @keyframes lof-now-pulse {
   0%, 100% {
     box-shadow:
-      0 0 var(--glow-strong) rgba(212, 175, 55, 0.7),
-      0 0 50px rgba(212, 175, 55, 0.4),
-      0 20px 50px rgba(0, 0, 0, 0.9);
+      var(--glow-pink),
+      0 0 40px rgba(255, 215, 0, 0.4),
+      var(--shadow-float);
   }
   50% {
     box-shadow:
-      0 0 calc(var(--glow-strong) + 5px) rgba(212, 175, 55, 0.8),
-      0 0 60px rgba(212, 175, 55, 0.5),
-      0 20px 50px rgba(0, 0, 0, 0.9);
+      0 0 40px rgba(233, 30, 99, 0.8),
+      0 0 50px rgba(255, 215, 0, 0.6),
+      var(--shadow-float);
   }
 }
 
 .rf-card--now-playing:hover {
-  transform: scale(1.03) translateY(-6px);
+  transform: scale(1.08) rotate(-0.5deg) translateY(-8px);
   animation-play-state: paused;
 }
 
-.rf-card--now-playing .rf-card-title {
-  font-size: 1.15rem;
-  color: var(--lof-ice);
+.rf-card--now-playing .rf-card-title,
+.rf-card--now-playing .rf-card-artist,
+.rf-card--now-playing .rf-card-meta {
+  color: var(--lof-text-dark);
 }
 
-/* NEXT UP - Copper accent */
+.rf-card--now-playing .rf-card-title {
+  font-size: 1.3rem;
+  text-shadow: 2px 2px 0 rgba(233, 30, 99, 0.2);
+}
+
+/* NEXT UP - Gold emphasis */
 .rf-card--next {
-  border: 1.5px solid var(--lof-copper);
+  border: 2px solid var(--lof-gold);
   box-shadow:
-    0 0 var(--glow-medium) rgba(184, 115, 51, 0.5),
-    0 12px 35px rgba(0, 0, 0, 0.75);
+    var(--glow-gold),
+    var(--shadow-card);
 }
 
 .rf-card--next:hover {
   box-shadow:
-    0 0 var(--glow-strong) rgba(184, 115, 51, 0.6),
-    0 16px 40px rgba(0, 0, 0, 0.8);
+    0 0 35px rgba(255, 215, 0, 0.7),
+    var(--shadow-float);
 }
 
-/* YOUR PICK - Gold emphasis */
+/* YOUR PICK - Pink love */
 .rf-card--from-this-device {
-  border-bottom: 3px solid var(--lof-champagne);
+  border: 2px solid var(--lof-pink);
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.5),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+    0 0 25px rgba(233, 30, 99, 0.5),
+    var(--shadow-card);
 }
 
+/* Pink accent stripe at bottom */
 .rf-card--from-this-device::after {
   content: '';
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  height: 30%;
-  background: radial-gradient(ellipse at bottom, rgba(212, 175, 55, 0.15), transparent 70%);
-  pointer-events: none;
+  height: 4px;
+  background: linear-gradient(90deg, var(--lof-pink), var(--lof-gold), var(--lof-pink));
 }
 
-/* SURPRISE - Subtle frost accent */
+/* SURPRISE - Mint accent */
 .rf-card--surprise {
-  border: 1px solid rgba(224, 242, 247, 0.3);
+  border: 2px solid var(--lof-mint);
   background:
-    radial-gradient(circle at center, rgba(224, 242, 247, 0.08), transparent 60%),
+    radial-gradient(circle at center, rgba(212, 241, 232, 0.08), transparent 60%),
     linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
   box-shadow:
-    0 0 var(--glow-subtle) rgba(224, 242, 247, 0.4),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+    0 0 20px rgba(212, 241, 232, 0.4),
+    var(--shadow-card);
 }
 
 /* UNAVAILABLE */
 .rf-card--unavailable {
   opacity: 0.5;
-  filter: grayscale(0.5);
+  filter: grayscale(0.6);
   cursor: not-allowed;
 }
 
 .rf-card--unavailable:hover {
   transform: none;
-  box-shadow:
-    0 0 var(--glow-subtle) rgba(212, 175, 55, 0.15),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+  box-shadow: var(--shadow-card);
 }
 
 /* ----------------------------------------------------------------
- * 10. BADGES & CHIPS
+ * 10. BADGES - FLOATING ABOVE (Fixed positioning issue)
  * ---------------------------------------------------------------- */
 
 .rf-card-badge {
   position: absolute;
-  top: 14px;
-  left: 14px;  /* LEFT side, not covering title */
-  padding: 5px 12px;
-  border-radius: var(--radius-pill);
+  top: -14px;  /* ABOVE the card */
+  left: 50%;
+  transform: translateX(-50%);
+  
+  padding: 6px 16px;
+  border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  z-index: 5;
+  z-index: 15;
   
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   
-  /* Subtle floating */
   animation: lof-badge-float 3s ease-in-out infinite;
 }
 
 @keyframes lof-badge-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
 }
 
-/* NOW PLAYING badge - Champagne gold */
+/* NOW PLAYING badge - Pure gold */
 .rf-card-badge--now {
-  background: linear-gradient(135deg, var(--lof-champagne), var(--lof-gold));
-  color: var(--lof-shadow);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: var(--lof-gold);
+  color: var(--lof-text-dark);
+  border: 2px solid var(--lof-white);
   box-shadow:
-    0 0 20px rgba(212, 175, 55, 0.6),
-    0 4px 12px rgba(0, 0, 0, 0.5);
+    0 0 20px rgba(255, 215, 0, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* NEXT UP badge - Copper */
+/* NEXT UP badge - Hot pink */
 .rf-card-badge--next {
-  background: linear-gradient(135deg, var(--lof-copper), #C88A4D);
-  color: var(--lof-ice);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: var(--lof-pink);
+  color: var(--lof-white);
+  border: 2px solid var(--lof-white);
   box-shadow:
-    0 0 15px rgba(184, 115, 51, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.5);
+    0 0 20px rgba(233, 30, 99, 0.7),
+    0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* "Your pick" chip with sparkles */
+/* ----------------------------------------------------------------
+ * 11. "YOUR PICK" CHIP - Sparkle Party
+ * ---------------------------------------------------------------- */
+
 .rf-card-chip {
   position: relative;
-  margin-top: 12px;
-  padding: 7px 14px;
-  border-radius: var(--radius-pill);
-  font-size: 0.78rem;
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.8rem;
   font-weight: 700;
-  background: rgba(20, 45, 32, 0.7);
-  border: 2px solid var(--lof-champagne);
-  color: var(--lof-text-gold);
+  background: var(--lof-pink);
+  border: 2px solid var(--lof-gold);
+  color: var(--lof-white);
   text-align: center;
   
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  
   box-shadow:
-    0 0 20px rgba(212, 175, 55, 0.4),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+    var(--glow-pink),
+    0 4px 12px rgba(0, 0, 0, 0.3);
   
-  /* Subtle pulse */
-  animation: lof-chip-glow 2.5s ease-in-out infinite;
+  animation: lof-chip-pulse 2s ease-in-out infinite;
 }
 
-@keyframes lof-chip-glow {
+@keyframes lof-chip-pulse {
   0%, 100% {
     box-shadow:
-      0 0 20px rgba(212, 175, 55, 0.4),
-      inset 0 1px 2px rgba(255, 255, 255, 0.1);
+      var(--glow-pink),
+      0 4px 12px rgba(0, 0, 0, 0.3);
   }
   50% {
     box-shadow:
-      0 0 var(--glow-medium) rgba(212, 175, 55, 0.6),
-      inset 0 1px 2px rgba(255, 255, 255, 0.15);
+      0 0 35px rgba(233, 30, 99, 0.9),
+      0 4px 12px rgba(0, 0, 0, 0.3);
   }
 }
 
-/* Sparkle stars - refined positioning */
+/* Sparkle stars - bigger & more dramatic */
 .rf-card-chip::before,
 .rf-card-chip::after {
   content: '✨';
   position: absolute;
-  font-size: 0.85rem;
-  animation: lof-sparkle-rotate 4s linear infinite;
-  opacity: 0.9;
+  font-size: 1.2rem;
+  animation: lof-sparkle 3s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
 }
 
 .rf-card-chip::before {
-  top: -6px;
-  left: -6px;
+  top: -10px;
+  left: -10px;
 }
 
 .rf-card-chip::after {
-  bottom: -6px;
-  right: -6px;
-  animation-delay: 2s;
+  bottom: -10px;
+  right: -10px;
+  animation-delay: 1.5s;
 }
 
-@keyframes lof-sparkle-rotate {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.1); }
-  100% { transform: rotate(360deg) scale(1); }
+@keyframes lof-sparkle {
+  0% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+  50% { transform: rotate(180deg) scale(1.3); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0.8; }
 }
 
 /* ----------------------------------------------------------------
- * 11. EXTRA PANEL (Queue / Stats / Speaker / Glow)
+ * 12. EXTRA PANEL
  * ---------------------------------------------------------------- */
 
 .rf-extra-panel {
-  padding: 16px 18px;
-  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
   background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
-  border: 1px solid var(--lof-border-soft);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
-  
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  border: 2px solid var(--lof-border-cream);
+  box-shadow: var(--shadow-card);
 }
 
 .rf-extra-title {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--lof-text-main);
-  margin-bottom: 6px;
+  color: var(--lof-white);
+  margin-bottom: 8px;
 }
 
 .rf-extra-sub {
@@ -809,7 +782,7 @@
   margin-bottom: 12px;
 }
 
-/* Queue & Leaderboard lists */
+/* Queue lists */
 .rf-queue-list,
 .rf-leaderboard-list {
   list-style: none;
@@ -823,10 +796,10 @@
   grid-template-columns: auto 1fr auto;
   align-items: baseline;
   gap: 10px;
-  padding: 8px 0;
-  font-size: 0.88rem;
+  padding: 10px 0;
+  font-size: 0.9rem;
   color: var(--lof-text-main);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .rf-queue-item:last-child,
@@ -838,9 +811,9 @@
 .rf-leaderboard-rank {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--lof-text-gold);
-  min-width: 28px;
+  font-size: 1.1rem;
+  color: var(--lof-gold);
+  min-width: 32px;
   text-align: center;
 }
 
@@ -857,32 +830,32 @@
 
 /* Speaker card */
 .lof-speaker-card {
-  padding: 16px 18px;
-  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
   background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
-  border: 1px solid rgba(184, 115, 51, 0.3);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--lof-copper);
+  box-shadow: var(--shadow-card);
 }
 
 .lof-speaker-title {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--lof-text-main);
-  margin-bottom: 10px;
+  color: var(--lof-white);
+  margin-bottom: 12px;
 }
 
 .lof-speaker-options {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .lof-speaker-btn {
-  padding: 10px 14px;
-  border-radius: var(--radius-button);
-  border: 1px solid var(--lof-border-soft);
-  background: rgba(20, 45, 32, 0.5);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--lof-border-cream);
+  background: var(--lof-forest);
   color: var(--lof-text-main);
   font-size: 0.9rem;
   font-weight: 600;
@@ -892,15 +865,15 @@
 }
 
 .lof-speaker-btn:hover {
-  background: rgba(212, 175, 55, 0.15);
-  border-color: var(--lof-border-medium);
-  transform: translateX(3px);
+  background: var(--lof-pine);
+  border-color: var(--lof-gold);
+  transform: translateX(4px);
 }
 
 .lof-speaker-btn--active {
-  background: rgba(212, 175, 55, 0.2);
-  border-color: var(--lof-champagne);
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  background: var(--lof-pine);
+  border-color: var(--lof-gold);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
 }
 
 .lof-speaker-row--timer {
@@ -914,41 +887,41 @@
 
 .lof-speaker-countdown-inline {
   font-variant-numeric: tabular-nums;
-  color: var(--lof-text-gold);
-  font-weight: 600;
+  color: var(--lof-gold);
+  font-weight: 700;
 }
 
 /* Glow card */
 .rf-glow-card {
-  padding: 16px 18px;
-  border-radius: var(--radius-card);
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
   background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
-  border: 1px solid var(--lof-border-medium);
+  border: 2px solid var(--lof-pink);
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.3),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+    0 0 25px rgba(233, 30, 99, 0.4),
+    var(--shadow-card);
 }
 
 .rf-glow-title {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  color: var(--lof-text-main);
-  margin-bottom: 10px;
+  color: var(--lof-white);
+  margin-bottom: 12px;
 }
 
 .rf-glow-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .rf-glow-input,
 .rf-glow-textarea {
-  padding: 10px 12px;
-  border-radius: var(--radius-button);
-  border: 1px solid var(--lof-border-soft);
-  background: rgba(20, 45, 32, 0.5);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--lof-border-cream);
+  background: var(--lof-forest);
   color: var(--lof-text-main);
   font-size: 0.9rem;
   font-family: var(--font-ui);
@@ -958,114 +931,118 @@
 .rf-glow-input:focus,
 .rf-glow-textarea:focus {
   outline: none;
-  border-color: var(--lof-champagne);
-  background: rgba(20, 45, 32, 0.7);
-  box-shadow: 0 0 15px rgba(212, 175, 55, 0.25);
+  border-color: var(--lof-gold);
+  background: var(--lof-pine);
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
 }
 
 .rf-glow-textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 90px;
 }
 
 .rf-glow-submit {
-  padding: 12px 20px;
-  border-radius: var(--radius-button);
-  border: 1px solid var(--lof-border-strong);
-  background: linear-gradient(135deg, var(--lof-champagne), var(--lof-gold));
-  color: var(--lof-shadow);
-  font-size: 0.9rem;
+  padding: 14px 24px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--lof-gold);
+  background: linear-gradient(135deg, var(--lof-gold), #FFE44D);
+  color: var(--lof-text-dark);
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   
   box-shadow:
-    0 0 20px rgba(212, 175, 55, 0.5),
-    0 8px 20px rgba(0, 0, 0, 0.6);
+    var(--glow-gold),
+    0 6px 16px rgba(0, 0, 0, 0.3);
   
-  transition: all 0.25s ease;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .rf-glow-submit:hover {
-  background: linear-gradient(135deg, #E5C56A, #C89A2D);
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, #FFE44D, #FFF176);
+  transform: translateY(-3px);
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.7),
-    0 10px 25px rgba(0, 0, 0, 0.7);
+    0 0 35px rgba(255, 215, 0, 0.8),
+    0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 .rf-glow-submit:active {
-  transform: translateY(0);
+  transform: translateY(-1px);
 }
 
 /* ----------------------------------------------------------------
- * 12. TONIGHT FOOTER SECTION - The marquee moment
+ * 13. TONIGHT SECTION - Ornamental Frame
  * ---------------------------------------------------------------- */
 
 .rf-tonight {
-  margin-top: 36px;
-  padding: 28px 32px 32px;
-  border-radius: 16px;
+  margin-top: 40px;
+  padding: 32px 36px 36px;
+  border-radius: var(--radius-xl);
   position: relative;
   
-  /* Warm glow from bottom */
+  /* Pink top stripe */
+  border-top: 6px solid var(--lof-pink);
+  
   background:
-    radial-gradient(ellipse at bottom, rgba(212, 175, 55, 0.15), transparent 70%),
-    radial-gradient(ellipse at top, rgba(196, 30, 58, 0.08), transparent 65%),
+    radial-gradient(ellipse at bottom, rgba(255, 215, 0, 0.12), transparent 60%),
     linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
   
-  border: 2px solid var(--lof-champagne);
+  border-left: 2px solid var(--lof-gold);
+  border-right: 2px solid var(--lof-gold);
+  border-bottom: 2px solid var(--lof-gold);
   
   box-shadow:
-    0 0 var(--glow-strong) rgba(212, 175, 55, 0.5),
-    0 0 50px rgba(196, 30, 58, 0.2),
-    0 25px 60px rgba(0, 0, 0, 0.85);
+    var(--glow-gold),
+    0 0 40px rgba(233, 30, 99, 0.3),
+    var(--shadow-float);
 }
 
-/* Subtle accent corners (refined marquee) */
+/* Ornamental corner stars */
 .rf-tonight::before,
 .rf-tonight::after {
-  content: '';
+  content: '✦';
   position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--lof-champagne);
-  box-shadow: 0 0 12px rgba(212, 175, 55, 0.8);
+  font-size: 1.5rem;
+  color: var(--lof-gold);
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  animation: lof-star-twinkle 2s ease-in-out infinite;
 }
 
 .rf-tonight::before {
-  top: 12px;
-  left: 12px;
+  top: 16px;
+  left: 20px;
 }
 
 .rf-tonight::after {
-  top: 12px;
-  right: 12px;
+  top: 16px;
+  right: 20px;
+  animation-delay: 1s;
+}
+
+@keyframes lof-star-twinkle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 .rf-tonight-title {
   font-family: var(--font-display);
-  font-size: 1.8rem;
-  font-weight: 700;
+  font-size: 2.2rem;
+  font-weight: 900;
   font-style: italic;
-  color: var(--lof-ice);
-  margin: 0 0 18px;
+  color: var(--lof-white);
+  margin: 0 0 20px;
   text-align: center;
   
-  /* Elegant gold outline effect */
   text-shadow:
-    1px 1px 0 rgba(212, 175, 55, 0.8),
-    -1px -1px 0 rgba(212, 175, 55, 0.8),
-    1px -1px 0 rgba(212, 175, 55, 0.8),
-    -1px 1px 0 rgba(212, 175, 55, 0.8),
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.6);
+    3px 3px 0 rgba(233, 30, 99, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.5);
 }
 
 .rf-tonight-body {
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1.7;
   color: var(--lof-text-muted);
-  margin-bottom: 20px;
+  margin-bottom: 24px;
   text-align: center;
   max-width: 750px;
   margin-left: auto;
@@ -1073,39 +1050,38 @@
 }
 
 .rf-tonight-body p {
-  margin: 10px 0;
+  margin: 12px 0;
 }
 
-/* Persona messages - italic serif with personality */
+/* Persona messages - dramatic italic */
 .rf-tonight-body p:first-of-type {
   font-family: var(--font-display);
   font-style: italic;
-  font-size: 1.08rem;
-  color: var(--lof-text-main);
+  font-size: 1.2rem;
+  color: var(--lof-white);
   line-height: 1.6;
 }
 
-/* Acts of light - emphasized */
+/* Acts of light - gold emphasis */
 .rf-tonight-body p:last-of-type {
-  margin-top: 16px;
-  color: var(--lof-text-gold);
-  font-weight: 600;
-  font-size: 1.05rem;
+  margin-top: 18px;
+  color: var(--lof-gold);
+  font-weight: 700;
+  font-size: 1.1rem;
 }
 
 .rf-tonight-body:empty {
   margin-bottom: 0;
 }
 
-/* Glow form in footer - seamless integration */
+/* Glow form in footer */
 .rf-tonight .rf-glow-card {
   margin-top: 0;
-  background: rgba(20, 45, 32, 0.4);
-  border-color: rgba(212, 175, 55, 0.25);
+  background: rgba(15, 58, 44, 0.5);
 }
 
 /* ----------------------------------------------------------------
- * 13. TOAST NOTIFICATIONS
+ * 14. TOAST NOTIFICATIONS - FIXED (uses .show class)
  * ---------------------------------------------------------------- */
 
 #rf-toast.rf-toast {
@@ -1114,65 +1090,50 @@
   bottom: 2rem;
   transform: translateX(-50%) translateY(150%);
   max-width: 90vw;
-  padding: 14px 24px;
-  border-radius: var(--radius-pill);
-  font-size: 0.95rem;
-  font-weight: 600;
+  padding: 16px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
   
-  background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
-  border: 2px solid var(--lof-champagne);
-  color: var(--lof-text-gold);
+  background: var(--lof-forest);
+  border: 3px solid var(--lof-gold);
+  color: var(--lof-white);
   
   box-shadow:
-    0 0 var(--glow-medium) rgba(212, 175, 55, 0.6),
-    0 16px 45px rgba(0, 0, 0, 0.85);
+    var(--glow-gold),
+    0 12px 36px rgba(0, 0, 0, 0.6);
   
   opacity: 0;
   pointer-events: none;
   z-index: 9999;
   
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-#rf-toast.rf-toast--visible {
+/* FIXED: Use .show class that JS actually adds */
+#rf-toast.rf-toast.show {
   opacity: 1;
   transform: translateX(-50%) translateY(0%);
-  animation: lof-toast-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes lof-toast-slide {
-  0% {
-    transform: translateX(-50%) translateY(150%);
-    opacity: 0;
-  }
-  100% {
-    transform: translateX(-50%) translateY(0%);
-    opacity: 1;
-  }
+  pointer-events: auto;
 }
 
 /* Toast variants */
 #rf-toast.rf-toast--success {
-  border-color: var(--lof-champagne);
-  color: var(--lof-text-gold);
+  border-color: var(--lof-gold);
+  box-shadow:
+    var(--glow-gold),
+    0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
 #rf-toast.rf-toast--error {
-  border-color: var(--lof-cardinal);
-  color: var(--lof-cardinal);
+  border-color: var(--lof-pink);
   box-shadow:
-    0 0 var(--glow-medium) rgba(196, 30, 58, 0.6),
-    0 16px 45px rgba(0, 0, 0, 0.85);
-}
-
-#rf-toast.rf-toast--info {
-  border-color: var(--lof-copper);
-  color: var(--lof-text-main);
+    0 0 30px rgba(233, 30, 99, 0.7),
+    0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
 /* ----------------------------------------------------------------
- * 14. STREAM FOOTER
+ * 15. STREAM FOOTER
  * ---------------------------------------------------------------- */
 
 .rf-stream-footer {
@@ -1180,77 +1141,70 @@
 }
 
 /* ----------------------------------------------------------------
- * 15. RESPONSIVE
+ * 16. RESPONSIVE
  * ---------------------------------------------------------------- */
 
 @media (max-width: 700px) {
   #rf-viewer.rf-viewer {
-    padding: 12px 10px 28px;
+    padding: 16px 12px 32px;
   }
   
   .rf-status-panel {
-    padding: 18px 20px;
+    padding: 20px 24px;
   }
   
   .rf-viewer-headline {
-    font-size: 1.25rem;
+    font-size: 1.6rem;
   }
   
   .rf-viewer-subcopy {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
   }
   
   .rf-card {
-    padding: 14px 16px 16px;
+    padding: 16px 18px 18px;
   }
   
   .rf-card-title {
-    font-size: 1.05rem;
+    font-size: 1.1rem;
   }
   
   .rf-card--now-playing {
-    transform: scale(1.02);
+    transform: scale(1.05) rotate(-0.5deg);
+  }
+  
+  .rf-card--now-playing:hover {
+    transform: scale(1.05) rotate(-0.5deg) translateY(-6px);
   }
   
   .rf-tonight {
-    padding: 24px 26px 28px;
+    padding: 28px 30px 32px;
   }
   
   .rf-tonight-title {
-    font-size: 1.5rem;
+    font-size: 1.8rem;
   }
   
   .rf-tonight-body {
-    font-size: 0.95rem;
+    font-size: 1rem;
   }
 }
 
 /* ----------------------------------------------------------------
- * 16. PHASE-SPECIFIC OVERRIDES
+ * 17. PHASE OVERRIDES
  * ---------------------------------------------------------------- */
 
-/* Intermission - cooler, calmer */
+/* Intermission - cooler tones */
 .rf-viewer.rf-phase-intermission .rf-card {
-  border-color: rgba(224, 242, 247, 0.2);
-  box-shadow:
-    0 0 var(--glow-subtle) rgba(224, 242, 247, 0.25),
-    0 12px 30px rgba(0, 0, 0, 0.7);
+  border-color: var(--lof-mint);
 }
 
 .rf-viewer.rf-phase-intermission .rf-status-panel {
-  border-color: rgba(224, 242, 247, 0.3);
-  box-shadow:
-    0 0 var(--glow-medium) rgba(224, 242, 247, 0.4),
-    0 20px 50px rgba(0, 0, 0, 0.8);
-}
-
-/* Showtime - default state (already warm) */
-.rf-viewer.rf-phase-showtime .rf-status-panel {
-  animation-duration: 3s; /* Slightly faster breathing */
+  border-top-color: var(--lof-mint);
 }
 
 /* ----------------------------------------------------------------
- * 17. ACCESSIBILITY
+ * 18. ACCESSIBILITY
  * ---------------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1267,13 +1221,13 @@
 .rf-ctl-link:focus-visible,
 .lof-speaker-btn:focus-visible,
 .rf-glow-submit:focus-visible {
-  outline: 2px solid var(--lof-champagne);
+  outline: 3px solid var(--lof-gold);
   outline-offset: 3px;
 }
 
 /* ================================================================
- * END - Boutique Holiday Speakeasy
+ * END - GRAND BUDAPEST CHRISTMAS
  * 
- * Refined. Confident. Unmistakably Christmas.
- * Martha approves. Snoop approves. Red Bull approves.
+ * Bold. Playful. Sophisticated. Unmistakably Christmas.
+ * Wes Anderson would approve.
  * ================================================================ */
