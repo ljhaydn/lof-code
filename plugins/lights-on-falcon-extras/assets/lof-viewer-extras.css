@@ -1,127 +1,636 @@
-/* ======================================
- * Lights on Falcon Viewer Extras styles
- * Toast + pills, aligned to main skin
- * ====================================== */
+/* =================================================================
+ * LIGHTS ON FALCON VIEWER EXTRAS V1.5
+ * Companion styles for LOF-specific features
+ * Matches: "FALCON COMMAND: CANDY CANE RAVE" aesthetic
+ * ================================================================= */
 
-/* Toast – matches rf-viewer.js (id=rf-toast, class=rf-toast, .show) */
+/* Use same font system as main viewer */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Playfair+Display:ital,wght@0,700;1,700&display=swap');
 
-#rf-toast.rf-toast {
+:root {
+  /* Inherit palette from main viewer */
+  --lof-red: #FF1744;
+  --lof-green: #00FF88;
+  --lof-blue: #00E5FF;
+  --lof-gold: #FFD700;
+  --lof-white: #FFFFFF;
+  --lof-purple: #C724B1;
+  
+  --lof-shadow-deep: #001A0D;
+  --lof-shadow-mid: #0A1F14;
+  --lof-surface: #0F2A1C;
+  
+  --lof-text-main: #FFFFFF;
+  --lof-text-glow: #00FF88;
+  --lof-text-muted: #A8D5BA;
+  --lof-text-dim: #6B8A77;
+  
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-ui: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* ----------------------------------------------------------------
+ * TOAST (alternate ID for compatibility)
+ * ---------------------------------------------------------------- */
+
+#lof-toast.lof-toast {
   position: fixed;
   left: 50%;
-  bottom: 1.5rem;
-  transform: translateX(-50%) translateY(120%);
+  bottom: 2.5rem;
+  transform: translateX(-50%) translateY(150%);
   max-width: 90vw;
-  padding: 0.75rem 1.25rem;
+  padding: 16px 28px;
   border-radius: 999px;
-  font-size: 0.9rem;
-  background: rgba(3, 8, 10, 0.98);
-  color: #fffdf8;
-  border: 1px solid rgba(255, 216, 116, 0.85);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  
+  background: linear-gradient(135deg, rgba(15, 42, 28, 0.98), rgba(10, 31, 20, 1));
+  border: 2px solid var(--lof-green);
+  color: var(--lof-green);
+  
   box-shadow:
-    0 18px 40px rgba(0, 0, 0, 0.9),
-    0 0 18px rgba(0, 0, 0, 0.95);
+    0 0 35px rgba(0, 255, 136, 0.9),
+    0 16px 45px rgba(0, 0, 0, 0.9);
+  
   opacity: 0;
   pointer-events: none;
-  transition:
-    opacity 200ms ease-out,
-    transform 220ms ease-out;
   z-index: 9999;
+  
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  
+  transition: none; /* Animation handles this */
 }
 
-#rf-toast.rf-toast.show {
+#lof-toast.lof-toast--visible {
   opacity: 1;
   transform: translateX(-50%) translateY(0%);
+  animation: lof-toast-jingle 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
-/* Optional error accent (rf-viewer.js adds rf-toast--error) */
-#rf-toast.rf-toast.rf-toast--error {
-  border-color: rgba(255, 59, 78, 0.9);
+@keyframes lof-toast-jingle {
+  0% {
+    transform: translateX(-50%) translateY(150%) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    transform: translateX(-50%) translateY(20%) rotate(-8deg);
+  }
+  40% {
+    transform: translateX(-50%) translateY(-5%) rotate(8deg);
+  }
+  60% {
+    transform: translateX(-50%) translateY(2%) rotate(-5deg);
+  }
+  80% {
+    transform: translateX(-50%) translateY(-1%) rotate(3deg);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0%) rotate(0deg);
+    opacity: 1;
+  }
 }
 
-/* Pills bar under header (if used) */
+/* Toast variants */
+#lof-toast.lof-toast--success {
+  border-color: var(--lof-green);
+  color: var(--lof-green);
+  box-shadow:
+    0 0 35px rgba(0, 255, 136, 0.9),
+    0 16px 45px rgba(0, 0, 0, 0.9);
+}
+
+#lof-toast.lof-toast--error {
+  border-color: var(--lof-red);
+  color: var(--lof-red);
+  box-shadow:
+    0 0 35px rgba(255, 23, 68, 0.9),
+    0 16px 45px rgba(0, 0, 0, 0.9);
+}
+
+#lof-toast.lof-toast--info {
+  border-color: var(--lof-blue);
+  color: var(--lof-blue);
+  box-shadow:
+    0 0 30px rgba(0, 229, 255, 0.8),
+    0 16px 45px rgba(0, 0, 0, 0.9);
+}
+
+/* ----------------------------------------------------------------
+ * PILL BUTTON BAR (Control buttons in extras)
+ * ---------------------------------------------------------------- */
 
 #lof-extras-bar.lof-extras-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.25rem;
+  gap: 10px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  align-items: center;
+  justify-content: center;
 }
-
-/* Pill buttons */
 
 .lof-pill-button {
   border-radius: 999px;
-  border: 1px solid rgba(255, 216, 116, 0.75);
-  padding: 0.4rem 0.95rem;
-  font-size: 0.82rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: rgba(5, 13, 17, 0.98);
-  color: #fffdf8;
+  border: 2px solid var(--lof-blue);
+  padding: 9px 18px;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  font-weight: 700;
+  font-family: var(--font-ui);
+  background: rgba(15, 42, 28, 0.9);
+  color: var(--lof-white);
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  gap: 6px;
+  
   box-shadow:
-    0 8px 22px rgba(0, 0, 0, 0.9);
+    0 0 20px rgba(0, 229, 255, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.7);
+  
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
   transition:
-    background 140ms ease-out,
-    border-color 140ms ease-out,
-    transform 100ms ease-out,
-    box-shadow 120ms ease-out;
+    background 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.2s ease,
+    transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
 }
 
 .lof-pill-button:hover {
-  background: radial-gradient(circle at top, rgba(255, 255, 255, 0.1), transparent 60%),
-              linear-gradient(135deg, #061621, #0b2732);
-  border-color: rgba(255, 216, 116, 0.95);
-  transform: translateY(-1px);
+  background: rgba(0, 229, 255, 0.2);
+  border-color: var(--lof-white);
+  transform: translateY(-2px) scale(1.05);
   box-shadow:
-    0 0 16px rgba(255, 216, 116, 0.9),
-    0 12px 26px rgba(0, 0, 0, 0.98);
+    0 0 30px rgba(0, 229, 255, 0.9),
+    0 12px 28px rgba(0, 0, 0, 0.8);
 }
 
 .lof-pill-button:active {
-  transform: translateY(0);
-  box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.9);
+  transform: translateY(0) scale(1.02);
 }
 
-/* Sub accents */
-
+/* Color variants for different actions */
 .lof-pill-button--glow {
-  border-color: rgba(255, 216, 116, 0.98);
+  border-color: var(--lof-gold);
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.7);
+}
+
+.lof-pill-button--glow:hover {
+  border-color: var(--lof-gold);
+  background: rgba(255, 215, 0, 0.15);
+  box-shadow:
+    0 0 30px rgba(255, 215, 0, 0.8),
+    0 12px 28px rgba(0, 0, 0, 0.8);
 }
 
 .lof-pill-button--speaker {
-  border-color: rgba(184, 232, 255, 0.9);
+  border-color: var(--lof-purple);
+  box-shadow:
+    0 0 20px rgba(199, 36, 177, 0.5),
+    0 8px 20px rgba(0, 0, 0, 0.7);
 }
 
-.lof-pill-button--surprise {
-  border-color: rgba(255, 59, 78, 0.95);
+.lof-pill-button--speaker:hover {
+  border-color: var(--lof-purple);
+  background: rgba(199, 36, 177, 0.15);
+  box-shadow:
+    0 0 30px rgba(199, 36, 177, 0.8),
+    0 12px 28px rgba(0, 0, 0, 0.8);
 }
 
-/* Tiny chaos for Surprise */
-
-.lof-pill-button--surprise:hover span {
-  text-shadow:
-    0 0 7px rgba(255, 59, 78, 0.9),
-    0 0 10px rgba(255, 255, 255, 1);
+.lof-pill-button--fog {
+  border-color: var(--lof-blue);
 }
 
-/* Layout helpers */
+/* ----------------------------------------------------------------
+ * MICRO LINE (Counter + story)
+ * ---------------------------------------------------------------- */
 
-.lof-pill-button span {
+#lof-micro-line.lof-micro-line {
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  color: var(--lof-text-muted);
+  font-family: var(--font-ui);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+
+#lof-glow-counter {
+  font-weight: 700;
+  color: var(--lof-gold);
+  font-size: 0.9rem;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+/* ----------------------------------------------------------------
+ * TONIGHT PANEL (Alternate container)
+ * ---------------------------------------------------------------- */
+
+#lof-tonight-panel.lof-tonight-panel {
+  margin-top: 24px;
+  padding: 20px 24px;
+  border-radius: 20px;
+  
+  background:
+    radial-gradient(ellipse at bottom, rgba(255, 215, 0, 0.18), transparent 70%),
+    linear-gradient(135deg, rgba(15, 42, 28, 0.98), rgba(10, 31, 20, 1));
+  
+  border: 2px solid var(--lof-gold);
+  color: var(--lof-text-main);
+  
+  box-shadow:
+    0 0 35px rgba(255, 215, 0, 0.6),
+    0 24px 55px rgba(0, 0, 0, 0.85);
+  
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.lof-tonight-heading {
+  font-family: var(--font-display);
+  margin: 0 0 10px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-style: italic;
+  color: var(--lof-white);
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+}
+
+#lof-tonight-body.lof-tonight-body p {
+  margin: 6px 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--lof-text-muted);
+  font-family: var(--font-ui);
+}
+
+#lof-tonight-body.lof-tonight-body p:last-of-type {
+  margin-top: 12px;
+  color: var(--lof-gold);
+  font-weight: 700;
+  font-size: 1rem;
+  text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
+}
+
+/* ----------------------------------------------------------------
+ * SPEAKER STATUS INDICATOR (Header notification)
+ * ---------------------------------------------------------------- */
+
+#lof-speaker-indicator {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  line-height: 1.4;
+  
+  background: rgba(15, 42, 28, 0.9);
+  border: 2px solid var(--lof-green);
+  color: var(--lof-green);
+  
+  box-shadow:
+    0 0 20px rgba(0, 255, 136, 0.6),
+    0 6px 16px rgba(0, 0, 0, 0.7);
+  
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  animation: lof-speaker-pulse 2s ease-in-out infinite;
 }
 
-/* Responsive */
-
-@media (max-width: 700px) {
-  #lof-extras-bar.lof-extras-bar {
-    justify-content: center;
+@keyframes lof-speaker-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(0, 255, 136, 0.6),
+      0 6px 16px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(0, 255, 136, 0.9),
+      0 6px 16px rgba(0, 0, 0, 0.7);
   }
 }
+
+/* Status indicator variants */
+#lof-speaker-indicator.lof-speaker--active {
+  border-color: var(--lof-green);
+  color: var(--lof-green);
+}
+
+#lof-speaker-indicator.lof-speaker--warming {
+  border-color: var(--lof-gold);
+  color: var(--lof-gold);
+  animation: lof-speaker-warmup 1s ease-in-out infinite;
+}
+
+@keyframes lof-speaker-warmup {
+  0%, 100% {
+    box-shadow:
+      0 0 20px rgba(255, 215, 0, 0.6),
+      0 6px 16px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 35px rgba(255, 215, 0, 1),
+      0 6px 16px rgba(0, 0, 0, 0.7);
+  }
+}
+
+#lof-speaker-indicator.lof-speaker--off {
+  border-color: var(--lof-text-dim);
+  color: var(--lof-text-dim);
+  animation: none;
+  opacity: 0.6;
+}
+
+/* ----------------------------------------------------------------
+ * GLOW COOLDOWN TIMER
+ * ---------------------------------------------------------------- */
+
+.lof-glow-cooldown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  background: rgba(15, 42, 28, 0.7);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  color: var(--lof-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.lof-glow-cooldown-time {
+  color: var(--lof-gold);
+  font-weight: 700;
+}
+
+/* ----------------------------------------------------------------
+ * ACT OF LIGHT PROMPTS (Special emphasis in Tonight body)
+ * ---------------------------------------------------------------- */
+
+.lof-act-of-light {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 215, 0, 0.15);
+  border: 1px solid rgba(255, 215, 0, 0.5);
+  color: var(--lof-gold);
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin: 0 4px;
+  
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  
+  animation: lof-act-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes lof-act-shimmer {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.7);
+  }
+}
+
+/* ----------------------------------------------------------------
+ * STREAM PLAYER INTEGRATION
+ * ---------------------------------------------------------------- */
+
+/* Wrapper for PulseMesh player */
+#lof-stream-footer.lof-stream-footer {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 16px;
+  background: rgba(15, 42, 28, 0.6);
+  border: 2px solid rgba(0, 229, 255, 0.3);
+  
+  box-shadow:
+    0 0 20px rgba(0, 229, 255, 0.3),
+    0 12px 30px rgba(0, 0, 0, 0.7);
+  
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Style PulseMesh player controls to match */
+#lof-stream-footer iframe {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ----------------------------------------------------------------
+ * DEVICE STATS DISPLAY (Your picks tonight)
+ * ---------------------------------------------------------------- */
+
+.lof-device-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(15, 42, 28, 0.6);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+}
+
+.lof-device-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  font-family: var(--font-ui);
+  color: var(--lof-text-muted);
+}
+
+.lof-device-stat-label {
+  font-weight: 600;
+}
+
+.lof-device-stat-value {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--lof-green);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----------------------------------------------------------------
+ * PERSONA MESSAGES (Seasonal voice injections)
+ * ---------------------------------------------------------------- */
+
+.lof-persona-message {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(199, 36, 177, 0.1);
+  border-left: 3px solid var(--lof-purple);
+  font-size: 0.92rem;
+  font-style: italic;
+  color: var(--lof-text-muted);
+  margin: 12px 0;
+  
+  box-shadow: 0 0 20px rgba(199, 36, 177, 0.2);
+}
+
+.lof-persona-message::before {
+  content: '💭 ';
+  font-style: normal;
+}
+
+/* ----------------------------------------------------------------
+ * LOADING STATES
+ * ---------------------------------------------------------------- */
+
+.lof-loading-spinner {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 229, 255, 0.3);
+  border-top-color: var(--lof-blue);
+  border-radius: 50%;
+  animation: lof-spinner-spin 0.8s linear infinite;
+}
+
+@keyframes lof-spinner-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.lof-loading-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--lof-text-muted);
+  font-family: var(--font-ui);
+}
+
+/* Skeleton loading for cards */
+.lof-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(15, 42, 28, 0.6) 0%,
+    rgba(0, 229, 255, 0.15) 50%,
+    rgba(15, 42, 28, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: lof-skeleton-shimmer 1.5s ease-in-out infinite;
+  border-radius: 12px;
+  height: 100%;
+  min-height: 20px;
+}
+
+@keyframes lof-skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ----------------------------------------------------------------
+ * ERROR STATES
+ * ---------------------------------------------------------------- */
+
+.lof-error-message {
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: rgba(255, 23, 68, 0.1);
+  border: 2px solid rgba(255, 23, 68, 0.4);
+  color: var(--lof-red);
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.3);
+}
+
+.lof-error-message::before {
+  content: '⚠️ ';
+  margin-right: 6px;
+}
+
+/* ----------------------------------------------------------------
+ * MOBILE REFINEMENTS
+ * ---------------------------------------------------------------- */
+
+@media (max-width: 600px) {
+  #lof-extras-bar.lof-extras-bar {
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .lof-pill-button {
+    font-size: 0.82rem;
+    padding: 8px 14px;
+  }
+
+  #lof-tonight-panel.lof-tonight-panel {
+    padding: 18px 20px;
+  }
+
+  .lof-tonight-heading {
+    font-size: 1.1rem;
+  }
+
+  #lof-tonight-body.lof-tonight-body p {
+    font-size: 0.9rem;
+  }
+  
+  #lof-toast.lof-toast {
+    padding: 14px 24px;
+    font-size: 0.92rem;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * ACCESSIBILITY
+ * ---------------------------------------------------------------- */
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .lof-pill-button,
+  #lof-toast.lof-toast,
+  #lof-tonight-panel.lof-tonight-panel {
+    border-width: 3px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible for keyboard navigation */
+.lof-pill-button:focus-visible,
+.lof-glow-submit:focus-visible,
+.lof-speaker-btn:focus-visible {
+  outline: 3px solid var(--lof-white);
+  outline-offset: 3px;
+}
+
+/* =================================================================
+ * END OF LOF EXTRAS STYLING
+ * 
+ * These styles complement the main viewer CSS and maintain
+ * the same "Candy Cane Rave" aesthetic across all LOF features.
+ * ================================================================= */
