@@ -34,3 +34,18 @@ function lof_maybe_enqueue_epic_viewer_js_mu() {
     }
 }
 add_action('wp_enqueue_scripts', 'lof_maybe_enqueue_epic_viewer_js_mu');
+
+// In your theme's functions.php or plugin file
+add_action('wp_enqueue_scripts', 'lof_enqueue_mobile_magic');
+
+function lof_enqueue_mobile_magic() {
+  if (is_page('control-the-show')) { // Adjust page slug
+    wp_enqueue_script(
+      'lof-mobile-magic',
+      get_stylesheet_directory_uri() . '/lof-viewer-mobile-magic.js',
+      array(),
+      '1.0',
+      true
+    );
+  }
+}
