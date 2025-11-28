@@ -1143,8 +1143,9 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     const playingNowRaw  = data.playingNow || '';
     const playingNextRaw = data.playingNext || '';
 
-    ensureHeader();
-    ensureMainLayout();
+    // V1.5: HTML structure now comes from PHP shortcode, so we DON'T create it dynamically
+    // ensureHeader();      // ← DISABLED - PHP provides rf-viewer-header
+    // ensureMainLayout();  // ← DISABLED - PHP provides rf-main-layout
     ensureBanner();
 
     const nowSeq = sequences.find(
