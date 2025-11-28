@@ -103,13 +103,18 @@ class RF_Viewer_Plugin {
                                    id="rf_cache"
                                    name="<?php echo esc_attr($this->option_key); ?>[cache_seconds]"
                                    value="<?php echo esc_attr($opts['cache_seconds']); ?>"
-                                   min="0" class="small-text">
-                            <p class="description">10–20 seconds is fine for <code>showDetails</code>.</p>
+                                   min="0"
+                                   max="300"
+                                   class="small-text">
+                            <p class="description">
+                                How long to cache showDetails calls (default: 15).
+                                Set to 0 to disable caching. Max: 300s (5 min).
+                            </p>
                         </td>
                     </tr>
 
                     <tr>
-                        <th scope="row"><label for="rf_request_path">Request endpoint path</label></th>
+                        <th scope="row"><label for="rf_request_path">Request Endpoint Path</label></th>
                         <td>
                             <input type="text"
                                    id="rf_request_path"
@@ -118,15 +123,13 @@ class RF_Viewer_Plugin {
                                    class="regular-text"
                                    placeholder="/addSequenceToQueue">
                             <p class="description">
-                                From the Remote Falcon OpenAPI spec, this is the path for adding a sequence to the
-                                Jukebox queue. Default:<br>
-                                <code>/addSequenceToQueue</code>
+                                Path for JUKEBOX song requests (relative to API base URL).
                             </p>
                         </td>
                     </tr>
 
                     <tr>
-                        <th scope="row"><label for="rf_vote_path">Vote endpoint path</label></th>
+                        <th scope="row"><label for="rf_vote_path">Vote Endpoint Path</label></th>
                         <td>
                             <input type="text"
                                    id="rf_vote_path"
@@ -135,17 +138,21 @@ class RF_Viewer_Plugin {
                                    class="regular-text"
                                    placeholder="/voteForSequence">
                             <p class="description">
-                                From the OpenAPI spec, this is the path for voting on a sequence. Default:<br>
-                                <code>/voteForSequence</code>
+                                Path for VOTING mode (relative to API base URL).
                             </p>
                         </td>
                     </tr>
                 </table>
+
                 <?php submit_button(); ?>
             </form>
         </div>
         <?php
     }
+
+    /* -------------------
+     * HELPERS
+     * ------------------- */
 
     private function get_options() {
         $defaults = [
@@ -316,7 +323,7 @@ class RF_Viewer_Plugin {
     }
 
     /**
-     * Proxy VOTING request -> Remote Falcon /voteForSequence
+     * Proxy VOTING → Remote Falcon /voteForSequence
      * Expects JSON from frontend: { "sequence": "InternalSequenceName" }
      */
     public function proxy_vote_sequence(WP_REST_Request $req) {
@@ -326,7 +333,7 @@ class RF_Viewer_Plugin {
         $url = $this->rf_vote_url();
         if (is_wp_error($url)) return $url;
 
-        $params  = $req->get_json_params();
+        $params = $req->get_json_params();
 
         $sequence = '';
         if (isset($params['sequence'])) {
@@ -380,7 +387,7 @@ class RF_Viewer_Plugin {
             'rf-viewer-js',
             plugin_dir_url(__FILE__) . 'rf-viewer.js',
             [],
-            '1.2.0',
+            '1.5.0',
             true
         );
         wp_localize_script('rf-viewer-js', 'RFViewer', [
@@ -391,13 +398,26 @@ class RF_Viewer_Plugin {
             'rf-viewer-css',
             plugin_dir_url(__FILE__) . 'rf-viewer.css',
             [],
-            '1.2.0'
+            '1.5.0'
         );
     }
 
     public function shortcode_viewer($atts, $content = '') {
         ob_start(); ?>
         <div id="rf-viewer" class="rf-viewer">
+            <!-- V1.5: Hero Header Section (dynamically populated by JS) -->
+            <div id="rf-hero-section" class="rf-hero-section">
+                <!-- Off-season/controls paused banner (conditional, JS-controlled) -->
+                <div id="rf-viewer-banner" class="rf-viewer-banner" style="display:none;"></div>
+                
+                <!-- Main CTA headline -->
+                <div id="rf-hero-cta" class="rf-hero-cta">
+                    <div class="rf-hero-headline" id="rf-hero-headline">Loading...</div>
+                    <div class="rf-hero-subcopy" id="rf-hero-subcopy"></div>
+                </div>
+            </div>
+
+            <!-- Status Panel (Now Playing / Next Up / Mode) -->
             <div class="rf-status-panel">
                 <div class="rf-now">
                     <div class="rf-label">Now Playing</div>
@@ -419,26 +439,35 @@ class RF_Viewer_Plugin {
                     <div class="rf-mode-value" id="rf-mode-value">—</div>
                 </div>
             </div>
+
+            <!-- Control Buttons Row (Need sound?, Send Glow, Surprise me) -->
             <div class="rf-controls-row" id="rf-controls-row"></div>
+
+            <!-- Instructional Card (How tonight works) -->
             <div class="rf-viewer-header">
                 <div class="rf-viewer-headline">How tonight works</div>
                 <div class="rf-viewer-subcopy">
                     • Tap a song to add it to the queue.<br>
                     • One request per device so everyone gets a turn.<br>
-                    • Your pick will glow when it’s playing, then rest.
+                    • Your pick will glow when it's playing, then rest.
                 </div>
             </div>
+
+            <!-- Main Layout: Song Grid + Sidebar -->
             <div class="rf-main-layout">
                 <div class="rf-main-left">
                     <div class="rf-grid" id="rf-grid"></div>
                 </div>
                 <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
+
+            <!-- Footer: Tonight at LOF (mission copy, kindness prompts, glow form) -->
             <div class="rf-tonight">
                 <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
                 <div id="lof-tonight-body" class="rf-tonight-body"></div>
                 <div id="rf-footer-glow"></div>
             </div>
+
             <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
             <div
               id="lof-stream-footer"

@@ -35,17 +35,22 @@ function lof_maybe_enqueue_epic_viewer_js_mu() {
 }
 add_action('wp_enqueue_scripts', 'lof_maybe_enqueue_epic_viewer_js_mu');
 
-// In your theme's functions.php or plugin file
+// V1.5: Enqueue mobile-magic.js for tap confetti on mobile
 add_action('wp_enqueue_scripts', 'lof_enqueue_mobile_magic');
 
 function lof_enqueue_mobile_magic() {
-  if (is_page('control-the-show')) { // Adjust page slug
-    wp_enqueue_script(
-      'lof-mobile-magic',
-      get_stylesheet_directory_uri() . '/lof-viewer-mobile-magic.js',
-      array(),
-      '1.0',
-      true
-    );
-  }
+    global $post;
+    
+    // Only load on pages with the [rf_viewer] shortcode
+    if (isset($post) && isset($post->post_content) && has_shortcode($post->post_content, 'rf_viewer')) {
+        $script_url = content_url('/themes/integrations/js/lof-viewer-mobile-magic.js');
+        
+        wp_enqueue_script(
+            'lof-mobile-magic',
+            $script_url,
+            array(),
+            '1.0.0',
+            true // footer
+        );
+    }
 }

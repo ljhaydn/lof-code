@@ -11,11 +11,23 @@
   const nextTitleEl = document.getElementById('rf-next-title');
   const modeEl      = document.getElementById('rf-mode-value');
 
-  // Persist stream state across re-renders of the extras panel
+  // V1.5: Enhanced stream state with persistence
 const lofStreamState = {
   init: false,
-  visible: false
+  visible: false,
+  isStreaming: false, // Track actual streaming state
+  iframe: null
 };
+
+// V1.5: Restore stream state from localStorage on page load
+try {
+  const saved = localStorage.getItem('lofStreamActive');
+  if (saved === 'true') {
+    lofStreamState.isStreaming = true;
+  }
+} catch (e) {
+  console.warn('[LOF] Could not restore stream state:', e);
+}
 
   // -----------------------------
   // LOF EXTRAS CONFIG
@@ -70,12 +82,186 @@ const lofStreamState = {
         LOFViewer.config = data;
         LOFViewer.configLoaded = true;
         console.log('[LOF] Extras viewer-config loaded:', data);
-        // Banner + header will be updated the next time renderShowDetails runs.
+        // V1.5: Update hero CTA when config loads
+        updateHeroCTA();
       })
       .catch(function (err) {
         console.warn('[LOF] Could not load viewer-config from LOF Extras:', err);
       });
   }
+
+
+  // ===== V1.5: ADAPTIVE POLLING SYSTEM =====
+  let lastInteractionTime = Date.now();
+  let currentPollInterval = 3000; // Start fast
+  let pollIntervalId = null;
+
+  // Track user interactions to determine active vs idle
+  function registerUserInteraction() {
+    lastInteractionTime = Date.now();
+  }
+
+  // Add interaction listeners
+  document.addEventListener('click', registerUserInteraction);
+  document.addEventListener('touchstart', registerUserInteraction);
+  document.addEventListener('keydown', registerUserInteraction);
+
+  function getAdaptivePollInterval() {
+    const config = getLofConfig();
+    const activeInterval = (config && config.config && config.config.pollingActiveInterval) || 3000;
+    const idleInterval = (config && config.config && config.config.pollingIdleInterval) || 15000;
+    const idleTimeout = (config && config.config && config.config.pollingIdleTimeout) || 120000;
+    
+    const timeSinceInteraction = Date.now() - lastInteractionTime;
+    
+    return timeSinceInteraction > idleTimeout ? idleInterval : activeInterval;
+  }
+
+  function updatePollInterval() {
+    const newInterval = getAdaptivePollInterval();
+    if (newInterval !== currentPollInterval) {
+      currentPollInterval = newInterval;
+      console.log('[LOF] Poll interval changed to:', currentPollInterval + 'ms');
+    }
+  }
+
+  // ===== V1.5: SPEAKER PROTECTION (GLOBAL SHARED) =====
+  let speakerProtectionActive = false;
+
+  function checkSpeakerProtection() {
+    // Protection logic: Don't allow turn-off during song
+    const speakerBtn = document.querySelector('.js-speaker-off');
+    if (!speakerBtn) return;
+    
+    if (speakerProtectionActive) {
+      speakerBtn.disabled = true;
+      speakerBtn.textContent = lofCopy('speakerProtectionMsg', 'Speakers protected during song');
+    } else {
+      speakerBtn.disabled = false;
+      speakerBtn.textContent = 'Turn off speakers';
+    }
+  }
+
+  // ===== V1.5: STREAM CONTROL FUNCTIONS =====
+  function showStreamFooter() {
+    const footer = document.getElementById('lof-stream-footer');
+    if (!footer) return;
+    
+    const text = lofCopy('streamFooterText', 'Streaming Audio Powered by PulseMesh');
+    footer.innerHTML = '<div class="rf-stream-footer-text">' + escapeHtml(text) + '</div>';
+    footer.style.display = 'block';
+  }
+
+  function hideStreamFooter() {
+    const footer = document.getElementById('lof-stream-footer');
+    if (!footer) return;
+    footer.style.display = 'none';
+    footer.innerHTML = '';
+  }
+
+  // ===== V1.5: GEO CHECK (NON-BLOCKING) =====
+  let geoCheckResult = null;
+
+  function performGeoCheck() {
+    const config = getLofConfig();
+    if (!config || !config.config || !config.config.enableGeoCheck) {
+      geoCheckResult = { isLocal: true, reason: 'disabled' };
+      return;
+    }
+    
+    const cfCity = config.config.cfCity || '';
+    const cfRegion = config.config.cfRegion || '';
+    const cfCountry = config.config.cfCountry || '';
+    
+    // Check localStorage for user confirmation
+    try {
+      const userConfirmed = localStorage.getItem('userConfirmedLocal');
+      if (userConfirmed === 'true') {
+        geoCheckResult = { isLocal: true, reason: 'user_confirmed' };
+        return;
+      }
+    } catch (e) {}
+    
+    // Check if location is local (Long Beach or California)
+    const cityLower = cfCity.toLowerCase();
+    const regionLower = cfRegion.toLowerCase();
+    const isLocal = (
+      cityLower.includes('long beach') ||
+      regionLower === 'california' ||
+      cityLower.includes('signal hill') ||
+      cityLower.includes('lakewood')
+    );
+    
+    if (!cfCity && !cfRegion) {
+      // Cloudflare headers unavailable
+      geoCheckResult = { isLocal: true, reason: 'unavailable', showFallback: true };
+      return;
+    }
+    
+    geoCheckResult = {
+      isLocal: isLocal,
+      city: cfCity,
+      region: cfRegion,
+      country: cfCountry,
+      reason: isLocal ? 'location_match' : 'location_distant'
+    };
+  }
+
+  function showGeoMessage() {
+    if (!geoCheckResult) return;
+    
+    const extra = document.getElementById('rf-extra-panel');
+    if (!extra) return;
+    
+    // Check if message already shown
+    if (extra.querySelector('.rf-card--geo')) return;
+    
+    let html = '';
+    
+    if (geoCheckResult.showFallback) {
+      const fallbackMsg = lofCopy('geoFallbackUnavailable', 'Location check unavailable - full access granted');
+      html = '<div class="rf-geo-notice rf-geo-notice--fallback">' + escapeHtml(fallbackMsg) + '</div>';
+    } else if (!geoCheckResult.isLocal) {
+      const farMsg = lofCopy('geoVisitorFar', '📍 Visiting from afar? Come see us in person in Long Beach!');
+      const btnText = lofCopy('geoConfirmLocalBtn', 'I\'m here - full access');
+      
+      html = '<div class="rf-geo-notice rf-geo-notice--far">' +
+        '<div class="rf-geo-message">' + escapeHtml(farMsg) + '</div>' +
+        '<button type="button" class="rf-btn rf-btn--geo-confirm" onclick="window.confirmLocalAccess()">' +
+        escapeHtml(btnText) +
+        '</button>' +
+        '</div>';
+    } else if (geoCheckResult.reason === 'location_match') {
+      const city = geoCheckResult.city || 'the area';
+      let localMsg = lofCopy('geoVisitorLocal', 'Welcome neighbor! You\'re in {city} 🎄');
+      localMsg = localMsg.replace('{city}', city);
+      
+      html = '<div class="rf-geo-notice rf-geo-notice--local">' + escapeHtml(localMsg) + '</div>';
+    }
+    
+    if (html) {
+      const geoCard = document.createElement('div');
+      geoCard.className = 'rf-card rf-card--geo';
+      geoCard.innerHTML = html;
+      extra.prepend(geoCard);
+    }
+  }
+
+  // Make confirmLocalAccess available globally for button onclick
+  window.confirmLocalAccess = function() {
+    try {
+      localStorage.setItem('userConfirmedLocal', 'true');
+      geoCheckResult = { isLocal: true, reason: 'user_confirmed' };
+      
+      // Remove geo notice
+      const geoCard = document.querySelector('.rf-card--geo');
+      if (geoCard) geoCard.remove();
+      
+      showToast('Full access enabled! Welcome to the show 🎄', 'success');
+    } catch (e) {
+      console.error('[LOF] Failed to save local confirmation:', e);
+    }
+  };
 
   let lastActionTimes = {};
   const ACTION_COOLDOWN = 15000; // 15s
@@ -289,7 +475,31 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
    * Fetch showDetails via WP proxy
    * ------------------------- */
 
-  async function fetchShowDetails() {
+  /* -------------------------
+   * V1.5: Hero CTA Update
+   * ------------------------- */
+  function updateHeroCTA() {
+    const headline = document.getElementById('rf-hero-headline');
+    const subcopy = document.getElementById('rf-hero-subcopy');
+    
+    if (!headline || !subcopy) return;
+    
+    const config = getLofConfig();
+    if (!config || !config.copy) {
+      // Fallback if config not loaded yet
+      headline.textContent = 'Tap a song to request it 🎧';
+      subcopy.textContent = 'Requests join the queue in the order they come in.';
+      return;
+    }
+    
+    const mainText = lofCopy('heroCTAMain', 'Tap a song to request it 🎧');
+    const subText = lofCopy('heroCTASub', 'Requests join the queue in the order they come in. You can request up to 1 songs per session.');
+    
+    headline.textContent = mainText;
+    subcopy.textContent = subText;
+  }
+
+    async function fetchShowDetails() {
     if (!base) return;
 
     try {
@@ -345,43 +555,28 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   }
 
   function ensureBanner() {
-    if (!viewerRoot) return;
-
-    let banner = document.getElementById('rf-viewer-banner');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'rf-viewer-banner';
-      banner.className = 'rf-viewer-banner';
-      // lightweight inline baseline styling so it doesn't look broken even without CSS
-      banner.style.padding = '0.75rem 1rem';
-      banner.style.marginBottom = '0.75rem';
-      banner.style.borderRadius = '0.75rem';
-      banner.style.background = 'rgba(0,0,0,0.25)';
-      banner.style.backdropFilter = 'blur(6px)';
-      banner.style.color = 'inherit';
-
-      const title = document.createElement('div');
-      title.id = 'rf-banner-title';
-      title.style.fontWeight = '600';
-
-      const body = document.createElement('div');
-      body.id = 'rf-banner-body';
-      body.style.fontSize = '0.9rem';
-      body.style.opacity = '0.9';
-
-      banner.appendChild(title);
-      banner.appendChild(body);
-
-      // Insert banner above header (if header exists), otherwise above status panel.
-      const header = document.getElementById('rf-viewer-header');
-      if (header && header.parentNode === viewerRoot) {
-        viewerRoot.insertBefore(banner, header);
-      } else if (statusPanel) {
-        viewerRoot.insertBefore(banner, statusPanel);
-      } else {
-        viewerRoot.insertBefore(banner, viewerRoot.firstChild);
-      }
+    // V1.5: Banner now exists in DOM (in hero-section), just ensure it's properly referenced
+    const banner = document.getElementById('rf-viewer-banner');
+    if (!banner) return;
+    
+    let titleEl = document.getElementById('rf-banner-title');
+    let bodyEl = document.getElementById('rf-banner-body');
+    
+    if (!titleEl) {
+      titleEl = document.createElement('div');
+      titleEl.id = 'rf-banner-title';
+      titleEl.style.fontWeight = '600';
+      banner.appendChild(titleEl);
     }
+    
+    if (!bodyEl) {
+      bodyEl = document.createElement('div');
+      bodyEl.id = 'rf-banner-body';
+      bodyEl.style.fontSize = '0.9rem';
+      bodyEl.style.opacity = '0.9';
+      banner.appendChild(bodyEl);
+    }
+  }
   }
 
   function ensureControls() {
@@ -431,10 +626,18 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     const holidayMode = config && config.holiday_mode ? String(config.holiday_mode) : 'offseason';
     const showtimes = (config && Array.isArray(config.showtimes)) ? config.showtimes : [];
 
-    // If explicitly offseason, that wins.
+    // V1.5: PROPER HIERARCHY
+    // 1. MANUAL OVERRIDE - Emergency kill switch (admin setting)
     if (holidayMode === 'offseason') {
       return 'offseason';
     }
+    
+    // 2. RF API CONTROL - Respect Remote Falcon's decision
+    if (!currentControlEnabled) {
+      return 'controls_paused';
+    }
+    
+    // 3. SCHEDULE CHECK - Continue below
 
     let inWindow = false;
     if (showtimes.length) {
@@ -507,6 +710,11 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     if (showState === 'offseason') {
       titleKey = 'banner_offseason_title';
       bodyKey  = 'banner_offseason_sub';
+    } else if (showState === 'controls_paused') {
+      // V1.5: New state when RF API says controlEnabled=false
+      titleKey = 'bannerControlsPausedTitle';
+      bodyKey  = 'bannerControlsPausedSub';
+      banner.style.display = 'block';
     } else if (showState === 'afterhours') {
       titleKey = 'banner_afterhours_title';
       bodyKey  = 'banner_afterhours_sub';
@@ -1192,6 +1400,18 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
         updatedAt: Date.now()
       };
 
+      // V1.5: Speaker protection during song playback
+      const isSongPlaying = (statusName === 'playing' && phase === 'showtime');
+      if (isSongPlaying && !speakerProtectionActive) {
+        speakerProtectionActive = true;
+        console.log('[LOF] Speaker protection: ACTIVE (song playing)');
+        checkSpeakerProtection();
+      } else if (!isSongPlaying && speakerProtectionActive) {
+        speakerProtectionActive = false;
+        console.log('[LOF] Speaker protection: OFF (song ended)');
+        checkSpeakerProtection();
+      }
+
       updateNowProgress({
         duration: duration,
         elapsed: played
@@ -1237,6 +1457,9 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     renderStats(extra, queueLength);
     addGlowTeaser(extra);
     addSpeakerCard(extra);
+
+    // V1.5: Show geo message if applicable
+    showGeoMessage();
 
     // Ensure the full Glow form lives in the footer,
     // not in the right-hand extras column.
@@ -1637,7 +1860,14 @@ function addSpeakerCard(extra) {
     </div>
   `;
 
-  // (stream state restore removed)
+  // V1.5: Restore stream button state if already streaming
+  setTimeout(() => {
+    const streamBtn = card.querySelector('.js-open-global-stream');
+    if (streamBtn && lofStreamState.isStreaming) {
+      streamBtn.textContent = lofCopy('streamButtonStop', 'Stop streaming');
+      showStreamFooter();
+    }
+  }, 100);
 
   extra.appendChild(card);
 
@@ -1785,7 +2015,7 @@ function addSpeakerCard(extra) {
   }
 }
 
-// Global click handler for stream player (lazy iframe and toggle on persistent footer)
+// V1.5: Global click handler for stream player with state persistence
 document.addEventListener('click', function (e) {
   const btn = e.target.closest('.js-open-global-stream');
   if (!btn) return;
@@ -1797,33 +2027,51 @@ document.addEventListener('click', function (e) {
   }
 
   const originalLabel = btn.getAttribute('data-label') || 'Listen on your phone';
-
-  // First time: create the iframe on demand
-  if (!lofStreamState.init) {
-    const src = footer.getAttribute('data-src');
-    if (!src) {
-      console.warn('[LOF Viewer] No stream URL configured on lof-stream-footer.');
-      return;
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.src = src;
-    iframe.title = 'Lights on Falcon live stream';
-    iframe.loading = 'lazy';
-    iframe.className = 'rf-audio-iframe';
-    iframe.allow = 'autoplay'; // safe because user clicked to create it
-
-    footer.appendChild(iframe);
-    lofStreamState.init = true;
+  const src = footer.getAttribute('data-src');
+  
+  if (!src) {
+    console.warn('[LOF Viewer] No stream URL configured on lof-stream-footer.');
+    return;
   }
 
-  // Toggle visibility without destroying the iframe
-  lofStreamState.visible = !lofStreamState.visible;
-  footer.classList.toggle('rf-stream-footer--visible', lofStreamState.visible);
-
-  btn.textContent = lofStreamState.visible
-    ? 'Hide stream player'
-    : originalLabel + ' 🎧';
+  // V1.5: Toggle stream state
+  if (!lofStreamState.isStreaming) {
+    // Start streaming
+    lofStreamState.isStreaming = true;
+    localStorage.setItem('lofStreamActive', 'true');
+    
+    // Create or show iframe (hidden, 1px x 1px)
+    if (!lofStreamState.iframe) {
+      const iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.title = 'Lights on Falcon live stream';
+      iframe.loading = 'lazy';
+      iframe.style.display = 'none';
+      iframe.style.position = 'absolute';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.allow = 'autoplay';
+      document.body.appendChild(iframe);
+      lofStreamState.iframe = iframe;
+      lofStreamState.init = true;
+    }
+    
+    btn.textContent = lofCopy('streamButtonStop', 'Stop streaming');
+    showStreamFooter();
+  } else {
+    // Stop streaming
+    lofStreamState.isStreaming = false;
+    localStorage.removeItem('lofStreamActive');
+    
+    if (lofStreamState.iframe) {
+      lofStreamState.iframe.remove();
+      lofStreamState.iframe = null;
+      lofStreamState.init = false;
+    }
+    
+    btn.textContent = originalLabel + ' 🎧';
+    hideStreamFooter();
+  }
 });
 
 
@@ -2100,13 +2348,29 @@ document.addEventListener('click', function (e) {
    * Init
    * ------------------------- */
 
+
+  // V1.5: Perform geo check on initial load
+  performGeoCheck();
+  
   // LOF Extras config + Remote Falcon data in parallel
   lofLoadConfig();
-  fetchShowDetails();
-  setInterval(fetchShowDetails, 15000);
+  // V1.5: Adaptive polling for fetchShowDetails
+  function startAdaptivePolling() {
+    function pollCycle() {
+      fetchShowDetails();
+      updatePollInterval();
+      
+      if (pollIntervalId) clearTimeout(pollIntervalId);
+      pollIntervalId = setTimeout(pollCycle, currentPollInterval);
+    }
+    
+    pollCycle(); // Start immediately
+  }
+
+  startAdaptivePolling();
 
   // FPP timing (for Now Playing progress bar)
   fetchFppStatus();
-  setInterval(fetchFppStatus, 5000);
+  setInterval(fetchFppStatus, 2000); // V1.5: 2s for smoother progress bar
   setInterval(tickNowProgress, 1000);
 })();
