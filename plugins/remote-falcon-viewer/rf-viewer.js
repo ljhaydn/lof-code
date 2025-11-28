@@ -577,7 +577,6 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       banner.appendChild(bodyEl);
     }
   }
-  }
 
   function ensureControls() {
     return;
