@@ -1609,7 +1609,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     }
 
     const wrapper = document.createElement('div');
-    wrapper.className = 'rf-stats';
+    wrapper.className = 'rf-card rf-card--tonight-device';
 
     wrapper.innerHTML = `
       <div class="rf-stats-title">${escapeHtml(title)}</div>
@@ -1797,7 +1797,7 @@ function addSpeakerCard(extra) {
   const pulsemeshUrl = 'https://player.pulsemesh.io/d/G073';
 
   const card = document.createElement('div');
-  card.className = 'rf-card rf-speaker-card';
+  card.className = 'rf-card rf-card--speaker';
 
   card.innerHTML = `
     <div class="rf-speaker-card-inner">
