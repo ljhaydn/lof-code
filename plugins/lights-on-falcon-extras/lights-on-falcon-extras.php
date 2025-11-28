@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Lights on Falcon Viewer Extras
  * Description: Adds Lights on Falcon experience extras (Glow, speaker, fog, tonight panel, showtime vs drop-by messaging, acts-of-light prompts) around the existing Remote Falcon viewer.
- * Version: 0.4.1
+ * Version: 1.5.0
  * Author: Lights on Falcon
  */
 
@@ -111,41 +111,39 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
             'copy_adhoc_hint'         =>
 'You can still queue songs anytime. Think of it as bonus rounds between shows.',
 
-            // ===== V1.5 ADDITIONS =====
-            
-            // Hero Header CTA (main call-to-action at top)
-            'hero_cta_main'           => 'Tap a song to request it 🎧',
-            'hero_cta_sub'            => 'Requests join the queue in the order they come in. You can request up to 1 songs per session.',
-            
-            // Banner: Controls Paused (RF API says disabled)
-            'banner_controls_paused_title' => 'Taking a quick break',
-            'banner_controls_paused_sub'   => 'Viewer control is paused. The show is still running — look up and enjoy!',
-            
-            // Trigger Counters ("Tonight From This Device" card)
-            'trigger_label_mailbox'   => '🎅 Letters sent to Santa: {count}',
-            'trigger_label_button'    => '🔔 Naughty or Nice checks: {count}',
-            
-            // Geo Check Messages
-            'geo_visitor_far'         => '📍 Visiting from afar? Come see us in person in Long Beach!',
-            'geo_visitor_local'       => 'Welcome neighbor! You\'re in {city} 🎄',
-            'geo_confirm_local_btn'   => 'I\'m here - full access',
-            'geo_fallback_unavailable'=> 'Location check unavailable - full access granted',
+            // === V1.5: HERO HEADER & CTA ===
+            'heroCTAMain'             => 'Tap a song to request it 🎧',
+            'heroCTASub'              => 'Requests join the queue in the order they come in. You can request up to 1 songs per session.',
+
+            // === V1.5: BANNER MESSAGES ===
+            'bannerControlsPausedTitle' => 'Controls Paused',
+            'bannerControlsPausedSub'   => 'Viewer requests are temporarily paused. The show is still running — enjoy!',
+
+            // === V1.5: TRIGGER COUNTERS ===
+            'triggerMailboxLabel'     => '🎅 Letters sent to Santa',
+            'triggerButtonLabel'      => '🔔 Naughty or Nice checks',
+
+            // === V1.5: GEO CHECK MESSAGES ===
+            'geoCheckFarMessage'      => 'Visiting from afar? The magic is even better in person! 🎄',
+            'geoCheckLocalMessage'    => 'Welcome neighbor! You\'re in {city} — we\'re so glad you\'re here! 🏡',
+            'geoCheckConfirmButton'   => 'I\'m here - full access ✓',
+            'geoCheckFallback'        => 'Welcome! For the best experience, visit us in person. 🎄',
             'enable_geo_check'        => true,
-            
-            // Speaker Protection & Auto-Off
-            'speaker_auto_off_message'=> 'Speakers turned off. Tap to turn on for the next song.',
-            'speaker_protection_msg'  => 'Speakers protected during song',
-            'speaker_extend_msg'      => 'Tap here to keep speakers on for another song',
-            
-            // Adaptive Polling
-            'polling_active_interval' => 3000,  // 3s when user is active
-            'polling_idle_interval'   => 15000, // 15s when idle
-            'polling_idle_timeout'    => 120000, // 2 min before considering idle
-            
-            // Stream Button Labels
-            'stream_button_start'     => 'Listen on your phone',
-            'stream_button_stop'      => 'Stop streaming',
-            'stream_footer_text'      => 'Streaming Audio Powered by PulseMesh',
+
+            // === V1.5: SPEAKER PROTECTION MESSAGES ===
+            'speakerProtectionActive' => '🔒 Protected: Song playing',
+            'speakerAutoOffMessage'   => 'Speakers turned off. Tap to turn on for next song.',
+            'speakerExtendMessage'    => 'Extended once. Tap again when song ends.',
+
+            // === V1.5: ADAPTIVE POLLING ===
+            'pollingActiveInterval'   => 3000,
+            'pollingIdleInterval'     => 15000,
+            'pollingIdleTimeout'      => 120000,
+
+            // === V1.5: STREAM BUTTON LABELS ===
+            'streamButtonStart'       => 'Listen on your phone 📱',
+            'streamButtonStop'        => 'Stop streaming',
+            'streamFooterText'        => 'Streaming Audio Powered by PulseMesh',
         ];
     }
 
@@ -248,33 +246,39 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
         $out['copy_showtime_now']       = $textarea( 'copy_showtime_now' );
         $out['copy_adhoc_hint']         = $textarea( 'copy_adhoc_hint' );
 
-        // ===== V1.5 SANITIZATION =====
-        $out['hero_cta_main']           = $text( 'hero_cta_main' );
-        $out['hero_cta_sub']            = $textarea( 'hero_cta_sub' );
-        
-        $out['banner_controls_paused_title'] = $text( 'banner_controls_paused_title' );
-        $out['banner_controls_paused_sub']   = $textarea( 'banner_controls_paused_sub' );
-        
-        $out['trigger_label_mailbox']   = $text( 'trigger_label_mailbox' );
-        $out['trigger_label_button']    = $text( 'trigger_label_button' );
-        
-        $out['geo_visitor_far']         = $textarea( 'geo_visitor_far' );
-        $out['geo_visitor_local']       = $textarea( 'geo_visitor_local' );
-        $out['geo_confirm_local_btn']   = $text( 'geo_confirm_local_btn' );
-        $out['geo_fallback_unavailable']= $textarea( 'geo_fallback_unavailable' );
-        $out['enable_geo_check']        = ! empty( $input['enable_geo_check'] );
-        
-        $out['speaker_auto_off_message']= $textarea( 'speaker_auto_off_message' );
-        $out['speaker_protection_msg']  = $text( 'speaker_protection_msg' );
-        $out['speaker_extend_msg']      = $textarea( 'speaker_extend_msg' );
-        
-        $out['polling_active_interval'] = max( 1000, (int) ( $input['polling_active_interval'] ?? $defaults['polling_active_interval'] ) );
-        $out['polling_idle_interval']   = max( 5000, (int) ( $input['polling_idle_interval'] ?? $defaults['polling_idle_interval'] ) );
-        $out['polling_idle_timeout']    = max( 30000, (int) ( $input['polling_idle_timeout'] ?? $defaults['polling_idle_timeout'] ) );
-        
-        $out['stream_button_start']     = $text( 'stream_button_start' );
-        $out['stream_button_stop']      = $text( 'stream_button_stop' );
-        $out['stream_footer_text']      = $text( 'stream_footer_text' );
+        // V1.5: Hero Header & CTA
+        $out['heroCTAMain'] = $text( 'heroCTAMain' );
+        $out['heroCTASub']  = $textarea( 'heroCTASub' );
+
+        // V1.5: Banner Messages
+        $out['bannerControlsPausedTitle'] = $text( 'bannerControlsPausedTitle' );
+        $out['bannerControlsPausedSub']   = $textarea( 'bannerControlsPausedSub' );
+
+        // V1.5: Trigger Counters
+        $out['triggerMailboxLabel'] = $text( 'triggerMailboxLabel' );
+        $out['triggerButtonLabel']  = $text( 'triggerButtonLabel' );
+
+        // V1.5: Geo Check
+        $out['enable_geo_check']       = ! empty( $input['enable_geo_check'] );
+        $out['geoCheckFarMessage']     = $textarea( 'geoCheckFarMessage' );
+        $out['geoCheckLocalMessage']   = $textarea( 'geoCheckLocalMessage' );
+        $out['geoCheckConfirmButton']  = $text( 'geoCheckConfirmButton' );
+        $out['geoCheckFallback']       = $textarea( 'geoCheckFallback' );
+
+        // V1.5: Speaker Protection
+        $out['speakerProtectionActive'] = $text( 'speakerProtectionActive' );
+        $out['speakerAutoOffMessage']   = $text( 'speakerAutoOffMessage' );
+        $out['speakerExtendMessage']    = $text( 'speakerExtendMessage' );
+
+        // V1.5: Adaptive Polling
+        $out['pollingActiveInterval'] = max( 1000, (int) ( $input['pollingActiveInterval'] ?? $defaults['pollingActiveInterval'] ) );
+        $out['pollingIdleInterval']   = max( 5000, (int) ( $input['pollingIdleInterval'] ?? $defaults['pollingIdleInterval'] ) );
+        $out['pollingIdleTimeout']    = max( 30000, (int) ( $input['pollingIdleTimeout'] ?? $defaults['pollingIdleTimeout'] ) );
+
+        // V1.5: Stream Button Labels
+        $out['streamButtonStart'] = $text( 'streamButtonStart' );
+        $out['streamButtonStop']  = $text( 'streamButtonStop' );
+        $out['streamFooterText']  = $text( 'streamFooterText' );
 
         return $out;
     }
@@ -682,224 +686,6 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                     </tr>
                 </table>
 
-                <!-- ===== V1.5 NEW SETTINGS ===== -->
-
-                <h2>Hero Header & CTA</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Main Headline</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[hero_cta_main]"
-                                   value="<?php echo esc_attr( $s['hero_cta_main'] ); ?>">
-                            <p class="description">Large headline at top of viewer (e.g., "Tap a song to request it 🎧")</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Subtext</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[hero_cta_sub]"><?php
-                                echo esc_textarea( $s['hero_cta_sub'] );
-                            ?></textarea>
-                            <p class="description">Instructions below the headline</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Banner Messages</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Controls Paused Title</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[banner_controls_paused_title]"
-                                   value="<?php echo esc_attr( $s['banner_controls_paused_title'] ); ?>">
-                            <p class="description">When Remote Falcon disables controls</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Controls Paused Subtitle</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[banner_controls_paused_sub]"><?php
-                                echo esc_textarea( $s['banner_controls_paused_sub'] );
-                            ?></textarea>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Trigger Counters (Mailbox & Button)</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Mailbox Label</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[trigger_label_mailbox]"
-                                   value="<?php echo esc_attr( $s['trigger_label_mailbox'] ); ?>">
-                            <p class="description">Use {count} for the number (e.g., "🎅 Letters sent to Santa: {count}")</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Button Label</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[trigger_label_button]"
-                                   value="<?php echo esc_attr( $s['trigger_label_button'] ); ?>">
-                            <p class="description">Use {count} for the number (e.g., "🔔 Naughty or Nice checks: {count}")</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Geo Check Messages</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Enable Geo Check</th>
-                        <td>
-                            <label>
-                                <input type="checkbox"
-                                       name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[enable_geo_check]"
-                                       value="1" <?php checked( ! empty( $s['enable_geo_check'] ) ); ?>>
-                                Use Cloudflare headers to detect visitor location (non-blocking)
-                            </label>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Visitor From Far Away</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[geo_visitor_far]"><?php
-                                echo esc_textarea( $s['geo_visitor_far'] );
-                            ?></textarea>
-                            <p class="description">Message shown when visitor is not local</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Local Visitor Welcome</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[geo_visitor_local]"><?php
-                                echo esc_textarea( $s['geo_visitor_local'] );
-                            ?></textarea>
-                            <p class="description">Use {city} for detected city name</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Confirm Local Button</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[geo_confirm_local_btn]"
-                                   value="<?php echo esc_attr( $s['geo_confirm_local_btn'] ); ?>">
-                            <p class="description">Button text for visitors to confirm they're at the show</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Fallback Message</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[geo_fallback_unavailable]"><?php
-                                echo esc_textarea( $s['geo_fallback_unavailable'] );
-                            ?></textarea>
-                            <p class="description">Shown when location check is unavailable</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Speaker Protection Messages</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Auto-Off Message</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[speaker_auto_off_message]"><?php
-                                echo esc_textarea( $s['speaker_auto_off_message'] );
-                            ?></textarea>
-                            <p class="description">Toast shown when speakers auto-turn-off after song</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Protection Active Message</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[speaker_protection_msg]"
-                                   value="<?php echo esc_attr( $s['speaker_protection_msg'] ); ?>">
-                            <p class="description">Button state during song protection</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Extension Prompt</th>
-                        <td>
-                            <textarea rows="2" cols="60"
-                                      name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[speaker_extend_msg]"><?php
-                                echo esc_textarea( $s['speaker_extend_msg'] );
-                            ?></textarea>
-                            <p class="description">Message prompting user to extend speaker time</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Adaptive Polling (Advanced)</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Active Polling Interval</th>
-                        <td>
-                            <input type="number" min="1000" max="10000" step="1000"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[polling_active_interval]"
-                                   value="<?php echo esc_attr( $s['polling_active_interval'] ); ?>">
-                            milliseconds
-                            <p class="description">How often to poll when user is active (default: 3000ms / 3s)</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Idle Polling Interval</th>
-                        <td>
-                            <input type="number" min="5000" max="60000" step="5000"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[polling_idle_interval]"
-                                   value="<?php echo esc_attr( $s['polling_idle_interval'] ); ?>">
-                            milliseconds
-                            <p class="description">How often to poll when user is idle (default: 15000ms / 15s)</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Idle Timeout</th>
-                        <td>
-                            <input type="number" min="30000" max="600000" step="30000"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[polling_idle_timeout]"
-                                   value="<?php echo esc_attr( $s['polling_idle_timeout'] ); ?>">
-                            milliseconds
-                            <p class="description">Time before considering user idle (default: 120000ms / 2 min)</p>
-                        </td>
-                    </tr>
-                </table>
-
-                <h2>Stream Button Labels</h2>
-                <table class="form-table">
-                    <tr>
-                        <th scope="row">Start Streaming Label</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[stream_button_start]"
-                                   value="<?php echo esc_attr( $s['stream_button_start'] ); ?>">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Stop Streaming Label</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[stream_button_stop]"
-                                   value="<?php echo esc_attr( $s['stream_button_stop'] ); ?>">
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">Footer Text (when streaming)</th>
-                        <td>
-                            <input type="text" size="60"
-                                   name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[stream_footer_text]"
-                                   value="<?php echo esc_attr( $s['stream_footer_text'] ); ?>">
-                        </td>
-                    </tr>
-                </table>
-
                 <?php submit_button(); ?>
             </form>
         </div>
@@ -1009,35 +795,6 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                     'copyShowtimeCountdown' => $settings['copy_showtime_countdown'],
                     'copyShowtimeNow'       => $settings['copy_showtime_now'],
                     'copyAdhocHint'         => $settings['copy_adhoc_hint'],
-                    
-                    // V1.5 additions
-                    'heroCTAMain'           => $settings['hero_cta_main'],
-                    'heroCTASub'            => $settings['hero_cta_sub'],
-                    'bannerControlsPausedTitle' => $settings['banner_controls_paused_title'],
-                    'bannerControlsPausedSub'   => $settings['banner_controls_paused_sub'],
-                    'triggerLabelMailbox'   => $settings['trigger_label_mailbox'],
-                    'triggerLabelButton'    => $settings['trigger_label_button'],
-                    'geoVisitorFar'         => $settings['geo_visitor_far'],
-                    'geoVisitorLocal'       => $settings['geo_visitor_local'],
-                    'geoConfirmLocalBtn'    => $settings['geo_confirm_local_btn'],
-                    'geoFallbackUnavailable'=> $settings['geo_fallback_unavailable'],
-                    'speakerAutoOffMessage' => $settings['speaker_auto_off_message'],
-                    'speakerProtectionMsg'  => $settings['speaker_protection_msg'],
-                    'speakerExtendMsg'      => $settings['speaker_extend_msg'],
-                    'streamButtonStart'     => $settings['stream_button_start'],
-                    'streamButtonStop'      => $settings['stream_button_stop'],
-                    'streamFooterText'      => $settings['stream_footer_text'],
-                ],
-                'config'          => [
-                    'enableGeoCheck'        => ! empty( $settings['enable_geo_check'] ),
-                    'pollingActiveInterval' => (int) $settings['polling_active_interval'],
-                    'pollingIdleInterval'   => (int) $settings['polling_idle_interval'],
-                    'pollingIdleTimeout'    => (int) $settings['polling_idle_timeout'],
-                    
-                    // Cloudflare geo headers (if available)
-                    'cfCity'                => $_SERVER['HTTP_CF_IPCITY'] ?? '',
-                    'cfRegion'              => $_SERVER['HTTP_CF_IPREGION'] ?? '',
-                    'cfCountry'             => $_SERVER['HTTP_CF_IPCOUNTRY'] ?? '',
                 ],
                 'stats'           => [
                     'glowsTotal' => (int) ( $glow_stats['total'] ?? 0 ),
@@ -1051,6 +808,17 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
      * ============================= */
 
     public function register_rest_routes() {
+        // V1.5: Viewer config endpoint (delivers settings + Cloudflare headers to frontend)
+        register_rest_route(
+            'lof-extras/v1',
+            '/viewer-config',
+            [
+                'methods'             => 'GET',
+                'callback'            => [ $this, 'rest_viewer_config' ],
+                'permission_callback' => '__return_true',
+            ]
+        );
+
         register_rest_route(
             'lof-extras/v1',
             '/glow',
@@ -1089,6 +857,45 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                 'callback'            => [ $this, 'rest_fog' ],
                 'permission_callback' => '__return_true',
             ]
+        );
+
+        // V1.5: FPP status proxy for speaker protection
+        register_rest_route(
+            'lof-extras/v1',
+            '/fpp/status',
+            [
+                'methods'             => 'GET',
+                'callback'            => [ $this, 'rest_fpp_status' ],
+                'permission_callback' => '__return_true',
+            ]
+        );
+    }
+
+    public function rest_viewer_config( \WP_REST_Request $request ) {
+        $settings = $this->get_settings();
+        
+        // V1.5: Extract Cloudflare geo headers if available
+        $cf_city = isset( $_SERVER['HTTP_CF_IPCITY'] ) ? sanitize_text_field( $_SERVER['HTTP_CF_IPCITY'] ) : null;
+        $cf_region = isset( $_SERVER['HTTP_CF_IPREGION'] ) ? sanitize_text_field( $_SERVER['HTTP_CF_IPREGION'] ) : null;
+        $cf_country = isset( $_SERVER['HTTP_CF_IPCOUNTRY'] ) ? sanitize_text_field( $_SERVER['HTTP_CF_IPCOUNTRY'] ) : null;
+        
+        return new \WP_REST_Response(
+            [
+                'holiday_mode' => $settings['season'],
+                'copy'         => $settings, // All copy fields
+                'config'       => [
+                    'pollingActiveInterval' => (int) $settings['pollingActiveInterval'],
+                    'pollingIdleInterval'   => (int) $settings['pollingIdleInterval'],
+                    'pollingIdleTimeout'    => (int) $settings['pollingIdleTimeout'],
+                    'enable_geo_check'      => ! empty( $settings['enable_geo_check'] ),
+                ],
+                'geo'          => [
+                    'city'    => $cf_city,
+                    'region'  => $cf_region,
+                    'country' => $cf_country,
+                ],
+            ],
+            200
         );
     }
 
@@ -1275,6 +1082,39 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
     /* =============================
      * HELPER: FPP RunScript
      * ============================= */
+
+    public function rest_fpp_status( \WP_REST_Request $request ) {
+        $settings = $this->get_settings();
+        $fpp_base = isset( $settings['speaker_fpp_base'] ) ? rtrim( $settings['speaker_fpp_base'], '/' ) : '';
+        
+        if ( empty( $fpp_base ) ) {
+            return new \WP_REST_Response( [ 'status' => 'error', 'message' => 'FPP not configured' ], 200 );
+        }
+        
+        $resp = wp_remote_get( $fpp_base . '/api/fppd/status', [ 'timeout' => 3 ] );
+        
+        if ( is_wp_error( $resp ) ) {
+            return new \WP_REST_Response( [ 'status' => 'error', 'message' => 'Could not reach FPP' ], 200 );
+        }
+        
+        $body = wp_remote_retrieve_body( $resp );
+        $data = json_decode( $body, true );
+        
+        if ( json_last_error() !== JSON_ERROR_NONE || ! is_array( $data ) ) {
+            return new \WP_REST_Response( [ 'status' => 'error', 'message' => 'Invalid FPP response' ], 200 );
+        }
+        
+        return new \WP_REST_Response(
+            [
+                'status'        => 'ok',
+                'fppd_status'   => $data['status'] ?? 'unknown',
+                'current_song'  => $data['current_song'] ?? null,
+                'seconds_elapsed' => $data['seconds_elapsed'] ?? 0,
+                'seconds_remaining' => $data['seconds_remaining'] ?? 0,
+            ],
+            200
+        );
+    }
 
     private function call_fpp_script( $base_url, $script_name, $direct_url = '' ) {
         // If a full direct URL is provided, just call that and be done.

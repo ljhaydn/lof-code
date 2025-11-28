@@ -94,83 +94,6 @@
   50% { opacity: 0.8; }
 }
 
-/* ================================================================
- * V1.5: HERO HEADER SECTION
- * ================================================================ */
-
-.rf-hero-section {
-  margin-bottom: 24px;
-}
-
-.rf-viewer-banner {
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  border-radius: var(--radius-lg);
-  background: rgba(233, 30, 99, 0.15);
-  border: 2px solid var(--lof-pink);
-  backdrop-filter: blur(10px);
-}
-
-.rf-viewer-banner.rf-banner--offseason {
-  background: rgba(139, 10, 26, 0.2);
-  border-color: var(--lof-burgundy);
-}
-
-.rf-viewer-banner.rf-banner--controls_paused {
-  background: rgba(255, 215, 0, 0.1);
-  border-color: var(--lof-gold);
-}
-
-#rf-banner-title {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--lof-white);
-}
-
-#rf-banner-body {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  opacity: 0.9;
-  color: var(--lof-text-main);
-}
-
-.rf-hero-cta {
-  text-align: center;
-  padding: 24px 20px;
-  margin-bottom: 20px;
-}
-
-.rf-hero-headline {
-  font-family: var(--font-display);
-  font-size: 2.2rem;
-  font-weight: 900;
-  font-style: italic;
-  line-height: 1.2;
-  margin-bottom: 12px;
-  color: var(--lof-white);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
-.rf-hero-subcopy {
-  font-size: 1rem;
-  line-height: 1.6;
-  color: var(--lof-text-muted);
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-@media (max-width: 699px) {
-  .rf-hero-headline {
-    font-size: 1.8rem;
-  }
-  
-  .rf-hero-subcopy {
-    font-size: 0.9rem;
-  }
-}
-
 /* ----------------------------------------------------------------
  * STATUS PANEL - Solid, Clear, Bold
  * ---------------------------------------------------------------- */
@@ -181,11 +104,6 @@
   gap: 16px;
   margin-bottom: 24px;
   padding: 24px 28px;
-
-  /* V1.5: Contain horizontal glow overflow */
-  overflow: hidden;
-  contain: layout style paint;
-  position: relative;
   
   /* Hot pink top stripe */
   border-top: 6px solid var(--lof-pink);
@@ -229,7 +147,7 @@
 }
 
 .rf-label {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.15em;
   color: var(--lof-gold);
@@ -390,39 +308,10 @@
 
 .rf-controls-row {
   display: flex;
-  gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
-  margin-bottom: 20px;
-  padding: 0 16px;
-}
-
-.rf-controls-row button {
-  min-width: 140px; /* V1.5: Ensure adequate tap target */
-  padding: 12px 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  background: var(--lof-forest);
-  color: var(--lof-white);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.rf-controls-row button:hover {
-  border-color: var(--lof-gold);
-  background: rgba(255, 215, 0, 0.1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-}
-
-@media (max-width: 699px) {
-  .rf-controls-row button {
-    min-width: 120px;
-    padding: 10px 16px;
-    font-size: 0.9rem;
-  }
+  gap: 12px;
+  margin: 16px 0 24px;
 }
 
 .rf-ctl-link {
@@ -492,11 +381,6 @@
   flex-direction: column;
   gap: 16px;
   min-height: 320px;
-}
-
-#rf-extra-panel {
-  min-height: 400px; /* V1.5: Prevent layout shift during re-renders */
-  transition: min-height 0.3s ease;
 }
 
 @media (max-width: 900px) {
@@ -746,35 +630,6 @@
   animation-play-state: paused;
 }
 
-/* ================================================================
- * V1.5: SPEAKER CARD - NON-SELECTABLE
- * ================================================================ */
-
-.rf-card--speaker {
-  cursor: default; /* V1.5: Not pointer (not selectable) */
-  transition: none; /* V1.5: No hover transform */
-}
-
-.rf-card--speaker button {
-  cursor: pointer;
-  pointer-events: auto;
-}
-
-.rf-card--speaker:hover {
-  transform: none;
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
-}
-
-.rf-card--speaker.rf-card--selectable {
-  cursor: default;
-}
-
-.rf-card--speaker.rf-card--selectable:hover {
-  transform: none;
-  border-color: rgba(255, 215, 0, 0.3);
-}
-
-/* Continue with NOW PLAYING text styles */
 .rf-card--now-playing .rf-card-title,
 .rf-card--now-playing .rf-card-artist,
 .rf-card--now-playing .rf-card-meta {
@@ -791,19 +646,19 @@
   .rf-card::before {
     content: '';
     position: absolute;
-    top: -60px; /* V1.5: Adjusted from -70px to prevent overlap */
+    top: -60px;
     left: 50%;
-    transform: translateX(-50%);
     width: 2px;
     height: 60px;
     background: linear-gradient(
       to bottom,
-      var(--lof-gold) 0%,
-      rgba(255, 215, 0, 0.4) 50%,
-      transparent 100%
+      rgba(255, 215, 0, 0.8),
+      rgba(255, 215, 0, 0.3)
     );
-    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
-    z-index: 0; /* V1.5: Behind text content */
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));
+    transform-origin: top center;
+    animation: gentle-sway 4s ease-in-out infinite;
+    pointer-events: none;
   }
   
   @keyframes gentle-sway {
@@ -862,11 +717,6 @@
     50% { transform: translateY(-6px) scale(1.02) rotate(-2deg); }
     75% { transform: translateY(-6px) scale(1.02) rotate(1deg); }
     100% { transform: translateY(-6px) scale(1.02) rotate(0deg); }
-  }
-
-  /* V1.5: Ensure status panel has proper spacing for ornaments */
-  .rf-status-panel {
-    margin-top: 80px; /* Space for ornaments */
   }
 }
 
@@ -1102,148 +952,6 @@
     0 0 25px rgba(255, 215, 0, 0.1);
 }
 
-/* ================================================================
- * V1.5: TONIGHT FROM THIS DEVICE CARD
- * ================================================================ */
-
-.rf-card--tonight-device {
-  background: var(--lof-forest);
-  border: 2px solid var(--lof-gold);
-  padding: 20px;
-  border-radius: var(--radius-md);
-  margin-bottom: 16px;
-  box-shadow: 
-    0 0 20px rgba(255, 215, 0, 0.2),
-    0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.rf-card--tonight-device::before {
-  content: '✦';
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 24px;
-  color: var(--lof-gold);
-  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
-  animation: twinkle 2s ease-in-out infinite;
-}
-
-.rf-tonight-device-title {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  font-weight: 700;
-  margin-bottom: 16px;
-  color: var(--lof-gold);
-  text-align: center;
-}
-
-.rf-stats-section {
-  margin-bottom: 16px;
-}
-
-.rf-stats-section:last-child {
-  margin-bottom: 0;
-}
-
-.rf-stats-label {
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--lof-text-dim);
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.rf-stat-item {
-  font-size: 0.9rem;
-  line-height: 1.6;
-  color: var(--lof-text-main);
-  padding: 4px 0;
-}
-
-.rf-stats-section--triggers {
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 215, 0, 0.2);
-}
-
-@media (max-width: 699px) {
-  .rf-card--tonight-device {
-    margin-bottom: 20px;
-  }
-}
-
-/* ================================================================
- * V1.5: GEO CHECK NOTICES
- * ================================================================ */
-
-.rf-card--geo {
-  margin-bottom: 16px;
-}
-
-.rf-geo-notice {
-  padding: 16px;
-  border-radius: var(--radius-sm);
-  text-align: center;
-}
-
-.rf-geo-notice--local {
-  background: rgba(212, 241, 232, 0.1);
-  border: 1px solid var(--lof-mint);
-  color: var(--lof-mint);
-}
-
-.rf-geo-notice--far {
-  background: rgba(233, 30, 99, 0.1);
-  border: 1px solid var(--lof-pink);
-}
-
-.rf-geo-notice--fallback {
-  background: rgba(255, 215, 0, 0.1);
-  border: 1px solid var(--lof-gold);
-  color: var(--lof-text-muted);
-  font-size: 0.85rem;
-}
-
-.rf-geo-message {
-  margin-bottom: 12px;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.rf-btn--geo-confirm {
-  background: var(--lof-pink);
-  color: var(--lof-white);
-  border: none;
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.rf-btn--geo-confirm:hover {
-  background: #D81B60;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.4);
-}
-
-.rf-stream-footer {
-  display: none; /* V1.5: Hidden by default, shown when streaming */
-  text-align: center;
-  padding: 12px 16px;
-  margin-top: 24px;
-  background: rgba(15, 58, 44, 0.6);
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255, 215, 0, 0.3);
-}
-
-.rf-stream-footer-text {
-  font-size: 0.85rem;
-  color: var(--lof-text-muted);
-  font-style: italic;
-}
-
 .rf-extra-title {
   font-family: var(--font-display);
   font-size: 1.1rem;
@@ -1416,41 +1124,45 @@
 
 #rf-toast.rf-toast {
   position: fixed;
-  bottom: 20px;
   left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  min-width: 280px;
-  max-width: 90%;
-  padding: 16px 20px;
+  bottom: 2rem;
+  transform: translateX(-50%) translateY(150%);
+  max-width: 90vw;
+  padding: 16px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  
   background: var(--lof-forest);
-  border: 2px solid var(--lof-gold);
-  border-radius: var(--radius-md);
+  border: 3px solid var(--lof-gold);
   color: var(--lof-white);
-  font-weight: 500;
-  text-align: center;
-  z-index: 10000;
-  box-shadow: 
-    0 0 30px rgba(255, 215, 0, 0.4),
-    0 8px 24px rgba(0, 0, 0, 0.6);
+  
+  box-shadow:
+    var(--glow-gold),
+    0 12px 36px rgba(0, 0, 0, 0.6);
+  
   opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  
   transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 #rf-toast.rf-toast.show {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(-50%) translateY(0%);
+  pointer-events: auto;
 }
 
 #rf-toast.rf-toast--success {
-  border-color: var(--lof-mint);
-  box-shadow: 
-    0 0 30px rgba(212, 241, 232, 0.4),
-    0 8px 24px rgba(0, 0, 0, 0.6);
+  border-color: var(--lof-gold);
 }
 
 #rf-toast.rf-toast--error {
   border-color: var(--lof-pink);
-  background: var(--lof-burgundy);
+  box-shadow:
+    0 0 30px rgba(233, 30, 99, 0.7),
+    0 12px 36px rgba(0, 0, 0, 0.6);
 }
 
 /* ----------------------------------------------------------------
@@ -1478,30 +1190,8 @@
     padding: 16px 18px 18px;
   }
   
-  /* V1.5: Increased mobile text sizes for readability */
   .rf-card-title {
     font-size: 1.1rem;
-  }
-  
-  .rf-card-artist {
-    font-size: 0.9rem;
-  }
-  
-  .rf-card-meta,
-  .rf-card-duration {
-    font-size: 0.85rem;
-  }
-  
-  .rf-extra-title {
-    font-size: 1.05rem;
-  }
-  
-  .rf-extra-sub {
-    font-size: 0.9rem;
-  }
-  
-  .rf-label {
-    font-size: 0.8rem;
   }
   
   .rf-card--now-playing {
@@ -1543,3 +1233,405 @@
  * END - HYBRID Mobile Magic + Desktop Theater
  * Bold. Magical. No compromises.
  * ================================================================ */
+/* ================================================================
+ * V1.5: HERO HEADER SECTION
+ * ================================================================ */
+
+.rf-hero-section {
+  margin-bottom: 24px;
+}
+
+.rf-viewer-banner {
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(233, 30, 99, 0.15);
+  border: 2px solid #E91E63;
+  backdrop-filter: blur(10px);
+  display: none;
+}
+
+.rf-viewer-banner.rf-banner--offseason {
+  background: rgba(139, 10, 26, 0.2);
+  border-color: #8B0A1A;
+}
+
+.rf-viewer-banner.rf-banner--controls_paused {
+  background: rgba(255, 215, 0, 0.1);
+  border-color: #FFD700;
+}
+
+#rf-banner-title {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #FFFFFF;
+}
+
+#rf-banner-body {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  opacity: 0.9;
+  color: #E8F5E9;
+}
+
+.rf-hero-cta {
+  text-align: center;
+  padding: 24px 20px;
+  margin-bottom: 20px;
+}
+
+.rf-hero-headline {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.2;
+  margin-bottom: 12px;
+  color: #FFFFFF;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.rf-hero-subcopy {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.7);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+@media (max-width: 699px) {
+  .rf-hero-headline {
+    font-size: 1.8rem;
+  }
+  
+  .rf-hero-subcopy {
+    font-size: 0.9rem;
+  }
+}
+
+/* ================================================================
+ * V1.5: STATUS PANEL GLOW OVERFLOW CONTAINMENT
+ * ================================================================ */
+
+.rf-status-panel {
+  overflow: hidden;
+  contain: layout style paint;
+  position: relative;
+}
+
+/* ================================================================
+ * V1.5: DESKTOP ORNAMENT STRING Z-INDEX
+ * ================================================================ */
+
+@media (min-width: 700px) {
+  .rf-card::before {
+    z-index: 0;
+  }
+  
+  .rf-status-panel {
+    margin-top: 80px;
+  }
+}
+
+/* ================================================================
+ * V1.5: MOBILE TEXT SIZE INCREASE
+ * ================================================================ */
+
+@media (max-width: 699px) {
+  .rf-card-title {
+    font-size: 1.1rem;
+  }
+  
+  .rf-card-artist {
+    font-size: 0.9rem;
+  }
+  
+  .rf-card-duration {
+    font-size: 0.85rem;
+  }
+  
+  .rf-extra-title {
+    font-size: 1.05rem;
+  }
+  
+  .rf-extra-sub {
+    font-size: 0.9rem;
+  }
+  
+  .rf-label {
+    font-size: 0.8rem;
+  }
+}
+
+/* ================================================================
+ * V1.5: "TONIGHT FROM THIS DEVICE" CARD
+ * ================================================================ */
+
+.rf-card--tonight-device {
+  background: var(--lof-forest, #0F3A2C);
+  border: 2px solid #FFD700;
+  padding: 20px;
+  border-radius: var(--radius-md, 8px);
+  margin-bottom: 16px;
+  box-shadow: 
+    0 0 20px rgba(255, 215, 0, 0.2),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.rf-card--tonight-device::before {
+  content: '✦';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  color: #FFD700;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+  animation: twinkle 2s ease-in-out infinite;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.rf-tonight-device-title {
+  font-family: var(--font-display, 'Inter', sans-serif);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #FFD700;
+  text-align: center;
+}
+
+.rf-stats-section {
+  margin-bottom: 16px;
+}
+
+.rf-stats-section:last-child {
+  margin-bottom: 0;
+}
+
+.rf-stats-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.rf-stat-item {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #E8F5E9;
+  padding: 4px 0;
+}
+
+.rf-stats-section--triggers {
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+@media (max-width: 699px) {
+  .rf-card--tonight-device {
+    margin-bottom: 20px;
+  }
+}
+
+/* ================================================================
+ * V1.5: GEO CHECK NOTICES
+ * ================================================================ */
+
+.rf-card--geo {
+  margin-bottom: 16px;
+}
+
+.rf-geo-notice {
+  padding: 16px;
+  border-radius: var(--radius-sm, 6px);
+  text-align: center;
+}
+
+.rf-geo-notice--local {
+  background: rgba(212, 241, 232, 0.1);
+  border: 1px solid #D4F1E8;
+  color: #D4F1E8;
+}
+
+.rf-geo-notice--far {
+  background: rgba(233, 30, 99, 0.1);
+  border: 1px solid #E91E63;
+}
+
+.rf-geo-notice--fallback {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid #FFD700;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.85rem;
+}
+
+.rf-geo-message {
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.rf-btn--geo-confirm {
+  background: #E91E63;
+  color: #FFFFFF;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm, 6px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rf-btn--geo-confirm:hover {
+  background: #D81B60;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.4);
+}
+
+/* ================================================================
+ * V1.5: STREAM FOOTER VISIBILITY
+ * ================================================================ */
+
+.rf-stream-footer {
+  display: none;
+  text-align: center;
+  padding: 12px 16px;
+  margin-top: 24px;
+  background: rgba(15, 58, 44, 0.6);
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.rf-stream-footer--visible {
+  display: block;
+}
+
+.rf-stream-footer-text {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-style: italic;
+  margin-top: 8px;
+}
+
+/* ================================================================
+ * V1.5: EXTRA PANEL MIN-HEIGHT (PREVENT BOUNCE)
+ * ================================================================ */
+
+#rf-extra-panel {
+  min-height: 400px;
+  transition: min-height 0.3s ease;
+}
+
+/* ================================================================
+ * V1.5: "NEED SOUND?" CARD - NON-SELECTABLE
+ * ================================================================ */
+
+.rf-card--speaker,
+.rf-speaker-card {
+  cursor: default;
+  transition: none;
+}
+
+.rf-speaker-card button {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.rf-card--speaker:hover,
+.rf-speaker-card:hover {
+  transform: none;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* ================================================================
+ * V1.5: CONTROLS ROW BUTTONS
+ * ================================================================ */
+
+.rf-controls-row {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 0 16px;
+}
+
+.rf-controls-row button {
+  min-width: 140px;
+  padding: 12px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  background: var(--lof-forest, #0F3A2C);
+  color: #FFFFFF;
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  border-radius: var(--radius-md, 8px);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rf-controls-row button:hover {
+  border-color: #FFD700;
+  background: rgba(255, 215, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+}
+
+@media (max-width: 699px) {
+  .rf-controls-row button {
+    min-width: 120px;
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+}
+
+/* ================================================================
+ * V1.5: TOAST NOTIFICATIONS
+ * ================================================================ */
+
+.rf-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  min-width: 280px;
+  max-width: 90%;
+  padding: 16px 20px;
+  background: var(--lof-forest, #0F3A2C);
+  border: 2px solid #FFD700;
+  border-radius: var(--radius-md, 8px);
+  color: #FFFFFF;
+  font-weight: 500;
+  text-align: center;
+  z-index: 10000;
+  box-shadow: 
+    0 0 30px rgba(255, 215, 0, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.rf-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.rf-toast.error {
+  border-color: #E91E63;
+  background: #8B0A1A;
+}
+
+.rf-toast.success {
+  border-color: #D4F1E8;
+  box-shadow: 
+    0 0 30px rgba(212, 241, 232, 0.4),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+}

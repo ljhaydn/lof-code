@@ -3,7 +3,7 @@
  * Plugin Name: Lights on Falcon - Epic Viewer Enqueue
  * Description: Auto-enqueue lof-epic-viewer.js on pages containing the Remote Falcon viewer.
  * Author: Lights on Falcon
- * Version: 1.0.0
+ * Version: 1.5.0
  */
 
 if (!defined('ABSPATH')) {
@@ -28,7 +28,7 @@ function lof_maybe_enqueue_epic_viewer_js_mu() {
             'lof-epic-viewer',
             $script_url,
             array(),
-            '1.0.0',
+            '1.5.0',
             true // footer
         );
     }
@@ -49,7 +49,7 @@ function lof_enqueue_mobile_magic() {
             'lof-mobile-magic',
             $script_url,
             array(),
-            '1.0.0',
+            '1.5.0',
             true // footer
         );
     }
