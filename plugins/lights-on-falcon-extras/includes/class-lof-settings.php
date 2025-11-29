@@ -7,7 +7,7 @@ if (!defined('ABSPATH')) {
 class LOF_Settings {
 
     const OPTION_GROUP = 'lof_extras_options';
-    const OPTION_NAME  = 'lof_extras_settings';
+    const OPTION_NAME = 'lof_viewer_extras_settings';
 
     public static function init() {
         add_action('admin_menu', [__CLASS__, 'add_menu']);
