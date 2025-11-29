@@ -380,7 +380,7 @@ class RF_Viewer_Plugin {
             'rf-viewer-js',
             plugin_dir_url(__FILE__) . 'rf-viewer.js',
             [],
-            '1.5.0',
+            '1.2.0',
             true
         );
         wp_localize_script('rf-viewer-js', 'RFViewer', [
@@ -391,70 +391,82 @@ class RF_Viewer_Plugin {
             'rf-viewer-css',
             plugin_dir_url(__FILE__) . 'rf-viewer.css',
             [],
-            '1.5.0'
+            '1.2.0'
         );
     }
 
     public function shortcode_viewer($atts, $content = '') {
         ob_start(); ?>
         <div id="rf-viewer" class="rf-viewer">
-            <!-- V1.5: Hero Header Section (dynamically populated by JS) -->
+            
+            <!-- V1.5: EPIC HERO SECTION -->
             <div id="rf-hero-section" class="rf-hero-section">
-                <!-- Off-season/controls paused banner (conditional, JS-controlled) -->
-                <div id="rf-viewer-banner" class="rf-viewer-banner" style="display:none;">
+                
+                <!-- V1.5: Banner Messages (off-season, controls paused) -->
+                <div id="rf-viewer-banner" class="rf-viewer-banner" style="display: none;">
                     <div id="rf-banner-title"></div>
                     <div id="rf-banner-body"></div>
                 </div>
                 
-                <!-- Main CTA headline -->
+                <!-- V1.5: Hero CTA (headline + subtext populated by JS) -->
                 <div id="rf-hero-cta" class="rf-hero-cta">
-                    <div class="rf-hero-headline" id="rf-hero-headline">Loading...</div>
-                    <div class="rf-hero-subcopy" id="rf-hero-subcopy"></div>
+                    <div id="rf-hero-headline" class="rf-hero-headline">Loading...</div>
+                    <div id="rf-hero-subcopy" class="rf-hero-subcopy">Loading...</div>
                 </div>
-            </div>
-
-            <!-- Status Panel (Now Playing / Next Up / Mode) -->
-            <div class="rf-status-panel">
-                <div class="rf-now">
-                    <div class="rf-label">Now Playing</div>
-                    <div class="rf-now-title" id="rf-now-title">Loading…</div>
-                    <div class="rf-now-artist" id="rf-now-artist"></div>
-                    <div class="rf-now-progress">
-                        <div class="rf-now-progress-bar">
-                            <div class="rf-now-progress-fill"></div>
+                
+                <!-- Status Panel (now integrated into hero) -->
+                <div class="rf-status-panel">
+                    <div class="rf-now">
+                        <div class="rf-label">Now Playing</div>
+                        <div class="rf-now-title" id="rf-now-title">Loading…</div>
+                        <div class="rf-now-artist" id="rf-now-artist"></div>
+                        <div class="rf-now-progress">
+                            <div class="rf-now-progress-bar">
+                                <div class="rf-now-progress-fill"></div>
+                            </div>
+                            <div class="rf-now-progress-label"></div>
                         </div>
-                        <div class="rf-now-progress-label"></div>
+                    </div>
+                    <div class="rf-next">
+                        <div class="rf-label">Next Up</div>
+                        <div class="rf-next-title" id="rf-next-title">—</div>
+                    </div>
+                    <div class="rf-mode">
+                        <div class="rf-label">Mode</div>
+                        <div class="rf-mode-value" id="rf-mode-value">—</div>
                     </div>
                 </div>
-                <div class="rf-next">
-                    <div class="rf-label">Next Up</div>
-                    <div class="rf-next-title" id="rf-next-title">—</div>
+                
+                <!-- Controls Row -->
+                <div class="rf-controls-row" id="rf-controls-row"></div>
+                
+                <!-- Instructions -->
+                <div class="rf-viewer-header">
+                    <div class="rf-viewer-headline">How tonight works</div>
+                    <div class="rf-viewer-subcopy">
+                        • Tap a song to add it to the queue.<br>
+                        • One request per device so everyone gets a turn.<br>
+                        • Your pick will glow when it's playing, then rest.
+                    </div>
                 </div>
-                <div class="rf-mode">
-                    <div class="rf-label">Mode</div>
-                    <div class="rf-mode-value" id="rf-mode-value">—</div>
-                </div>
-            </div>
-            <div class="rf-controls-row" id="rf-controls-row"></div>
-            <div class="rf-viewer-header">
-                <div class="rf-viewer-headline">How tonight works</div>
-                <div class="rf-viewer-subcopy">
-                    • Tap a song to add it to the queue.<br>
-                    • One request per device so everyone gets a turn.<br>
-                    • Your pick will glow when it’s playing, then rest.
-                </div>
-            </div>
+                
+            </div><!-- End V1.5 Hero Section -->
+            
+            <!-- Main Layout (song grid + extras panel) -->
             <div class="rf-main-layout">
                 <div class="rf-main-left">
                     <div class="rf-grid" id="rf-grid"></div>
                 </div>
                 <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
+            
+            <!-- Footer (mission statement) -->
             <div class="rf-tonight">
                 <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
                 <div id="lof-tonight-body" class="rf-tonight-body"></div>
                 <div id="rf-footer-glow"></div>
             </div>
+            
             <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
             <div
               id="lof-stream-footer"

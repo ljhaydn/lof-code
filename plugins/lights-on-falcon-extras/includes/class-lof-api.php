@@ -44,6 +44,11 @@ class LOF_API {
      * - copy (all text keys, merged defaults + overrides)
      * - showtimes (parsed windows)
      * - speaker (timing / cooldown config)
+     * - V1.5 ADDITIONS:
+     *   - geoCheckEnabled
+     *   - showLatitude / showLongitude
+     *   - speakerEndpoint
+     *   - cloudflare (geo headers from Cloudflare proxy)
      */
     public static function viewer_config(\WP_REST_Request $request) {
         $settings = get_option(LOF_Settings::OPTION_NAME, []);
@@ -73,6 +78,42 @@ class LOF_API {
             }
         }
 
+        // V1.5: Map admin settings keys to JavaScript-expected keys
+        // Admin uses: hero_cta_main / hero_cta_sub
+        // JavaScript expects: hero_headline / hero_subtext
+        if (isset($settings['hero_cta_main']) && $settings['hero_cta_main'] !== '') {
+            $copy['hero_headline'] = $settings['hero_cta_main'];
+        }
+        if (isset($settings['hero_cta_sub']) && $settings['hero_cta_sub'] !== '') {
+            $copy['hero_subtext'] = $settings['hero_cta_sub'];
+        }
+
+        // V1.5: Map banner keys
+        // Admin uses: banner_controls_paused_title / banner_controls_paused_sub
+        // JavaScript expects: banner_paused_title / banner_paused_body
+        if (isset($settings['banner_controls_paused_title']) && $settings['banner_controls_paused_title'] !== '') {
+            $copy['banner_paused_title'] = $settings['banner_controls_paused_title'];
+        }
+        if (isset($settings['banner_controls_paused_sub']) && $settings['banner_controls_paused_sub'] !== '') {
+            $copy['banner_paused_body'] = $settings['banner_controls_paused_sub'];
+        }
+
+        // V1.5: Map geo keys
+        // Admin uses: geo_visitor_local / geo_visitor_far / geo_confirm_local_btn / geo_fallback_unavailable
+        // JavaScript expects: geo_local_message / geo_far_message / geo_confirm_btn / geo_fallback_message
+        if (isset($settings['geo_visitor_local']) && $settings['geo_visitor_local'] !== '') {
+            $copy['geo_local_message'] = $settings['geo_visitor_local'];
+        }
+        if (isset($settings['geo_visitor_far']) && $settings['geo_visitor_far'] !== '') {
+            $copy['geo_far_message'] = $settings['geo_visitor_far'];
+        }
+        if (isset($settings['geo_confirm_local_btn']) && $settings['geo_confirm_local_btn'] !== '') {
+            $copy['geo_confirm_btn'] = $settings['geo_confirm_local_btn'];
+        }
+        if (isset($settings['geo_fallback_unavailable']) && $settings['geo_fallback_unavailable'] !== '') {
+            $copy['geo_fallback_message'] = $settings['geo_fallback_unavailable'];
+        }
+
         $speakerConfig = [
             'minutes_default' => isset($settings['speaker_minutes_default']) && is_numeric($settings['speaker_minutes_default'])
                 ? (int) $settings['speaker_minutes_default']
@@ -85,12 +126,35 @@ class LOF_API {
                 : 15,
         ];
 
+        // V1.5: Geo check configuration
+        $geoCheckEnabled = !empty($settings['enable_geo_check']);
+        $showLatitude    = 33.7701;  // Long Beach, CA
+        $showLongitude   = -118.1937;
+
+        // V1.5: Speaker endpoint path
+        $speakerEndpoint = '/wp-content/themes/integrations/lof-speaker.php';
+
+        // V1.5: Cloudflare geo headers (if available via Cloudflare proxy)
+        $cloudflare = [
+            'city'      => isset($_SERVER['HTTP_CF_IPCITY']) ? $_SERVER['HTTP_CF_IPCITY'] : null,
+            'country'   => isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? $_SERVER['HTTP_CF_IPCOUNTRY'] : null,
+            'latitude'  => isset($_SERVER['HTTP_CF_IPLATITUDE']) ? floatval($_SERVER['HTTP_CF_IPLATITUDE']) : null,
+            'longitude' => isset($_SERVER['HTTP_CF_IPLONGITUDE']) ? floatval($_SERVER['HTTP_CF_IPLONGITUDE']) : null,
+        ];
+
         return [
             'holiday_mode' => $holiday_mode,
             'features'     => $features,
             'copy'         => $copy,
             'showtimes'    => $showtimes,
             'speaker'      => $speakerConfig,
+
+            // V1.5 ADDITIONS:
+            'geoCheckEnabled' => $geoCheckEnabled,
+            'showLatitude'    => $showLatitude,
+            'showLongitude'   => $showLongitude,
+            'speakerEndpoint' => $speakerEndpoint,
+            'cloudflare'      => $cloudflare,
         ];
     }
 
@@ -178,24 +242,29 @@ class LOF_API {
         if (isset($decoded['scheduler']['currentPlaylist']['playlistName'])) {
             $playlistName = (string) $decoded['scheduler']['currentPlaylist']['playlistName'];
         }
-        if (isset($decoded['scheduler']['currentPlaylist']['secondsRemaining'])) {
-            $secondsRemaining = (int) $decoded['scheduler']['currentPlaylist']['secondsRemaining'];
+        if (isset($decoded['scheduler']['currentPlaylist']['scheduledEndTime'])) {
+            $scheduledEnd = (int) $decoded['scheduler']['currentPlaylist']['scheduledEndTime'];
+            $now          = time();
+            if ($scheduledEnd > $now) {
+                $secondsRemaining = $scheduledEnd - $now;
+            }
         }
 
+        // Return normalized fields + full raw FPP response for flexibility
         $payload = [
             'success'           => true,
             'status_name'       => $statusName,
             'seconds_remaining' => $secondsRemaining,
             'seconds_played'    => $secondsPlayed,
             'playlist_name'     => $playlistName,
-            'raw'               => $decoded,
+            'raw'               => $decoded,  // Full FPP response for JavaScript access
         ];
 
         return new \WP_REST_Response($payload, 200);
     }
 
     protected static function parse_showtimes($json) {
-        if (!$json) {
+        if (!$json || trim($json) === '') {
             return [
                 ['start' => '17:00', 'end' => '21:00'],
             ];
@@ -235,6 +304,8 @@ class LOF_API {
      * All viewer copy defaults live here.
      * Anything added here can be overridden in LOF_Settings and will
      * automatically appear in the REST viewer-config under copy[key].
+     *
+     * V1.5: Added new copy keys for hero, banner, geo, triggers, device stats, speaker protection, stream
      */
     protected static function default_copy() {
         return [
@@ -243,12 +314,12 @@ class LOF_API {
             'banner_showtime_sub'        => 'Lights, audio, and neighbors in sync.',
             'banner_intermission_title'  => 'Intermission',
             'banner_intermission_sub'    => 'The lights are catching their breath between songs.',
-            'banner_afterhours_title'    => 'We’re taking a breather',
+            'banner_afterhours_title'    => 'We're taking a breather',
             'banner_afterhours_sub'      => 'The lights are resting for now.',
-            'banner_offseason_title'     => 'We’re resting up for next season',
+            'banner_offseason_title'     => 'We're resting up for next season',
             'banner_offseason_sub'       => 'Check back soon for more glowing chaos.',
 
-            // Header (viewer hero)
+            // Header (viewer hero) - legacy keys for V1
             'header_jukebox_title'      => 'Tap a song to request it 🎧',
             'header_jukebox_intro'      => 'Requests join the queue in the order they come in.',
             'header_jukebox_queue'      => 'There are currently {queueCount} songs in the queue.',
@@ -261,16 +332,46 @@ class LOF_API {
             'header_voting_late'        => 'Bonus points for after-dark voting energy. 🌒',
 
             'header_paused_title'       => 'Viewer control is currently paused',
-            'header_paused_body'        => 'You can still enjoy the show — we’ll turn song requests and voting back on soon.',
+            'header_paused_body'        => 'You can still enjoy the show — we'll turn song requests and voting back on soon.',
 
             'header_default_title'      => 'Interactive show controls',
             'header_default_body'       => 'Use the controls below to interact with the Lights on Falcon show in real time.',
 
-            // Speaker
+            // V1.5: Hero section (simpler keys, mapped from admin in viewer_config())
+            'hero_headline'             => 'Tap a song to request it 🎧',
+            'hero_subtext'              => 'Requests join the queue in the order they come in. You can request up to 1 songs per session.',
+
+            // V1.5: Banner messages (simpler keys, mapped from admin in viewer_config())
+            'banner_paused_title'       => 'Taking a quick break',
+            'banner_paused_body'        => 'Viewer control is paused. The show is still running — look up and enjoy!',
+
+            // V1.5: Geo check messages (mapped from admin in viewer_config())
+            'geo_local_message'         => 'Welcome neighbor! You\'re in {city} 🎄',
+            'geo_far_message'           => '📍 Visiting from afar? Come see us in person in Long Beach!',
+            'geo_confirm_btn'           => 'I\'m here - full access',
+            'geo_fallback_message'      => 'Location check unavailable - full access granted',
+
+            // V1.5: Trigger counter labels
+            'trigger_santa_label'       => '🎅 Letters to Santa:',
+            'trigger_button_label'      => '🔴 Button presses:',
+            'trigger_overall_label'     => 'Tonight Overall',
+
+            // V1.5: Device stats
+            'device_stats_title'        => 'Tonight From This Device',
+
+            // V1.5: Speaker protection
+            'speaker_protection_active' => '🔒 Protected during song',
+
+            // V1.5: Stream button labels
+            'stream_btn_start'          => 'Listen on your phone 🎧',
+            'stream_btn_stop'           => 'Stop streaming 🔇',
+            'stream_footer_text'        => 'Streaming Audio Powered by PulseMesh',
+
+            // Speaker (existing V1 keys)
             'speaker_btn_on'             => 'Turn speakers on 🔊',
             'speaker_btn_off'            => 'Turn speakers off',
             'speaker_status_on'          => 'Speakers are currently ON near the show.',
-            'speaker_status_off'         => 'Speakers are currently OFF. If you’re standing at the show, you can turn them on.',
+            'speaker_status_off'         => 'Speakers are currently OFF. If you're standing at the show, you can turn them on.',
             'speaker_status_unknown'     => 'Unable to read speaker status.',
             'speaker_time_left_prefix'   => 'Time left:',
             'speaker_error_msg'          => 'Something glitched while talking to the speakers.',
@@ -288,17 +389,17 @@ class LOF_API {
             'glow_rate_limited'          => 'You just sent a glow. Give it a minute before sending another.',
 
             // Surprise Me
-            'surprise_title'             => 'Can’t pick just one?',
+            'surprise_title'             => 'Can't pick just one?',
             'surprise_sub'               => 'Let us queue up a random crowd-pleaser for you.',
             'surprise_btn'               => 'Surprise me ✨',
-            'surprise_success'           => 'Request sent! You’re in the queue.',
+            'surprise_success'           => 'Request sent! You're in the queue.',
             'surprise_fourth_time'       => 'You like chaos. We respect that. 😈',
             'surprise_disabled'          => 'Viewer control is currently paused.',
 
-            // Stats
+            // Stats (existing V1 keys)
             'stats_title'                => 'Tonight from this device',
             'stats_requests_label'       => 'Requests sent',
-            'stats_surprise_label'       => '“Surprise me” taps',
+            'stats_surprise_label'       => '"Surprise me" taps',
             'stats_vibe_label'           => 'Falcon vibe check',
             'stats_vibe_low'             => 'Cozy & chill 😌',
             'stats_vibe_med'             => 'Party forming 🕺',
@@ -307,7 +408,7 @@ class LOF_API {
     }
 
     /**
-     * Handle “glow” submissions.
+     * Handle "glow" submissions.
      * For now: log to a file or post type. This can evolve later.
      */
     public static function handle_glow(\WP_REST_Request $request) {

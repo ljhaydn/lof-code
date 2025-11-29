@@ -1,5 +1,6 @@
 <?php
 // Simple REST API for trigger counts (button/mailbox/etc).
+// V1.5: Normalized trigger count keys for JavaScript consistency
 
 add_action( 'rest_api_init', function () {
     register_rest_route(
@@ -80,7 +81,12 @@ function lof_viewer_trigger_hit( WP_REST_Request $request ) {
 /**
  * GET /wp-json/lof-viewer/v1/trigger-counts
  *
- * Returns: { "success": true, "counts": { "button": 12, "mailbox": 5 } }
+ * Returns: { "success": true, "counts": { "santaMailbox": 12, "buttonPress": 5 } }
+ *
+ * V1.5: Normalized keys for JavaScript consistency
+ * - FPP scripts send keys like 'mailbox' and 'button'
+ * - JavaScript expects camelCase: 'santaMailbox' and 'buttonPress'
+ * - This function normalizes the keys for consistent frontend usage
  */
 function lof_viewer_get_trigger_counts( WP_REST_Request $request ) {
     $counts = get_option( 'lof_viewer_trigger_counts', array() );
@@ -88,10 +94,17 @@ function lof_viewer_get_trigger_counts( WP_REST_Request $request ) {
         $counts = array();
     }
 
+    // V1.5: Normalize keys for JavaScript
+    // Map FPP script keys to JavaScript-expected camelCase keys
+    $normalized = array(
+        'santaMailbox' => isset( $counts['mailbox'] ) ? (int) $counts['mailbox'] : 0,
+        'buttonPress'  => isset( $counts['button'] ) ? (int) $counts['button'] : 0,
+    );
+
     return new WP_REST_Response(
         array(
             'success' => true,
-            'counts'  => $counts,
+            'counts'  => $normalized,
         ),
         200
     );

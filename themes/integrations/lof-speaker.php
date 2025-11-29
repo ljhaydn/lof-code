@@ -220,108 +220,96 @@ function lof_call_fpp_run_script($scriptName, $apiKey = '') {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
     $jsonBody = json_encode($payload);
-    $headers  = [
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonBody);
+
+    $headers = [
         'Content-Type: application/json',
-        'Content-Length' => strlen($jsonBody),
+        'Content-Length: ' . strlen($jsonBody),
     ];
 
-    if (!empty($apiKey)) {
-        $headers[] = 'Authorization: Bearer ' . $apiKey;
+    if ($apiKey && $apiKey !== '') {
+        $headers[] = 'X-FPP-API-Key: ' . $apiKey;
     }
 
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $jsonBody);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
     $responseBody = curl_exec($ch);
     $httpCode     = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
     if ($responseBody === false) {
-        $err = curl_error($ch);
         curl_close($ch);
-        return ['ok' => false, 'code' => 0, 'error' => $err, 'json' => null];
+        return ['ok' => false, 'code' => 0, 'json' => null];
     }
 
     curl_close($ch);
 
     $json = json_decode($responseBody, true);
     return [
-        'ok'    => ($httpCode >= 200 && $httpCode < 300),
-        'code'  => $httpCode,
-        'error' => null,
-        'json'  => $json,
+        'ok'   => ($httpCode >= 200 && $httpCode < 300 && is_array($json)),
+        'code' => $httpCode,
+        'json' => $json,
     ];
 }
 
 // ------------------------------------------------------------
-// State helpers
+// State management
 // ------------------------------------------------------------
-function lof_speaker_get_state($stateKey) {
-    $state = get_option($stateKey, null);
+function lof_speaker_get_state($key) {
+    $state = get_option($key, false);
     if (!is_array($state)) {
-        $state = [];
+        $state = [
+            'status'       => 'off',
+            'expires_at'   => 0,
+            'last_updated' => time(),
+            'last_source'  => 'unknown',
+        ];
     }
-
-    $defaults = [
-        'status'               => 'off', // 'on' | 'off'
-        'expires_at'           => 0,     // unix timestamp
-        'last_source'          => '',    // 'viewer' | 'physical' | 'fpp-exec' | ''
-        'last_updated'         => 0,
-        'last_notified_status' => '',    // last status reported by notify()
-        'last_notified_at'     => 0,
-    ];
-
-    return array_merge($defaults, $state);
+    return $state;
 }
 
-function lof_speaker_save_state($stateKey, array $state) {
-    update_option($stateKey, $state, false);
+function lof_speaker_save_state($key, array $state) {
+    update_option($key, $state);
 }
 
 function lof_speaker_remaining_seconds(array $state) {
-    $now     = time();
-    $expires = isset($state['expires_at']) ? (int)$state['expires_at'] : 0;
-    $rem     = $expires - $now;
-    return ($rem > 0) ? $rem : 0;
+    if ($state['status'] !== 'on') {
+        return 0;
+    }
+    $now = time();
+    $exp = isset($state['expires_at']) ? (int)$state['expires_at'] : 0;
+    $rem = $exp - $now;
+    return max(0, $rem);
 }
 
 // ------------------------------------------------------------
-// Helper: best-effort "song remaining" lookup from FPP
+// V1.5 FIX: Get song remaining time using CORRECT FPP API field names
+// Source: FPP API Documentation v9.3 (FPP-API-ANALYSIS.md)
 // ------------------------------------------------------------
 function lof_speaker_get_song_remaining_seconds() {
-    // We try FPP's status endpoint(s) and look for known fields.
-    // If we can't find anything, we return null and do nothing.
-    $candidates = [
-        '/api/fppd/status',
-        '/fppd/status',
-    ];
+    // Query FPP status API using official documented field names
+    // Official endpoint: /api/fppd/status
+    $resp = lof_call_fpp_get_json('/api/fppd/status');
+    
+    if (!$resp['ok'] || !is_array($resp['json'])) {
+        return null;
+    }
 
-    foreach ($candidates as $path) {
-        $resp = lof_call_fpp_get_json($path);
-        if (!$resp['ok'] || !is_array($resp['json'])) {
-            continue;
-        }
+    $data = $resp['json'];
 
-        $data = $resp['json'];
-
-        // Try a few likely field names (varies by FPP version)
-        $keys = [
-            'mediaSecondsRemaining',
-            'MediaSecondsRemaining',
-            'media_seconds_remaining',
-            'secondsRemaining',
-            'playlistSecondsRemaining',
-        ];
-
-        foreach ($keys as $k) {
-            if (isset($data[$k]) && is_numeric($data[$k])) {
-                $val = (int)$data[$k];
-                if ($val > 0) {
-                    return $val;
-                }
-            }
+    // V1.5 FIX: Use OFFICIAL FPP API field name from documentation
+    // Field: "seconds_remaining" (underscore, not camelCase)
+    // Type: String containing numeric value (e.g., "120")
+    // This represents time remaining in the CURRENT sequence/media item
+    
+    if (isset($data['seconds_remaining'])) {
+        // FPP returns this as a string, so handle both string and int
+        $val = is_numeric($data['seconds_remaining']) ? (int)$data['seconds_remaining'] : 0;
+        if ($val > 0) {
+            return $val;
         }
     }
 
+    // No song playing or couldn't determine
     return null;
 }
 
