@@ -17,6 +17,24 @@ const lofStreamState = {
   visible: false
 };
 
+// V1.5: Adaptive polling tracking
+let lastInteractionTime = Date.now();
+const ADAPTIVE_POLL_TIMEOUT = 120000; // 2 minutes idle → slow polling
+const POLL_INTERVAL_ACTIVE = 3000; // 3s when active
+const POLL_INTERVAL_IDLE = 15000; // 15s when idle
+
+// V1.5: Speaker protection tracking
+let speakerProtectionActive = false;
+let lastSpeakerCheckTime = 0;
+let currentFppSongKey = null;
+
+// V1.5: Geo check tracking
+let geoCheckPerformed = false;
+let userConfirmedLocal = false;
+
+// V1.5: Polling interval tracking
+let currentPollInterval = null;
+
   // -----------------------------
   // LOF EXTRAS CONFIG
   // -----------------------------
@@ -55,6 +73,28 @@ const lofStreamState = {
     });
   }
 
+  // V1.5: Update hero CTA from config
+function updateHeroCTA() {
+  const headlineEl = document.getElementById('rf-hero-headline');
+  const subcopyEl = document.getElementById('rf-hero-subcopy');
+  
+  if (!headlineEl || !subcopyEl) return;
+  
+  const config = getLofConfig();
+  if (!config || !config.copy) {
+    // Defaults if no config
+    headlineEl.textContent = 'Tap a song to request it 🎧';
+    subcopyEl.textContent = 'Requests join the queue in the order they come in. You can request up to 1 songs per session.';
+    return;
+  }
+  
+  const headline = config.copy.hero_headline || 'Tap a song to request it 🎧';
+  const subtext = config.copy.hero_subtext || 'Requests join the queue in the order they come in. You can request up to 1 songs per session.';
+  
+  headlineEl.textContent = headline;
+  subcopyEl.textContent = subtext;
+}
+
   function lofLoadConfig() {
     // If LOF Extras plugin is not installed or the endpoint errors out,
     // we don't want to break the viewer – just log and move on.
@@ -87,6 +127,44 @@ let currentPrefs = {};
 let currentNowKey = null;
 let currentQueueCounts = {};
 let lastCountedNowKey = null;
+
+// V1.5: Track user interactions for adaptive polling
+function trackUserActivity() {
+  lastInteractionTime = Date.now();
+  adjustPollingInterval();
+}
+
+// V1.5: Adaptive polling interval adjustment
+function adjustPollingInterval() {
+  const now = Date.now();
+  const timeSinceLastAction = now - lastInteractionTime;
+  
+  let desiredInterval;
+  if (timeSinceLastAction < ADAPTIVE_POLL_TIMEOUT) {
+    desiredInterval = POLL_INTERVAL_ACTIVE;
+  } else {
+    desiredInterval = POLL_INTERVAL_IDLE;
+  }
+  
+  // Only change if different
+  if (currentPollInterval !== desiredInterval) {
+    currentPollInterval = desiredInterval;
+    console.log(`[LOF V1.5] Poll interval changed to: ${desiredInterval}ms`);
+    
+    // Clear old interval and start new one
+    if (window.LOF_MAIN_POLL_INTERVAL) {
+      clearInterval(window.LOF_MAIN_POLL_INTERVAL);
+    }
+    window.LOF_MAIN_POLL_INTERVAL = setInterval(fetchShowDetails, desiredInterval);
+  }
+}
+
+// Set up activity listeners
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', trackUserActivity, { passive: true });
+  document.addEventListener('touchstart', trackUserActivity, { passive: true });
+  document.addEventListener('keydown', trackUserActivity, { passive: true });
+}
 
 // Global guardrails
 let lastGlobalActionTime = 0;
@@ -284,6 +362,147 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       toast.classList.remove('show');
     }, 2500);
   }
+
+  // V1.5: Perform geo check using Cloudflare headers + browser geolocation
+async function performGeoCheck() {
+  if (geoCheckPerformed || userConfirmedLocal) return;
+  geoCheckPerformed = true;
+  
+  const config = getLofConfig();
+  if (!config || !config.geoCheckEnabled) return;
+  
+  let distance = null;
+  let city = null;
+  
+  // Try Cloudflare headers first
+  if (config.cloudflare && config.cloudflare.city) {
+    city = config.cloudflare.city;
+    
+    // Calculate distance using Haversine if we have coordinates
+    if (config.cloudflare.latitude && config.cloudflare.longitude) {
+      const showLat = config.showLatitude || 0;
+      const showLon = config.showLongitude || 0;
+      distance = calculateDistance(
+        config.cloudflare.latitude,
+        config.cloudflare.longitude,
+        showLat,
+        showLon
+      );
+    }
+  }
+  
+  // Fallback: Try browser geolocation if permission already granted
+  if (distance === null && typeof navigator !== 'undefined' && navigator.permissions) {
+    try {
+      const permission = await navigator.permissions.query({ name: 'geolocation' });
+      if (permission.state === 'granted' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const showLat = config.showLatitude || 0;
+            const showLon = config.showLongitude || 0;
+            distance = calculateDistance(
+              position.coords.latitude,
+              position.coords.longitude,
+              showLat,
+              showLon
+            );
+            showGeoMessage(distance, city);
+          },
+          () => {
+            // Failed - show fallback
+            showGeoMessage(null, city);
+          },
+          { timeout: 5000, maximumAge: 300000 }
+        );
+        return; // Wait for callback
+      }
+    } catch (e) {
+      // Permissions API not supported
+    }
+  }
+  
+  // Show message with what we have
+  showGeoMessage(distance, city);
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  // Haversine formula
+  const R = 3959; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function showGeoMessage(distance, city) {
+  const extra = document.getElementById('rf-extra-panel');
+  if (!extra) return;
+  
+  const card = document.createElement('div');
+  card.className = 'rf-card rf-card--geo';
+  
+  let noticeClass, message;
+  
+  if (distance !== null && distance < 5) {
+    // Local visitor
+    noticeClass = 'rf-geo-notice--local';
+    const cityText = city ? ` You're in ${city}!` : '';
+    message = lofCopy('geo_local_message', `Welcome neighbor!${cityText} 🎄`);
+  } else if (distance !== null && distance >= 5) {
+    // Far visitor
+    noticeClass = 'rf-geo-notice--far';
+    message = lofCopy('geo_far_message', 'Visiting from afar? Come see the show in person! 🌟');
+    
+    // V1.5 FIX: Get button text before building HTML string to avoid nested template literal issues
+    const confirmBtnText = lofCopy('geo_confirm_btn', 'I\'m here - full access');
+    
+    // Add "I'm here" button
+    card.innerHTML = `
+      <div class="rf-geo-notice ${noticeClass}">
+        <div class="rf-geo-message">${escapeHtml(message)}</div>
+        <button class="rf-geo-confirm-btn" onclick="window.lofConfirmLocal()">
+          ${escapeHtml(confirmBtnText)}
+        </button>
+      </div>
+    `;
+    extra.prepend(card);
+    return;
+  } else {
+    // Fallback
+    noticeClass = 'rf-geo-notice--fallback';
+    message = lofCopy('geo_fallback_message', 'Location services unavailable - full access granted');
+  }
+  
+  card.innerHTML = `
+    <div class="rf-geo-notice ${noticeClass}">
+      <div class="rf-geo-message">${escapeHtml(message)}</div>
+    </div>
+  `;
+  
+  extra.prepend(card);
+}
+
+// Global function for "I'm here" button
+window.lofConfirmLocal = function() {
+  userConfirmedLocal = true;
+  try {
+    localStorage.setItem('lofUserConfirmedLocal', 'true');
+  } catch (e) {}
+  const geoCard = document.querySelector('.rf-card--geo');
+  if (geoCard) geoCard.remove();
+  showToast(lofCopy('geo_confirmed_toast', 'Welcome! Full access granted 🎄'), 'success');
+};
+
+// Check localStorage on load
+try {
+  if (localStorage.getItem('lofUserConfirmedLocal') === 'true') {
+    userConfirmedLocal = true;
+  }
+} catch (e) {}
 
   /* -------------------------
    * Fetch showDetails via WP proxy
@@ -484,47 +703,38 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     return 'afterhours';
   }
 
-  function updateBanner(phase) {
-    ensureBanner();
-
-    const banner    = document.getElementById('rf-viewer-banner');
-    const titleEl   = document.getElementById('rf-banner-title');
-    const bodyEl    = document.getElementById('rf-banner-body');
-    if (!banner || !titleEl || !bodyEl) return;
-
-    const config      = getLofConfig();
-    const holidayMode = config && config.holiday_mode ? String(config.holiday_mode) : 'offseason';
-
-    const showState = getShowState(phase); // showtime | intermission | afterhours | offseason
-
-    // Clear CSS classes and re-apply based on holiday mode + showState
-    banner.className = 'rf-viewer-banner';
-    banner.classList.add('rf-banner--' + showState);
-    banner.classList.add('rf-banner-holiday--' + holidayMode);
-
-    let titleKey, bodyKey;
-
-    if (showState === 'offseason') {
-      titleKey = 'banner_offseason_title';
-      bodyKey  = 'banner_offseason_sub';
-    } else if (showState === 'afterhours') {
-      titleKey = 'banner_afterhours_title';
-      bodyKey  = 'banner_afterhours_sub';
-    } else if (showState === 'intermission') {
-      titleKey = 'banner_intermission_title';
-      bodyKey  = 'banner_intermission_sub';
-    } else {
-      // showtime
-      titleKey = 'banner_showtime_title';
-      bodyKey  = 'banner_showtime_sub';
-    }
-
-    const titleText = lofCopy(titleKey, titleEl.textContent || '');
-    const bodyText  = lofCopy(bodyKey, bodyEl.textContent || '');
-
-    titleEl.textContent = titleText || '';
-    bodyEl.textContent  = bodyText || '';
+function updateBanner(phase, enabled) {
+  const banner = document.getElementById('rf-viewer-banner');
+  const titleEl = document.getElementById('rf-banner-title');
+  const bodyEl = document.getElementById('rf-banner-body');
+  
+  if (!banner || !titleEl || !bodyEl) return;
+  
+  const config = getLofConfig();
+  
+  // V1.5: Correct hierarchy - Manual override > RF API > Schedule
+  
+  // 1. Check manual override first
+  if (config && config.holiday_mode === 'offseason') {
+    banner.style.display = 'block';
+    banner.className = 'rf-viewer-banner rf-banner--offseason';
+    titleEl.textContent = lofCopy('banner_offseason_title', 'We\'re resting up for next season');
+    bodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
+    return;
   }
+  
+  // 2. Check if RF API says controls are paused
+  if (enabled === false) {
+    banner.style.display = 'block';
+    banner.className = 'rf-viewer-banner rf-banner--controls_paused';
+    titleEl.textContent = lofCopy('banner_paused_title', 'Viewer control is paused');
+    bodyEl.textContent = lofCopy('banner_paused_body', 'Interactive controls are temporarily off. Enjoy the show!');
+    return;
+  }
+  
+  // 3. Hide banner when controls are active
+  banner.style.display = 'none';
+}
 
   function applyPersonaToSubcopy(subcopyEl) {
     if (!subcopyEl) return;
@@ -1204,47 +1414,125 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     }
   }
 
+  // V1.5: Check speaker protection during FPP playback
+async function checkSpeakerProtection() {
+  // Only check if we think speakers might be on
+  const config = getLofConfig();
+  if (!config || !config.speakerEndpoint) return;
+  
+  try {
+    const res = await fetch(config.speakerEndpoint + '?action=status', {
+      credentials: 'same-origin'
+    });
+    
+    if (!res.ok) return;
+    const data = await res.json();
+    
+    if (!data || !data.speakerOn) {
+      speakerProtectionActive = false;
+      return;
+    }
+    
+    // Speakers are on - check if song is playing
+    if (currentFppSongKey) {
+      speakerProtectionActive = true;
+    } else {
+      speakerProtectionActive = false;
+    }
+    
+    // Update UI if speaker card exists
+    updateSpeakerCardProtection();
+    
+  } catch (err) {
+    console.warn('[LOF V1.5] Speaker protection check failed:', err);
+  }
+}
+
+function updateSpeakerCardProtection() {
+  const offBtn = document.querySelector('.js-speaker-off');
+  if (!offBtn) return;
+  
+  if (speakerProtectionActive) {
+    offBtn.disabled = true;
+    offBtn.textContent = lofCopy('speaker_protection_active', '🔒 Protected during song');
+  } else {
+    offBtn.disabled = false;
+    offBtn.textContent = lofCopy('speaker_btn_off', 'Turn speakers off');
+  }
+}
+
   /* -------------------------
    * Extra panel (queue / leaderboard / stats / speakers / glow)
    * ------------------------- */
 
-  function renderExtraPanel(mode, enabled, data, queueLength) {
-    const extra = document.getElementById('rf-extra-panel');
-    if (!extra) return;
-
-    extra.innerHTML = '';
-
-    if (!enabled) {
-      extra.innerHTML = `
-        <div class="rf-extra-title">Viewer control paused</div>
-        <div class="rf-extra-sub">
-          When interactive mode is back on, you’ll see the live request queue or top-voted songs here.
-        </div>
-      `;
-    } else if (mode === 'JUKEBOX') {
-      renderQueue(extra, data);
-    } else if (mode === 'VOTING') {
-      renderLeaderboard(extra, data);
-    } else {
-      extra.innerHTML = `
-        <div class="rf-extra-title">Show status</div>
-        <div class="rf-extra-sub">
-          Interactive controls are on, but this mode doesn’t expose queue or vote data.
-        </div>
-      `;
+  // V1.5: Fetch and display trigger counts
+async function fetchTriggerCounts() {
+  try {
+    const res = await fetch('/wp-json/lof-viewer/v1/trigger-counts', {
+      credentials: 'same-origin'
+    });
+    
+    if (!res.ok) return null;
+    const data = await res.json();
+    
+    if (data && data.success && data.counts) {
+      return data.counts;
     }
-
-    renderStats(extra, queueLength);
-    addGlowTeaser(extra);
-    addSpeakerCard(extra);
-
-    // Ensure the full Glow form lives in the footer,
-    // not in the right-hand extras column.
-    const footerGlow = document.getElementById('rf-footer-glow');
-    if (footerGlow && !footerGlow.hasChildNodes()) {
-      addGlowCard(footerGlow);
-    }
+    return null;
+  } catch (err) {
+    console.warn('[LOF V1.5] Trigger counts fetch failed:', err);
+    return null;
   }
+}
+
+  function renderExtraPanel(mode, enabled, data, queueLength) {
+  const extra = document.getElementById('rf-extra-panel');
+  if (!extra) return;
+
+  extra.innerHTML = '';
+  
+  // V1.5: Perform geo check on first render
+  if (!geoCheckPerformed && !userConfirmedLocal) {
+    performGeoCheck();
+  }
+
+  if (!enabled) {
+    extra.innerHTML = `
+      <div class="rf-extra-title">Viewer control paused</div>
+      <div class="rf-extra-sub">
+        When interactive mode is back on, you'll see the live request queue or top-voted songs here.
+      </div>
+    `;
+  } else if (mode === 'JUKEBOX') {
+    renderQueue(extra, data);
+  } else if (mode === 'VOTING') {
+    renderLeaderboard(extra, data);
+  } else {
+    extra.innerHTML = `
+      <div class="rf-extra-title">Show status</div>
+      <div class="rf-extra-sub">
+        Interactive controls are on, but this mode doesn't expose queue or vote data.
+      </div>
+    `;
+  }
+
+  // Render device stats card with trigger counts
+  renderDeviceStatsCard(extra, queueLength);
+
+  // IMPORTANT: Do NOT add the in-panel Glow teaser anymore.
+  // The full Glow form lives in the footer only, so viewers have a single,
+  // consistent place to send a Glow.
+  // (Intentionally no call to addGlowTeaser(extra) here.)
+
+  // Speaker / "Need sound?" card lives at the bottom of the extras panel
+  addSpeakerCard(extra);
+
+  // Ensure the full Glow form lives in the footer
+  const footerGlow = document.getElementById('rf-footer-glow');
+  if (footerGlow && !footerGlow.hasChildNodes()) {
+    addGlowCard(footerGlow);
+  }
+}
 
   function renderQueue(extra, data) {
     const rawRequests = Array.isArray(data.requests) ? data.requests : [];
@@ -1406,6 +1694,68 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
 
     extra.appendChild(wrapper);
   }
+
+  // V1.5: Render device stats as ornament card with trigger counts
+async function renderDeviceStatsCard(extra, queueLength) {
+  const stats = viewerStats || { requests: 0, surprise: 0 };
+  
+  // Fetch trigger counts
+  const triggers = await fetchTriggerCounts();
+  
+  const card = document.createElement('div');
+  card.className = 'rf-card rf-card--device-stats';
+  
+  let html = `
+    <div class="rf-device-stats-title">
+      ${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}
+    </div>
+    <div class="rf-device-stats-body">
+      <div class="rf-stat-item">
+        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_requests_label', 'Your requests:'))}</span>
+        <span class="rf-stat-value">${stats.requests}</span>
+      </div>
+      <div class="rf-stat-item">
+        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_surprise_label', '"Surprise me" taps:'))}</span>
+        <span class="rf-stat-value">${stats.surprise}</span>
+      </div>
+  `;
+  
+  // Add trigger counts (Mischief Meter) if available
+  if (triggers) {
+    html += `
+      <div class="rf-stat-divider"></div>
+      <div class="rf-stat-section-label">
+        ${escapeHtml(lofCopy('trigger_overall_label', 'Tonight’s Mischief Meter'))}
+      </div>
+    `;
+    
+    // Backend returns "mailbox" and "button" keys
+    if (typeof triggers.mailbox !== 'undefined') {
+      html += `
+        <div class="rf-stat-item">
+          <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}</span>
+          <span class="rf-stat-value">${triggers.mailbox}</span>
+        </div>
+      `;
+    }
+    
+    if (typeof triggers.button !== 'undefined') {
+      html += `
+        <div class="rf-stat-item">
+          <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_button_label', '🔴 Button presses:'))}</span>
+          <span class="rf-stat-value">${triggers.button}</span>
+        </div>
+      `;
+    }
+  }
+  
+  html += `
+    </div>
+  `;
+  
+  card.innerHTML = html;
+  extra.appendChild(card);
+}
 
   /* -------------------------
    * Glow card
@@ -1574,7 +1924,7 @@ function addSpeakerCard(extra) {
   const pulsemeshUrl = 'https://player.pulsemesh.io/d/G073';
 
   const card = document.createElement('div');
-  card.className = 'rf-card rf-speaker-card';
+  card.className = 'rf-card rf-speaker-card rf-card--speaker'; // V1.5: Add --speaker class
 
   card.innerHTML = `
     <div class="rf-speaker-card-inner">
@@ -1772,18 +2122,21 @@ function addSpeakerCard(extra) {
     });
   }
 
-  // Initial status fetch and shared polling loop
-  try {
-    refreshSpeakerStatus();
-    if (typeof window !== 'undefined') {
-      if (!window.LOF_SPEAKER_POLL) {
-        window.LOF_SPEAKER_POLL = setInterval(refreshSpeakerStatus, 15000);
-      }
-    }
-  } catch (e) {
-    // Non-fatal; card will show default copy
+  const streamBtn = card.querySelector('.js-open-global-stream');
+  if (streamBtn) {
+    const baseLabel =
+      streamBtn.getAttribute('data-label') ||
+      lofCopy('stream_btn_start', 'Listen on your phone');
+    const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
+
+    // When the extras panel re-renders, keep the label aligned with
+    // the current global stream visibility state.
+    streamBtn.textContent = lofStreamState.visible
+      ? stopLabel
+      : baseLabel + ' 🎧';
   }
 }
+
 
 // Global click handler for stream player (lazy iframe and toggle on persistent footer)
 document.addEventListener('click', function (e) {
@@ -1796,7 +2149,10 @@ document.addEventListener('click', function (e) {
     return;
   }
 
-  const originalLabel = btn.getAttribute('data-label') || 'Listen on your phone';
+  const originalLabel =
+    btn.getAttribute('data-label') ||
+    (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_button_start) ||
+    'Listen on your phone';
 
   // First time: create the iframe on demand
   if (!lofStreamState.init) {
@@ -1813,17 +2169,49 @@ document.addEventListener('click', function (e) {
     iframe.className = 'rf-audio-iframe';
     iframe.allow = 'autoplay'; // safe because user clicked to create it
 
+    // Hide the visual UI but keep audio.
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+
     footer.appendChild(iframe);
+
+    // Add footer label text
+    const label = document.createElement('div');
+    label.className = 'rf-stream-footer-text';
+    const footerText =
+      (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_footer_text) ||
+      'Streaming audio powered by PulseMesh';
+    label.textContent = footerText;
+    footer.appendChild(label);
+
     lofStreamState.init = true;
   }
 
   // Toggle visibility without destroying the iframe
   lofStreamState.visible = !lofStreamState.visible;
   footer.classList.toggle('rf-stream-footer--visible', lofStreamState.visible);
+  footer.classList.toggle('active', lofStreamState.visible);
 
-  btn.textContent = lofStreamState.visible
-    ? 'Hide stream player'
-    : originalLabel + ' 🎧';
+  // If we just turned the stream OFF, remove the iframe so audio stops
+  if (!lofStreamState.visible) {
+    const iframe = footer.querySelector('iframe');
+    if (iframe) iframe.remove();
+    lofStreamState.init = false;
+  }
+
+  const stopLabel =
+    (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_button_stop) ||
+    'Hide stream';
+
+  // Update ALL stream buttons to the correct label,
+  // so repolls can't desync the text.
+  document.querySelectorAll('.js-open-global-stream').forEach(function (b) {
+    const baseLabel = b.getAttribute('data-label') || originalLabel;
+    b.textContent = lofStreamState.visible
+      ? stopLabel
+      : baseLabel + ' 🎧';
+  });
 });
 
 
@@ -1997,90 +2385,91 @@ document.addEventListener('click', function (e) {
    * ------------------------- */
 
   function handleSurpriseMe() {
-    if (!currentControlEnabled) {
-      const disabledMsg = lofCopy('surprise_disabled', 'Viewer control is currently paused.');
-      showToast(disabledMsg, 'error');
-      return;
-    }
+  if (!currentControlEnabled) {
+    const disabledMsg = lofCopy('surprise_disabled', 'Viewer control is currently paused.');
+    showToast(disabledMsg, 'error');
+    return;
+  }
 
-    if (!currentVisibleSequences.length) {
-      showToast('No songs available right now.', 'error');
-      return;
-    }
+  if (!currentVisibleSequences.length) {
+    showToast('No songs available right now.', 'error');
+    return;
+  }
 
-    // Base pool: songs visible & active
-    const basePool = currentVisibleSequences.slice();
-
-    // Prefer songs the visitor has NOT already requested this session
-    const unrequesedPool = basePool.filter((seq) => {
+  // V1.5: Smart exclusion logic
+  let pool = currentVisibleSequences.slice();
+  
+  // Exclude currently playing
+  if (currentNowKey) {
+    pool = pool.filter(seq => {
       const key = seq.name || seq.displayName;
-      if (!key) return false;
-      return !requestedSongNames.includes(key);
+      return key !== currentNowKey;
     });
-
-    // Start from unrequesed songs if we have any, otherwise all visible songs
-    let candidateBase = unrequesedPool.length ? unrequesedPool : basePool;
-
-    // Avoid immediately repeating the currently-playing song
-    candidateBase = candidateBase.filter((seq) => {
+  }
+  
+  // Exclude top of queue
+  if (currentQueueCounts && Object.keys(currentQueueCounts).length > 0) {
+    pool = pool.filter(seq => {
       const key = seq.name || seq.displayName;
-      if (!key) return false;
-      if (currentNowKey && key === currentNowKey) return false;
-      return true;
-    });
-
-    // If that wiped everything out, fall back to the original basePool
-    if (!candidateBase.length) {
-      candidateBase = basePool;
-    }
-
-    // Prefer songs that are NOT already in the live RF queue
-    const noQueuePool = candidateBase.filter((seq) => {
-      const key = seq.name || seq.displayName;
-      if (!key) return false;
       return !currentQueueCounts[key];
     });
-
-    let candidateList = noQueuePool.length ? noQueuePool : candidateBase;
-
-    if (!candidateList.length) {
-      showToast('No songs available right now.', 'error');
-      return;
-    }
-
-    // Prefer songs that this device hasn't heard much tonight.
-    let minPlay = Infinity;
-    candidateList.forEach((seq) => {
-      const key = seq.name || seq.displayName;
-      const c = key ? getPlayedCount(key) : 0;
-      if (c < minPlay) minPlay = c;
-    });
-
-    // Keep songs within a small band of the least-played to avoid always picking the same one
-    const lowPlayedPool = candidateList.filter((seq) => {
-      const key = seq.name || seq.displayName;
-      const c = key ? getPlayedCount(key) : 0;
-      return c <= minPlay + 1;
-    });
-
-    const finalList = lowPlayedPool.length ? lowPlayedPool : candidateList;
-
-    viewerStats.surprise += 1;
-    saveStats();
-
-    if (viewerStats.surprise === 4) {
-      const fourthMsg = lofCopy(
-        'surprise_fourth_time',
-        'You like chaos. We respect that. 😈'
-      );
-      showToast(fourthMsg, 'success');
-    }
-
-    const randomIndex = Math.floor(Math.random() * finalList.length);
-    const seq = finalList[randomIndex];
-
-    handleAction(currentMode, seq, null);
   }
+  
+  // Exclude last requested this session
+  if (lastRequestedSequenceName) {
+    pool = pool.filter(seq => {
+      const key = seq.name || seq.displayName;
+      return key !== lastRequestedSequenceName;
+    });
+  }
+  
+  // If all excluded, use original pool
+  if (!pool.length) {
+    pool = currentVisibleSequences.slice();
+  }
+  
+  // Prefer unrequested songs
+  const unrequested = pool.filter(seq => {
+    const key = seq.name || seq.displayName;
+    return !requestedSongNames.includes(key);
+  });
+  
+  if (unrequested.length) {
+    pool = unrequested;
+  }
+  
+  // Prefer least-played songs
+  let minPlay = Infinity;
+  pool.forEach(seq => {
+    const key = seq.name || seq.displayName;
+    const c = key ? getPlayedCount(key) : 0;
+    if (c < minPlay) minPlay = c;
+  });
+  
+  const lowPlayed = pool.filter(seq => {
+    const key = seq.name || seq.displayName;
+    const c = key ? getPlayedCount(key) : 0;
+    return c <= minPlay + 1;
+  });
+  
+  const finalPool = lowPlayed.length ? lowPlayed : pool;
+  
+  viewerStats.surprise += 1;
+  saveStats();
+
+  if (viewerStats.surprise === 4) {
+    const fourthMsg = lofCopy(
+      'surprise_fourth_time',
+      'You like chaos. We respect that. 😈'
+    );
+    showToast(fourthMsg, 'success');
+  }
+
+  const randomIndex = Math.floor(Math.random() * finalPool.length);
+  const seq = finalPool[randomIndex];
+
+  handleAction(currentMode, seq, null);
+}
 
   /* -------------------------
    * Utils
@@ -2097,16 +2486,50 @@ document.addEventListener('click', function (e) {
   }
 
   /* -------------------------
-   * Init
-   * ------------------------- */
+ * Init
+ * ------------------------- */
 
-  // LOF Extras config + Remote Falcon data in parallel
-  lofLoadConfig();
-  fetchShowDetails();
-  setInterval(fetchShowDetails, 15000);
+// LOF Extras config
+lofLoadConfig().then(() => {
+  // V1.5: Update hero CTA once config loads
+  updateHeroCTA();
+});
 
-  // FPP timing (for Now Playing progress bar)
-  fetchFppStatus();
-  setInterval(fetchFppStatus, 5000);
-  setInterval(tickNowProgress, 1000);
-})();
+// V1.5: Set initial poll interval
+currentPollInterval = POLL_INTERVAL_ACTIVE;
+
+// V1.5: Adaptive polling - start with active interval
+fetchShowDetails();
+window.LOF_MAIN_POLL_INTERVAL = setInterval(fetchShowDetails, POLL_INTERVAL_ACTIVE);
+
+// Check polling adjustment every 30s
+setInterval(adjustPollingInterval, 30000);
+
+// FPP timing (for Now Playing progress bar + speaker protection)
+fetchFppStatus();
+setInterval(fetchFppStatus, 5000);
+setInterval(tickNowProgress, 1000);
+
+// V1.5: Speaker protection check every 3s
+setInterval(checkSpeakerProtection, 3000);
+
+// V1.5: Trigger counts update every 30s
+setInterval(async () => {
+  const extra = document.getElementById('rf-extra-panel');
+  if (extra && extra.querySelector('.rf-card--device-stats')) {
+    // Re-render stats card to update counts
+    const queueLength = currentQueueCounts ? Object.keys(currentQueueCounts).length : 0;
+    const oldCard = extra.querySelector('.rf-card--device-stats');
+    if (oldCard) {
+      const tempDiv = document.createElement('div');
+      extra.insertBefore(tempDiv, oldCard);
+      oldCard.remove();
+      await renderDeviceStatsCard(extra, queueLength);
+      const newCard = extra.querySelector('.rf-card--device-stats');
+      if (newCard && tempDiv.parentNode) {
+        tempDiv.parentNode.insertBefore(newCard, tempDiv);
+        tempDiv.remove();
+      }
+    }
+  }
+}, 30000);})();
