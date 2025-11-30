@@ -1725,6 +1725,26 @@
   }
 }
 
+/* V1.5: Ensure "Need sound?" card is not treated like a hoverable song card */
+.rf-card.rf-speaker-card {
+  cursor: default;
+}
+
+.rf-card.rf-speaker-card:hover {
+  transform: none;
+  box-shadow: none;
+  animation: none;
+}
+
+.rf-card.rf-speaker-card .rf-audio-option {
+  cursor: default;
+}
+
+.rf-card.rf-speaker-card .rf-speaker-btn,
+.rf-card.rf-speaker-card .js-open-global-stream {
+  cursor: pointer;
+}
+
 /* ================================================================
  * END - HYBRID Mobile Magic + Desktop Theater V1.5.1
  * Bold. Magical. No compromises.

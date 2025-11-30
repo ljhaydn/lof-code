@@ -1534,57 +1534,55 @@ async function fetchTriggerCounts() {
   }
 }
 
-  function renderQueue(extra, data) {
-    const rawRequests = Array.isArray(data.requests) ? data.requests : [];
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rf-extra-panel rf-extra-panel--queue';
+function renderQueue(extra, data) {
+  const rawRequests = Array.isArray(data.requests) ? data.requests : [];
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rf-extra-panel rf-extra-panel--queue';
 
-    const header = document.createElement('div');
-    header.innerHTML = `
-      <div class="rf-extra-title">Up Next Queue</div>
-      <div class="rf-extra-sub">
-        Songs requested by guests appear here in the order they’re queued.
-      </div>
-    `;
-    wrapper.appendChild(header);
+  const header = document.createElement('div');
+  header.innerHTML = `
+    <div class="rf-extra-title">Up Next Queue</div>
+    <div class="rf-extra-sub">
+      Songs requested by guests appear here in the order they’re queued.
+    </div>
+  `;
+  wrapper.appendChild(header);
 
-    const list = document.createElement('ul');
-    list.className = 'rf-queue-list';
-
-    if (!rawRequests.length) {
-      const empty = document.createElement('div');
-      empty.className = 'rf-extra-sub';
-      empty.textContent =
-        'Requests are handled behind the scenes by Remote Falcon. When your pick is ready, you’ll see it glow as “Next Up.”';
-      wrapper.appendChild(list);
-      wrapper.appendChild(empty);
-      extra.appendChild(wrapper);
-      return;
-    }
-
-    rawRequests.forEach((item, idx) => {
-      if (!item || typeof item !== 'object') return;
-
-      const seq = (item.sequence && typeof item.sequence === 'object') ? item.sequence : {};
-      const displayTitle = seq.displayName || seq.name || 'Untitled';
-      const artist       = seq.artist || '';
-      // Always use the current index as the position so the queue number
-      // reflects the live order as songs are played/removed.
-      const pos          = idx + 1;
-
-      const li = document.createElement('li');
-      li.className = 'rf-queue-item';
-      li.innerHTML = `
-        <span class="rf-queue-position">#${pos}</span>
-        <span class="rf-queue-song">${escapeHtml(displayTitle)}</span>
-        ${artist ? `<span class="rf-queue-artist">${escapeHtml(artist)}</span>` : ''}
-      `;
-      list.appendChild(li);
-    });
-
-    wrapper.appendChild(list);
+  // No requests – keep the card compact with a single explanatory line
+  if (!rawRequests.length) {
+    const empty = document.createElement('div');
+    empty.className = 'rf-extra-sub';
+    empty.textContent =
+      'Requests are handled behind the scenes by Remote Falcon. When your pick is ready, you’ll see it glow as “Next Up.”';
+    wrapper.appendChild(empty);
     extra.appendChild(wrapper);
+    return;
   }
+
+  const list = document.createElement('ul');
+  list.className = 'rf-queue-list';
+
+  rawRequests.forEach((item, idx) => {
+    if (!item || typeof item !== 'object') return;
+
+    const seq = (item.sequence && typeof item.sequence === 'object') ? item.sequence : {};
+    const displayTitle = seq.displayName || seq.name || 'Untitled';
+    const artist       = seq.artist || '';
+    const pos          = idx + 1;
+
+    const li = document.createElement('li');
+    li.className = 'rf-queue-item';
+    li.innerHTML = `
+      <span class="rf-queue-position">#${pos}</span>
+      <span class="rf-queue-song">${escapeHtml(displayTitle)}</span>
+      ${artist ? `<span class="rf-queue-artist">${escapeHtml(artist)}</span>` : ''}
+    `;
+    list.appendChild(li);
+  });
+
+  wrapper.appendChild(list);
+  extra.appendChild(wrapper);
+}
 
   function renderLeaderboard(extra, data) {
     const rawVotes = Array.isArray(data.votes) ? data.votes : [];
@@ -1695,31 +1693,44 @@ async function fetchTriggerCounts() {
     extra.appendChild(wrapper);
   }
 
-  // V1.5: Render device stats as ornament card with trigger counts
+// V1.5: Render device stats as ornament card with trigger counts + vibe
 async function renderDeviceStatsCard(extra, queueLength) {
   const stats = viewerStats || { requests: 0, surprise: 0 };
-  
-  // Fetch trigger counts
+
+  // Persona / vibe line (logic from old renderStats)
+  const vibeLabel = lofCopy('stats_vibe_label', 'Falcon vibe check');
+  let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
+  if (queueLength >= 3 && queueLength <= 7) {
+    vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
+  } else if (queueLength > 7) {
+    vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
+  }
+
+  // Fetch trigger counts (Mischief Meter)
   const triggers = await fetchTriggerCounts();
-  
+
   const card = document.createElement('div');
   card.className = 'rf-card rf-card--device-stats';
-  
+
   let html = `
     <div class="rf-device-stats-title">
       ${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}
     </div>
     <div class="rf-device-stats-body">
       <div class="rf-stat-item">
-        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_requests_label', 'Your requests:'))}</span>
+        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_requests_label', 'Requests sent'))}</span>
         <span class="rf-stat-value">${stats.requests}</span>
       </div>
       <div class="rf-stat-item">
-        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_surprise_label', '"Surprise me" taps:'))}</span>
+        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_surprise_label', '"Surprise me" taps'))}</span>
         <span class="rf-stat-value">${stats.surprise}</span>
       </div>
+      <div class="rf-stat-item rf-stat-item--vibe">
+        <span class="rf-stat-label">${escapeHtml(vibeLabel)}</span>
+        <span class="rf-stat-value">${escapeHtml(vibeText)}</span>
+      </div>
   `;
-  
+
   // Add trigger counts (Mischief Meter) if available
   if (triggers) {
     html += `
@@ -1728,31 +1739,30 @@ async function renderDeviceStatsCard(extra, queueLength) {
         ${escapeHtml(lofCopy('trigger_overall_label', 'Tonight’s Mischief Meter'))}
       </div>
     `;
-    
-    // Backend returns "mailbox" and "button" keys
+
     if (typeof triggers.mailbox !== 'undefined') {
       html += `
-        <div class="rf-stat-item">
+        <div class="rf-stat-item rf-stats-row--mischief">
           <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}</span>
           <span class="rf-stat-value">${triggers.mailbox}</span>
         </div>
       `;
     }
-    
+
     if (typeof triggers.button !== 'undefined') {
       html += `
-        <div class="rf-stat-item">
+        <div class="rf-stat-item rf-stats-row--mischief">
           <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_button_label', '🔴 Button presses:'))}</span>
           <span class="rf-stat-value">${triggers.button}</span>
         </div>
       `;
     }
   }
-  
+
   html += `
     </div>
   `;
-  
+
   card.innerHTML = html;
   extra.appendChild(card);
 }
@@ -2169,10 +2179,9 @@ document.addEventListener('click', function (e) {
     iframe.className = 'rf-audio-iframe';
     iframe.allow = 'autoplay'; // safe because user clicked to create it
 
-    // Hide the visual UI but keep audio.
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
+    // Hide the visual UI but keep audio. Let CSS handle size; just make it invisible/non-interactive.
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
 
     footer.appendChild(iframe);
 
@@ -2510,23 +2519,4 @@ setInterval(tickNowProgress, 1000);
 // V1.5: Speaker protection check every 3s
 setInterval(checkSpeakerProtection, 3000);
 
-// V1.5: Trigger counts update every 30s
-setInterval(async () => {
-  const extra = document.getElementById('rf-extra-panel');
-  if (extra && extra.querySelector('.rf-card--device-stats')) {
-    // Re-render stats card to update counts
-    const queueLength = currentQueueCounts ? Object.keys(currentQueueCounts).length : 0;
-    const oldCard = extra.querySelector('.rf-card--device-stats');
-    if (oldCard) {
-      const tempDiv = document.createElement('div');
-      extra.insertBefore(tempDiv, oldCard);
-      oldCard.remove();
-      await renderDeviceStatsCard(extra, queueLength);
-      const newCard = extra.querySelector('.rf-card--device-stats');
-      if (newCard && tempDiv.parentNode) {
-        tempDiv.parentNode.insertBefore(newCard, tempDiv);
-        tempDiv.remove();
-      }
-    }
-  }
-}, 30000);})();
+})();
