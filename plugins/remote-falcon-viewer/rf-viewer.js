@@ -2485,15 +2485,12 @@ document.addEventListener('click', function (e) {
       .replace(/'/g, '&#39;');
   }
 
-  /* -------------------------
+/* -------------------------
  * Init
  * ------------------------- */
 
 // LOF Extras config
-lofLoadConfig().then(() => {
-  // V1.5: Update hero CTA once config loads
-  updateHeroCTA();
-});
+lofLoadConfig();
 
 // V1.5: Set initial poll interval
 currentPollInterval = POLL_INTERVAL_ACTIVE;
