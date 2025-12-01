@@ -1725,24 +1725,35 @@
   }
 }
 
-/* V1.5: Ensure "Need sound?" card is not treated like a hoverable song card */
-.rf-card.rf-speaker-card {
-  cursor: default;
+/* V1.5: Ensure "Need sound?" sections don't glow like song cards */
+.rf-card.rf-speaker-card .rf-audio-option,
+.rf-card.rf-speaker-card .rf-audio-option:hover {
+  box-shadow: none;
+  transform: none;
 }
 
-.rf-card.rf-speaker-card:hover {
-  transform: none;
-  box-shadow: none;
+.rf-card.rf-speaker-card .rf-audio-option::before,
+.rf-card.rf-speaker-card .rf-audio-option::after {
   animation: none;
 }
 
-.rf-card.rf-speaker-card .rf-audio-option {
+/* Keep the entire speaker card neutral; only buttons feel interactive */
+.rf-card.rf-speaker-card {
   cursor: default;
 }
 
 .rf-card.rf-speaker-card .rf-speaker-btn,
 .rf-card.rf-speaker-card .js-open-global-stream {
   cursor: pointer;
+}
+
+/* V1.5: Make the Up Next Queue card height track its content more closely */
+.rf-extra-panel--queue {
+  min-height: 0;
+}
+
+.rf-extra-panel--queue .rf-queue-list {
+  margin-top: 0.5rem;
 }
 
 /* ================================================================

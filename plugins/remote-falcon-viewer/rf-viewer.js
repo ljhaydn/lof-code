@@ -127,6 +127,7 @@ let currentPrefs = {};
 let currentNowKey = null;
 let currentQueueCounts = {};
 let lastCountedNowKey = null;
+let lastExtraSignature = null;
 
 // V1.5: Track user interactions for adaptive polling
 function trackUserActivity() {
@@ -1289,12 +1290,26 @@ function updateBanner(phase, enabled) {
         btn.addEventListener('click', () => handleAction(currentMode, seq, btn));
       }
 
-      gridEl.appendChild(card);
-    });
+    gridEl.appendChild(card);
+  });
 
-    addSurpriseCard();
+  addSurpriseCard();
+
+  // Only re-render extras when something meaningful changes
+  const extraSignature = JSON.stringify({
+    mode: currentMode,
+    enabled: currentControlEnabled,
+    queueLen: queueLength,
+    votesLen: Array.isArray(rawVotes) ? rawVotes.length : 0,
+    requests: viewerStats ? viewerStats.requests : 0,
+    surprise: viewerStats ? viewerStats.surprise : 0
+  });
+
+  if (extraSignature !== lastExtraSignature) {
+    lastExtraSignature = extraSignature;
     renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
   }
+}
 
   /* -------------------------
    * FPP Now Playing timing (for progress bar)
@@ -1694,10 +1709,10 @@ function renderQueue(extra, data) {
   }
 
 // V1.5: Render device stats as ornament card with trigger counts + vibe
-async function renderDeviceStatsCard(extra, queueLength) {
+function renderDeviceStatsCard(extra, queueLength) {
   const stats = viewerStats || { requests: 0, surprise: 0 };
 
-  // Persona / vibe line (logic from old renderStats)
+  // Persona / vibe line
   const vibeLabel = lofCopy('stats_vibe_label', 'Falcon vibe check');
   let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
   if (queueLength >= 3 && queueLength <= 7) {
@@ -1706,13 +1721,10 @@ async function renderDeviceStatsCard(extra, queueLength) {
     vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
   }
 
-  // Fetch trigger counts (Mischief Meter)
-  const triggers = await fetchTriggerCounts();
-
   const card = document.createElement('div');
   card.className = 'rf-card rf-card--device-stats';
 
-  let html = `
+  card.innerHTML = `
     <div class="rf-device-stats-title">
       ${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}
     </div>
@@ -1729,42 +1741,55 @@ async function renderDeviceStatsCard(extra, queueLength) {
         <span class="rf-stat-label">${escapeHtml(vibeLabel)}</span>
         <span class="rf-stat-value">${escapeHtml(vibeText)}</span>
       </div>
-  `;
-
-  // Add trigger counts (Mischief Meter) if available
-  if (triggers) {
-    html += `
-      <div class="rf-stat-divider"></div>
-      <div class="rf-stat-section-label">
-        ${escapeHtml(lofCopy('trigger_overall_label', 'Tonight’s Mischief Meter'))}
-      </div>
-    `;
-
-    if (typeof triggers.mailbox !== 'undefined') {
-      html += `
-        <div class="rf-stat-item rf-stats-row--mischief">
-          <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}</span>
-          <span class="rf-stat-value">${triggers.mailbox}</span>
-        </div>
-      `;
-    }
-
-    if (typeof triggers.button !== 'undefined') {
-      html += `
-        <div class="rf-stat-item rf-stats-row--mischief">
-          <span class="rf-stat-label">${escapeHtml(lofCopy('trigger_button_label', '🔴 Button presses:'))}</span>
-          <span class="rf-stat-value">${triggers.button}</span>
-        </div>
-      `;
-    }
-  }
-
-  html += `
     </div>
   `;
 
-  card.innerHTML = html;
   extra.appendChild(card);
+
+  // Lazy-load Mischief Meter counts and enhance the card in-place
+  fetchTriggerCounts()
+    .then((triggers) => {
+      if (!triggers) return;
+
+      const body = card.querySelector('.rf-device-stats-body');
+      if (!body) return;
+
+      const divider = document.createElement('div');
+      divider.className = 'rf-stat-divider';
+      body.appendChild(divider);
+
+      const sectionLabel = document.createElement('div');
+      sectionLabel.className = 'rf-stat-section-label';
+      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Tonight’s Mischief Meter');
+      body.appendChild(sectionLabel);
+
+      if (typeof triggers.mailbox !== 'undefined') {
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--mischief';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}
+          </span>
+          <span class="rf-stat-value">${triggers.mailbox}</span>
+        `;
+        body.appendChild(row);
+      }
+
+      if (typeof triggers.button !== 'undefined') {
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--mischief';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_button_label', '🔴 Button presses:'))}
+          </span>
+          <span class="rf-stat-value">${triggers.button}</span>
+        `;
+        body.appendChild(row);
+      }
+    })
+    .catch((err) => {
+      console.warn('[LOF V1.5] Trigger counts update failed:', err);
+    });
 }
 
   /* -------------------------
@@ -2185,14 +2210,17 @@ document.addEventListener('click', function (e) {
 
     footer.appendChild(iframe);
 
-    // Add footer label text
-    const label = document.createElement('div');
-    label.className = 'rf-stream-footer-text';
+        // Add or update footer label text (ensure only one label exists)
+    let label = footer.querySelector('.rf-stream-footer-text');
+    if (!label) {
+      label = document.createElement('div');
+      label.className = 'rf-stream-footer-text';
+      footer.appendChild(label);
+    }
     const footerText =
       (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_footer_text) ||
       'Streaming audio powered by PulseMesh';
     label.textContent = footerText;
-    footer.appendChild(label);
 
     lofStreamState.init = true;
   }
