@@ -40,11 +40,14 @@ add_action('wp_enqueue_scripts', 'lof_enqueue_mobile_magic');
 
 function lof_enqueue_mobile_magic() {
   if (is_page('control-the-show')) { // Adjust page slug
+    // Mobile magic JS lives alongside lof-epic-viewer.js in the integrations theme folder
+    $script_url = content_url('/themes/integrations/js/lof-viewer-mobile-magic.js');
+
     wp_enqueue_script(
       'lof-mobile-magic',
-      get_stylesheet_directory_uri() . '/lof-viewer-mobile-magic.js',
-      array(),
-      '1.0',
+      $script_url,
+      array('lof-epic-viewer'),
+      '1.0.0',
       true
     );
   }

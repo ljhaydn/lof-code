@@ -2178,7 +2178,9 @@ document.addEventListener('click', function (e) {
   const btn = e.target.closest('.js-open-global-stream');
   if (!btn) return;
 
-  const footer = document.getElementById('lof-stream-footer');
+  const footer =
+    document.getElementById('lof-stream-footer') ||
+    document.getElementById('rf-stream-footer');
   if (!footer) {
     console.warn('[LOF Viewer] Global stream footer not found.');
     return;
@@ -2204,7 +2206,7 @@ document.addEventListener('click', function (e) {
     iframe.className = 'rf-audio-iframe';
     iframe.allow = 'autoplay'; // safe because user clicked to create it
 
-    // Hide the visual UI but keep audio. Let CSS handle size; just make it invisible/non-interactive.
+    // Hide the visual UI but keep audio. Let CSS size it; just make it invisible and non-interactive.
     iframe.style.opacity = '0';
     iframe.style.pointerEvents = 'none';
 
