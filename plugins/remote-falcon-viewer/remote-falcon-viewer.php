@@ -439,11 +439,12 @@ class RF_Viewer_Plugin {
                 <div id="lof-tonight-body" class="rf-tonight-body"></div>
                 <div id="rf-footer-glow"></div>
             </div>
-            <!-- GLOBAL STREAM FOOTER (persistent, not re-rendered) -->
-            <div
-              id="lof-stream-footer"
-              class="rf-stream-footer"
-              data-src="https://player.pulsemesh.io/d/G073"
+            <!-- GLOBAL STREAM FOOTER (persistent container; iframe added by JS on demand) -->
+            <div id="lof-stream-footer"
+                class="rf-stream-footer"
+                data-src="https://player.pulsemesh.io/d/G073">
+            <!-- JS will inject the iframe + label when a stream button is clicked -->
+            </div>
             ></div>
         </div>
         <?php
