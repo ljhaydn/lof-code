@@ -1,6 +1,8 @@
 (function () {
   const base = (window.RFViewer && RFViewer.base) ? RFViewer.base : '';
-
+  
+  console.log('[LOF viewer] rf-viewer.js loaded');
+  
   const viewerRoot  = document.getElementById('rf-viewer');
   const statusPanel = document.querySelector('.rf-status-panel');
   const gridEl      = document.getElementById('rf-grid');
@@ -2291,6 +2293,9 @@ document.addEventListener('click', function (e) {
     b.textContent = lofStreamState.visible
       ? stopLabel
       : baseLabel + ' 🎧';
+  });
+  document.addEventListener('click', function (e) {
+  console.log('[LOF Debug] Document click fired', e.target);
   });
 });
 
