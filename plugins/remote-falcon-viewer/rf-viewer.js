@@ -43,6 +43,9 @@ let currentPollInterval = null;
     configLoaded: false
   };
 
+  // Default PulseMesh stream URL (can be overridden by LOF Extras config)
+  const LOF_STREAM_URL_DEFAULT = 'https://player.pulsemesh.io/d/G073';
+
   function lofCopy(key, fallback) {
     try {
       if (
@@ -1955,9 +1958,6 @@ function addSpeakerCard(extra) {
   );
   const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
-  // TODO: if we later wire this into LOF Extras settings, read from config instead.
-  const pulsemeshUrl = 'https://player.pulsemesh.io/d/G073';
-
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card rf-card--speaker'; // V1.5: Add --speaker class
 
@@ -2025,6 +2025,28 @@ function addSpeakerCard(extra) {
   // (stream state restore removed)
 
   extra.appendChild(card);
+
+  // Ensure the global stream footer knows which URL to use
+  (function ensureStreamFooterDataSrc() {
+    const footer =
+      document.getElementById('lof-stream-footer') ||
+      document.getElementById('rf-stream-footer');
+    if (!footer) return;
+
+    if (!footer.getAttribute('data-src')) {
+      const config = getLofConfig();
+      const configuredUrl =
+        config &&
+        config.stream &&
+        typeof config.stream.url === 'string' &&
+        config.stream.url.trim() !== ''
+          ? config.stream.url.trim()
+          : null;
+
+      const src = configuredUrl || LOF_STREAM_URL_DEFAULT;
+      footer.setAttribute('data-src', src);
+    }
+  })();
 
   // Updated DOM queries per new markup
   const btn = card.querySelector('.js-speaker-on');
@@ -2193,9 +2215,28 @@ document.addEventListener('click', function (e) {
 
   // First time: create the iframe on demand
   if (!lofStreamState.init) {
-    const src = footer.getAttribute('data-src');
+    let src = footer.getAttribute('data-src');
+
     if (!src) {
-      console.warn('[LOF Viewer] No stream URL configured on lof-stream-footer.');
+      // Try LOF Extras config, then fall back to the default PulseMesh URL
+      const config = getLofConfig();
+      const configuredUrl =
+        config &&
+        config.stream &&
+        typeof config.stream.url === 'string' &&
+        config.stream.url.trim() !== ''
+          ? config.stream.url.trim()
+          : null;
+
+      src = configuredUrl || LOF_STREAM_URL_DEFAULT;
+
+      if (src) {
+        footer.setAttribute('data-src', src);
+      }
+    }
+
+    if (!src) {
+      console.warn('[LOF Viewer] No stream URL configured for global audio stream.');
       return;
     }
 
@@ -2212,7 +2253,7 @@ document.addEventListener('click', function (e) {
 
     footer.appendChild(iframe);
 
-        // Add or update footer label text (ensure only one label exists)
+    // Add or update footer label text (ensure only one label exists)
     let label = footer.querySelector('.rf-stream-footer-text');
     if (!label) {
       label = document.createElement('div');
