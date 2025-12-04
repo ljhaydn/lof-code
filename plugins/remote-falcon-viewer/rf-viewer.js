@@ -1960,6 +1960,9 @@ function addSpeakerCard(extra) {
   );
   const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
+  // Use the default PulseMesh URL (can be overridden via footer data-src)
+  const pulsemeshUrl = LOF_STREAM_URL_DEFAULT || 'https://player.pulsemesh.io/d/G073';
+
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card rf-card--speaker'; // V1.5: Add --speaker class
 
@@ -2183,121 +2186,52 @@ function addSpeakerCard(extra) {
 
   const streamBtn = card.querySelector('.js-open-global-stream');
   if (streamBtn) {
-    const baseLabel =
-      streamBtn.getAttribute('data-label') ||
-      lofCopy('stream_btn_start', 'Listen on your phone');
-    const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
+    streamBtn.addEventListener('click', () => {
+      const footer =
+        document.getElementById('lof-stream-footer') ||
+        document.getElementById('rf-stream-footer');
+      if (!footer) return;
 
-    // When the extras panel re-renders, keep the label aligned with
-    // the current global stream visibility state.
-    streamBtn.textContent = lofStreamState.visible
-      ? stopLabel
-      : baseLabel + ' 🎧';
+      if (lofStreamState.visible) {
+        // Stop stream
+        footer.classList.remove('active');
+        footer.classList.remove('rf-stream-footer--visible');
+        lofStreamState.visible = false;
+
+        const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
+        streamBtn.textContent = startLabel + ' 🎧';
+      } else {
+        // Start stream
+        if (!lofStreamState.init) {
+          const iframe = document.createElement('iframe');
+          const footerSrc = footer.getAttribute('data-src');
+          iframe.src = footerSrc || pulsemeshUrl;
+          iframe.allow = 'autoplay';
+          iframe.className = 'rf-audio-iframe';
+          footer.appendChild(iframe);
+          lofStreamState.init = true;
+        }
+        footer.classList.add('active');
+        footer.classList.add('rf-stream-footer--visible');
+
+        const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
+        streamBtn.textContent = stopLabel;
+        lofStreamState.visible = true;
+      }
+    });
+
+    // Restore label on re-render based on current stream state
+    if (lofStreamState.visible) {
+      const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
+      streamBtn.textContent = stopLabel;
+    } else {
+      const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
+      streamBtn.textContent = startLabel + ' 🎧';
+    }
   }
 }
 
 
-// Global click handler for stream player (lazy iframe and toggle on persistent footer)
-document.addEventListener('click', function (e) {
-  const btn = e.target.closest('.js-open-global-stream');
-  if (!btn) return;
-
-  const footer =
-    document.getElementById('lof-stream-footer') ||
-    document.getElementById('rf-stream-footer');
-  if (!footer) {
-    console.warn('[LOF Viewer] Global stream footer not found.');
-    return;
-  }
-
-  const originalLabel =
-    btn.getAttribute('data-label') ||
-    (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_button_start) ||
-    'Listen on your phone';
-
-  // First time: create the iframe on demand
-  if (!lofStreamState.init) {
-    let src = footer.getAttribute('data-src');
-
-    if (!src) {
-      // Try LOF Extras config, then fall back to the default PulseMesh URL
-      const config = getLofConfig();
-      const configuredUrl =
-        config &&
-        config.stream &&
-        typeof config.stream.url === 'string' &&
-        config.stream.url.trim() !== ''
-          ? config.stream.url.trim()
-          : null;
-
-      src = configuredUrl || LOF_STREAM_URL_DEFAULT;
-
-      if (src) {
-        footer.setAttribute('data-src', src);
-      }
-    }
-
-    if (!src) {
-      console.warn('[LOF Viewer] No stream URL configured for global audio stream.');
-      return;
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.src = src;
-    iframe.title = 'Lights on Falcon live stream';
-    iframe.loading = 'lazy';
-    iframe.className = 'rf-audio-iframe';
-    iframe.allow = 'autoplay'; // safe because user clicked to create it
-
-    // Hide the visual UI but keep audio. Let CSS size it; just make it invisible and non-interactive.
-    iframe.style.opacity = '0';
-    iframe.style.pointerEvents = 'none';
-
-    footer.appendChild(iframe);
-
-    // Add or update footer label text (ensure only one label exists)
-    let label = footer.querySelector('.rf-stream-footer-text');
-    if (!label) {
-      label = document.createElement('div');
-      label.className = 'rf-stream-footer-text';
-      footer.appendChild(label);
-    }
-    const footerText =
-      (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_footer_text) ||
-      'Streaming audio powered by PulseMesh';
-    label.textContent = footerText;
-
-    lofStreamState.init = true;
-  }
-
-  // Toggle visibility without destroying the iframe
-  lofStreamState.visible = !lofStreamState.visible;
-  footer.classList.toggle('rf-stream-footer--visible', lofStreamState.visible);
-  footer.classList.toggle('active', lofStreamState.visible);
-
-  // If we just turned the stream OFF, remove the iframe so audio stops
-  if (!lofStreamState.visible) {
-    const iframe = footer.querySelector('iframe');
-    if (iframe) iframe.remove();
-    lofStreamState.init = false;
-  }
-
-  const stopLabel =
-    (LOFViewer && LOFViewer.config && LOFViewer.config.copy && LOFViewer.config.copy.stream_button_stop) ||
-    'Hide stream';
-
-  // Update ALL stream buttons to the correct label,
-  // so repolls can't desync the text.
-  document.querySelectorAll('.js-open-global-stream').forEach(function (b) {
-    const baseLabel = b.getAttribute('data-label') || originalLabel;
-    b.textContent = lofStreamState.visible
-      ? stopLabel
-      : baseLabel + ' 🎧';
-  });
-  document.addEventListener('click', function (e) {
-  console.log('[LOF Debug] Document click fired', e.target);
-  });
-});
 
 
   /* -------------------------
