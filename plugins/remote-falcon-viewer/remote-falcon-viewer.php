@@ -398,6 +398,13 @@ class RF_Viewer_Plugin {
     public function shortcode_viewer($atts, $content = '') {
         ob_start(); ?>
         <div id="rf-viewer" class="rf-viewer">
+            <!-- HERO: Tonight at Lights on Falcon -->
+            <div class="rf-tonight rf-hero">
+                <h1 class="rf-tonight-title">Tonight at Lights on Falcon</h1>
+                <div id="lof-tonight-body" class="rf-tonight-body"></div>
+            </div>
+
+            <!-- Status + controls + how-it-works -->
             <div class="rf-status-panel">
                 <div class="rf-now">
                     <div class="rf-label">Now Playing</div>
@@ -419,7 +426,9 @@ class RF_Viewer_Plugin {
                     <div class="rf-mode-value" id="rf-mode-value">—</div>
                 </div>
             </div>
+
             <div class="rf-controls-row" id="rf-controls-row"></div>
+
             <div class="rf-viewer-header">
                 <div class="rf-viewer-headline">How tonight works</div>
                 <div class="rf-viewer-subcopy">
@@ -428,17 +437,19 @@ class RF_Viewer_Plugin {
                     • Your pick will glow when it’s playing, then rest.
                 </div>
             </div>
+
             <div class="rf-main-layout">
                 <div class="rf-main-left">
                     <div class="rf-grid" id="rf-grid"></div>
                 </div>
                 <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
-            <div class="rf-tonight">
-                <h2 class="rf-tonight-title">Tonight at Lights on Falcon</h2>
-                <div id="lof-tonight-body" class="rf-tonight-body"></div>
+
+            <!-- FOOTER: Send a Glow lives here only -->
+            <div class="rf-footer">
                 <div id="rf-footer-glow"></div>
             </div>
+
             <!-- GLOBAL STREAM FOOTER (persistent container; iframe added by JS on demand) -->
             <div
                 id="lof-stream-footer"

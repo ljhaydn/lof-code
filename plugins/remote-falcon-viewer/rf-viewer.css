@@ -746,20 +746,9 @@
 .rf-card--now-playing {
   /* Cream background for high contrast */
   background: var(--lof-cream);
-  
-  /* Pink candy cane stripe at top */
-  border-top: 8px solid transparent;
-  border-image: repeating-linear-gradient(
-    90deg,
-    var(--lof-pink) 0,
-    var(--lof-pink) 12px,
-    var(--lof-white) 12px,
-    var(--lof-white) 24px
-  ) 8;
-  
-  border-left: 2px solid var(--lof-gold);
-  border-right: 2px solid var(--lof-gold);
-  border-bottom: 2px solid var(--lof-gold);
+  color: var(--lof-text-dark);
+  border-radius: var(--radius-md);
+  position: relative;
   
   /* Radiating beacon effect */
   box-shadow:
@@ -771,6 +760,37 @@
   
   z-index: 10;
   transform: scale(1.05);
+}
+
+/* Rounded animated candy cane frame */
+.rf-card--now-playing::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--lof-pink) 0,
+    var(--lof-pink) 10px,
+    var(--lof-white) 10px,
+    var(--lof-white) 20px
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: candy-cane-border 4s linear infinite;
+}
+
+@keyframes candy-cane-border {
+  from { background-position: 0 0; }
+  to { background-position: 40px 0; }
 }
 
 @keyframes mobile-beacon {
@@ -797,6 +817,12 @@
 .rf-card--now-playing .rf-card-artist,
 .rf-card--now-playing .rf-card-meta {
   color: var(--lof-text-dark);
+}
+
+.rf-card--now-playing .rf-card-btn {
+  background: var(--lof-forest);
+  border-color: var(--lof-gold);
+  color: var(--lof-cream);
 }
 
 .rf-card--now-playing .rf-card-title {
@@ -1196,8 +1222,11 @@
 }
 
 .rf-card--device-stats:hover {
-  transform: none !important; /* V1.5: No hover lift */
-  border-color: var(--lof-gold);
+  transform: none !important;
+  animation: none !important;
+  box-shadow: 
+    0 0 25px rgba(255, 215, 0, 0.25),
+    var(--shadow-card);
 }
 
 /* Corner stars for ornament effect */
@@ -1297,6 +1326,7 @@
 
 .rf-card--geo {
   margin-bottom: 16px;
+  cursor: default;
 }
 
 .rf-geo-notice {
@@ -1326,6 +1356,14 @@
   border: 2px solid rgba(255, 215, 0, 0.3);
   color: var(--lof-text-muted);
   font-size: 0.85rem;
+}
+
+.rf-card--geo:hover {
+  transform: none;
+  animation: none;
+  box-shadow:
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12);
 }
 
 .rf-geo-message {
@@ -1432,6 +1470,11 @@
     var(--glow-gold),
     0 0 40px rgba(233, 30, 99, 0.2),
     var(--shadow-float);
+}
+
+.rf-tonight.rf-hero {
+  margin-top: 0;
+  margin-bottom: 24px;
 }
 
 /* Corner stars */
@@ -1652,9 +1695,6 @@
 }
 
 /* V1.5: "Tonight from this device" stats + Mischief Meter card */
-.rf-stats {
-  /* visual styling is inherited from surrounding layout; this just normalizes spacing */
-}
 
 .rf-stats-inner {
   padding: 1rem 1.25rem;
