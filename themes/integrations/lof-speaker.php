@@ -71,6 +71,7 @@ function lof_speaker_build_payload(array $state, $speakerMode, $message = '') {
         'remainingSeconds' => $remaining,
         'message'          => (string)$message,
         'mode'             => $speakerMode,
+        'status'           => isset($state['status']) ? $state['status'] : 'off',
         'fmFrequency'      => $fmFrequency,
         'streamUrl'        => $streamUrl,
     ];

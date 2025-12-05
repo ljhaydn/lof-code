@@ -30,6 +30,9 @@ let speakerProtectionActive = false;
 let lastSpeakerCheckTime = 0;
 let currentFppSongKey = null;
 
+// True when FPP + RF agree that a real song is playing (SHOWTIME phase)
+let isSongPlayingNow = false;
+
 // V1.5: Geo check tracking
 let geoCheckPerformed = false;
 let userConfirmedLocal = false;
@@ -1408,9 +1411,14 @@ function updateBanner(phase, enabled) {
         statusName === 'playing' &&
         phase === 'showtime';
 
+      // Track whether a real song is playing for speaker protection logic
+      isSongPlayingNow = shouldShow;
+
       if (!shouldShow) {
         window.LOFNowTiming = null;
         updateNowProgress(null);
+        // When playback stops or we're not in SHOWTIME, re-evaluate speaker protection
+        checkSpeakerProtection();
         return;
       }
 
@@ -1432,35 +1440,39 @@ function updateBanner(phase, enabled) {
     }
   }
 
-  // V1.5: Check speaker protection during FPP playback
+// V1.5: Check speaker protection during FPP playback
 async function checkSpeakerProtection() {
-  // Only check if we think speakers might be on
   const config = getLofConfig();
-  if (!config || !config.speakerEndpoint) return;
-  
+  const endpoint =
+    (config && typeof config.speakerEndpoint === 'string' && config.speakerEndpoint.trim() !== '')
+      ? config.speakerEndpoint.trim()
+      : '/wp-content/themes/integrations/lof-speaker.php';
+
+  if (!endpoint) return;
+
   try {
-    const res = await fetch(config.speakerEndpoint + '?action=status', {
+    const res = await fetch(endpoint + '?action=status', {
       credentials: 'same-origin'
     });
-    
+
     if (!res.ok) return;
     const data = await res.json();
-    
-    if (!data || !data.speakerOn) {
-      speakerProtectionActive = false;
+
+    // If we can't read a boolean speakerOn flag, bail without flipping UI state
+    if (!data || typeof data.speakerOn !== 'boolean') {
       return;
     }
-    
-    // Speakers are on - check if song is playing
-    if (currentFppSongKey) {
-      speakerProtectionActive = true;
-    } else {
+
+    if (!data.speakerOn) {
+      // Speakers are off: protection is not active
       speakerProtectionActive = false;
+      updateSpeakerCardProtection();
+      return;
     }
-    
-    // Update UI if speaker card exists
+
+    // Speakers are ON – protection is active only while a real song is playing
+    speakerProtectionActive = !!isSongPlayingNow;
     updateSpeakerCardProtection();
-    
   } catch (err) {
     console.warn('[LOF V1.5] Speaker protection check failed:', err);
   }
@@ -2028,6 +2040,10 @@ function addSpeakerCard(extra) {
   // (stream state restore removed)
 
   extra.appendChild(card);
+
+  // Kick off initial speaker status + protection checks so the UI is accurate on first render
+  refreshSpeakerStatus();
+  checkSpeakerProtection();
 
   // Ensure the global stream footer knows which URL to use
   (function ensureStreamFooterDataSrc() {
