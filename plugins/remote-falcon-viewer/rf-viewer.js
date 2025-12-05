@@ -1177,6 +1177,29 @@ function updateBanner(phase, enabled) {
       (s) => s.name === playingNowRaw || s.displayName === playingNowRaw
     ) || null;
 
+    // --- V1.5 FIX: ensure first post-intermission song gets chip if user picked it ---
+    if (nowSeq) {
+      const keyName = nowSeq.name || '';
+      const labelName = nowSeq.displayName || '';
+
+      // If this song appears in today's RF request list, assume this device requested it
+      const userRequestedThis = Array.isArray(rawRequests) && rawRequests.some((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const seq = item.sequence || {};
+        const sName = seq.name || '';
+        const sLabel = seq.displayName || '';
+        return (
+          (keyName && (sName === keyName || sLabel === keyName)) ||
+          (labelName && (sName === labelName || sLabel === labelName))
+        );
+      });
+
+      if (userRequestedThis) {
+        if (keyName) addRequestedSongName(keyName);
+        if (labelName && labelName !== keyName) addRequestedSongName(labelName);
+      }
+    }
+
     let nextSeq = sequences.find(
       (s) => s.name === playingNextRaw || s.displayName === playingNextRaw
     ) || null;
