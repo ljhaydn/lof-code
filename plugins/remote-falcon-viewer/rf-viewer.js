@@ -308,36 +308,13 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
   }
 
 function syncRequestedSongsWithStatus(nowSeq, queue) {
-  if (!Array.isArray(requestedSongNames) || requestedSongNames.length === 0) {
+  // V1.5: Keep this device's requested songs for the full session/day so
+  // "You picked this" and "Your pick is playing" chips can reliably appear,
+  // even after intermission transitions. We only normalize the array shape.
+  if (!Array.isArray(requestedSongNames)) {
     requestedSongNames = [];
     saveRequestedSongs();
-    return;
   }
-
-  const active = new Set();
-
-  // Now playing might match one or more requested titles
-  if (nowSeq) {
-    const nowName = nowSeq.name || nowSeq.displayName;
-    if (nowName) active.add(nowName);
-  }
-
-  // Anything still in the RF queue stays active
-  if (Array.isArray(queue)) {
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
-      if (!item || typeof item !== 'object') continue;
-      const seq = item.sequence || {};
-      const sName = seq.name || seq.displayName;
-      if (sName && requestedSongNames.includes(sName)) {
-        active.add(sName);
-      }
-    }
-  }
-
-  // Keep only ones still active
-  requestedSongNames = requestedSongNames.filter((name) => active.has(name));
-  saveRequestedSongs();
 }
   function getLastGlowTime() {
     try {
@@ -1176,29 +1153,6 @@ function updateBanner(phase, enabled) {
     const nowSeq = sequences.find(
       (s) => s.name === playingNowRaw || s.displayName === playingNowRaw
     ) || null;
-
-    // --- V1.5 FIX: ensure first post-intermission song gets chip if user picked it ---
-    if (nowSeq) {
-      const keyName = nowSeq.name || '';
-      const labelName = nowSeq.displayName || '';
-
-      // If this song appears in today's RF request list, assume this device requested it
-      const userRequestedThis = Array.isArray(rawRequests) && rawRequests.some((item) => {
-        if (!item || typeof item !== 'object') return false;
-        const seq = item.sequence || {};
-        const sName = seq.name || '';
-        const sLabel = seq.displayName || '';
-        return (
-          (keyName && (sName === keyName || sLabel === keyName)) ||
-          (labelName && (sName === labelName || sLabel === labelName))
-        );
-      });
-
-      if (userRequestedThis) {
-        if (keyName) addRequestedSongName(keyName);
-        if (labelName && labelName !== keyName) addRequestedSongName(labelName);
-      }
-    }
 
     let nextSeq = sequences.find(
       (s) => s.name === playingNextRaw || s.displayName === playingNextRaw
