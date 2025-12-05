@@ -762,6 +762,12 @@
   transform: scale(1.05);
 }
 
+/* V1.5: Ensure base card styles never override the now-playing cream background */
+.rf-card.rf-card--now-playing {
+  background: var(--lof-cream) !important;
+  color: var(--lof-text-dark) !important;
+}
+
 /* Rounded animated candy cane frame */
 .rf-card--now-playing::before {
   content: '';
