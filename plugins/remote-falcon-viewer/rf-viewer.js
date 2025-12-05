@@ -200,7 +200,13 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
       const raw = window.localStorage.getItem(STORAGE_REQUESTS_KEY);
       if (!raw) return [];
       const val = JSON.parse(raw);
-      return Array.isArray(val) ? val : [];
+      if (!Array.isArray(val)) return [];
+      // Deduplicate to keep lookups clean
+      return Array.from(
+        new Set(
+          val.filter((x) => typeof x === 'string' && x.trim() !== '')
+        )
+      );
     } catch (e) {
       return [];
     }
@@ -210,6 +216,17 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
     try {
       window.localStorage.setItem(STORAGE_REQUESTS_KEY, JSON.stringify(requestedSongNames));
     } catch (e) {}
+  }
+
+    function addRequestedSongName(name) {
+    if (!name) return;
+    if (!Array.isArray(requestedSongNames)) {
+      requestedSongNames = [];
+    }
+    if (!requestedSongNames.includes(name)) {
+      requestedSongNames.push(name);
+      saveRequestedSongs();
+    }
   }
 
   function loadStats() {
@@ -1214,7 +1231,7 @@ function updateBanner(phase, enabled) {
     lastPhase = phase;
 
     updateHeaderCopy(currentMode, currentControlEnabled, prefs, queueLength, phase);
-    updateBanner(phase);
+    updateBanner(phase, currentControlEnabled);
     updateMyStatusLine(nowSeq, rawRequests, nowKey);
     renderControlsRow(currentMode, currentControlEnabled);
 
@@ -1266,8 +1283,12 @@ function updateBanner(phase, enabled) {
         </div>
       `;
 
-      const seqName = seq.name || seq.displayName;
-      const wasRequested = seqName && requestedSongNames.indexOf(seqName) !== -1;
+      const keyName = seq.name || '';
+      const labelName = seq.displayName || '';
+      const wasRequested = (
+        (keyName && requestedSongNames.includes(keyName)) ||
+        (labelName && requestedSongNames.includes(labelName))
+      );
 
       if (wasRequested) {
         const chip = document.createElement('div');
@@ -2370,16 +2391,28 @@ function addSpeakerCard(extra) {
           : `Request sent! You’re in the queue.${codeMessage}`;
         showToast(msg, 'success');
 
-        if (mode === 'JUKEBOX') {
-          lastRequestedSequenceName = seq.name || seq.displayName || null;
-          if (lastRequestedSequenceName &&
-              requestedSongNames.indexOf(lastRequestedSequenceName) === -1) {
-            requestedSongNames.push(lastRequestedSequenceName);
-            saveRequestedSongs();
-          }
-          viewerStats.requests += 1;
-          saveStats();
+      if (mode === 'JUKEBOX') {
+        const keyName = seq.name || '';
+        const labelName = seq.displayName || '';
+
+        lastRequestedSequenceName = keyName || labelName || null;
+
+        // Track both internal key and friendly label so chips stay in sync
+        if (keyName) {
+          addRequestedSongName(keyName);
         }
+        if (labelName && labelName !== keyName) {
+          addRequestedSongName(labelName);
+        }
+
+        if (viewerStats && typeof viewerStats.requests === 'number') {
+          viewerStats.requests += 1;
+        } else {
+          viewerStats = viewerStats || {};
+          viewerStats.requests = 1;
+        }
+        saveStats();
+      }
       } else {
         const errMsg = (data && (data.message || data.error)) || `HTTP ${res.status}`;
         showToast('Remote Falcon issue: ' + errMsg, 'error');
