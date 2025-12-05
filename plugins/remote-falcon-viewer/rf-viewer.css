@@ -1393,18 +1393,31 @@
  * V1.5: NEED SOUND CARD - Non-Selectable
  * ================================================================ */
 
-.rf-card--speaker {
-  cursor: default !important; /* V1.5: Not clickable */
-  transition: none !important; /* V1.5: No hover animation */
+/* Speaker cards should behave like informational panels,
+   not like selectable song tiles. */
+.rf-card--speaker,
+.rf-card.rf-speaker-card {
+  cursor: default !important;           /* Card itself not clickable */
+  transition: none !important;          /* No hover animation */
+  pointer-events: none;                 /* Swallow card-level clicks */
 }
 
-.rf-card--speaker:hover {
-  transform: none !important; /* V1.5: No lift on hover */
-  border-color: rgba(255, 248, 231, 0.2);
+.rf-card--speaker:hover,
+.rf-card--speaker:active,
+.rf-card.rf-speaker-card:hover,
+.rf-card.rf-speaker-card:active {
+  transform: none !important;           /* No lift / scale */
+  animation: none !important;
+  border-color: rgba(255, 248, 231, 0.2) !important; /* Keep neutral border */
+  box-shadow:
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12);  /* Same as base ornament glow */
 }
 
-/* Buttons inside remain clickable */
-.rf-card--speaker button {
+/* Buttons inside remain fully interactive */
+.rf-card--speaker button,
+.rf-card.rf-speaker-card .rf-speaker-btn,
+.rf-card.rf-speaker-card .js-open-global-stream {
   cursor: pointer;
   pointer-events: auto;
 }
@@ -1732,11 +1745,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* V1.5: Speaker / "Need sound?" card should not behave like a selectable song card */
-.rf-speaker-card {
-  cursor: default;
-}
-
+/* V1.5: Speaker / "Need sound?" contents */
 .rf-speaker-card .rf-audio-option {
   cursor: default;
 }
@@ -1744,12 +1753,6 @@
 .rf-speaker-card .rf-glow-btn,
 .rf-speaker-card .rf-speaker-btn {
   cursor: pointer;
-}
-
-/* Neutralize any global hover transforms for the speaker card */
-.rf-speaker-card:hover {
-  transform: none;
-  animation: none;
 }
 
 /* V1.5: Slightly larger text on mobile for queue, leaderboard, and Need Sound help text */
@@ -1777,15 +1780,6 @@
   animation: none;
 }
 
-/* Keep the entire speaker card neutral; only buttons feel interactive */
-.rf-card.rf-speaker-card {
-  cursor: default;
-}
-
-.rf-card.rf-speaker-card .rf-speaker-btn,
-.rf-card.rf-speaker-card .js-open-global-stream {
-  cursor: pointer;
-}
 
 /* V1.5: Make the Up Next Queue card height track its content more closely */
 .rf-extra-panel--queue {
