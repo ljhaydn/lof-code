@@ -1451,11 +1451,32 @@
   overflow: hidden;
 }
 
-/* When active, show the bar */
+/* When active, show the bar (override any theme/mobile rules) */
 .rf-stream-footer.active,
 #lof-stream-footer.rf-stream-footer--visible,
 #rf-stream-footer.rf-stream-footer--visible {
-  display: block;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  height: 64px !important;
+  max-height: 120px !important;
+}
+
+@media (max-width: 800px) {
+  .rf-stream-footer.active,
+  #lof-stream-footer.rf-stream-footer--visible,
+  #rf-stream-footer.rf-stream-footer--visible {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 64px !important;
+    max-height: 120px !important;
+    z-index: 9999;
+  }
 }
 
 /* Optional helper text inside the footer, if used */
