@@ -350,8 +350,15 @@ function lof_speaker_apply_mid_song_guard(&$state, $stateKey, $extensionThreshol
     // If we can't determine song length, fall back to a safe fixed extension so we
     // don't cut off mid-song. This will still only happen once per ON window.
     if ($songRemaining === null || $songRemaining <= 0) {
-        // e.g. 3× the threshold, minimum 90s.
-        $songRemaining = max($extensionThreshold * 3, 90);
+        // Use at least one full configured speaker window as a fallback,
+        // so even long songs are unlikely to be cut. Minimum 120 seconds.
+        if (!function_exists('lof_speaker_get_duration_seconds')) {
+            // Should not happen, but guard just in case.
+            $songRemaining = max($extensionThreshold * 3, 120);
+        } else {
+            $fallback = (int) lof_speaker_get_duration_seconds();
+            $songRemaining = max($fallback, 120);
+        }
     }
 
     // If the song will still be playing after our window ends, extend our window
@@ -371,10 +378,19 @@ function lof_speaker_apply_mid_song_guard(&$state, $stateKey, $extensionThreshol
 $now   = time();
 $state = lof_speaker_get_state($stateKey);
 
-// First normalize simple expiry.
+// Compute remaining based on current state.
 $remaining = lof_speaker_remaining_seconds($state);
 $speakerOn = ($state['status'] === 'on' && $remaining > 0);
 
+// Apply "don't cut off mid-song" logic *before* we finalize OFF state.
+lof_speaker_apply_mid_song_guard($state, $stateKey, $extensionThreshold);
+
+// Recompute remaining/speakerOn after potential extension.
+$remaining = lof_speaker_remaining_seconds($state);
+$speakerOn = ($state['status'] === 'on' && $remaining > 0);
+
+// If we're still marked ON but have no remaining time even after guard,
+// normalize to OFF.
 if ($state['status'] === 'on' && $remaining === 0) {
     $state['status']       = 'off';
     $state['expires_at']   = $now;
@@ -382,11 +398,6 @@ if ($state['status'] === 'on' && $remaining === 0) {
     lof_speaker_save_state($stateKey, $state);
     $speakerOn = false;
 }
-
-// Now apply "don't cut off mid-song" logic, then recompute remaining.
-lof_speaker_apply_mid_song_guard($state, $stateKey, $extensionThreshold);
-$remaining = lof_speaker_remaining_seconds($state);
-$speakerOn = ($state['status'] === 'on' && $remaining > 0);
 
 // ------------------------------------------------------------
 // ACTION: status
