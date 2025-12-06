@@ -101,12 +101,12 @@ function updateHeroCTA() {
   if (!config || !config.copy) {
     // Defaults if no config
     headlineEl.textContent = 'Tap a song to request it 🎧';
-    subcopyEl.textContent = 'Requests join the queue in the order they come in. You can request up to 1 songs per session.';
+    subcopyEl.textContent = 'Requests join the queue in the order they come in. You can request multiple songs each session while the queue is open.';
     return;
   }
   
   const headline = config.copy.hero_headline || 'Tap a song to request it 🎧';
-  const subtext = config.copy.hero_subtext || 'Requests join the queue in the order they come in. You can request up to 1 songs per session.';
+  const subtext = config.copy.hero_subtext || 'Requests join the queue in the order they come in. You can request multiple songs each session while the queue is open.';
   
   headlineEl.textContent = headline;
   subcopyEl.textContent = subtext;
@@ -930,7 +930,7 @@ function updateBanner(phase, enabled) {
       if (requestLimit && requestLimit > 0) {
         const limitLineTmpl = lofCopy(
           'header_jukebox_limit',
-          'You can request up to {requestLimit} songs per session.'
+          'You can request up to {requestLimit} songs from this device while the queue is open.'
         );
         parts.push(applyTokens(limitLineTmpl, tokens));
       }
@@ -1891,13 +1891,24 @@ function renderDeviceStatsCard(extra, queueLength) {
       body.appendChild(sectionLabel);
 
       if (typeof triggers.mailbox !== 'undefined') {
+        // New padding logic: start at 32, then add rawMailbox + (rawMailbox * 1.5)
+        const rawMailbox =
+          typeof triggers.mailbox === 'number'
+            ? triggers.mailbox
+            : parseInt(triggers.mailbox, 10) || 0;
+
+        const boostedMailbox =
+          rawMailbox >= 0
+            ? 32 + rawMailbox + Math.round(rawMailbox * 1.5)
+            : 32;
+
         const row = document.createElement('div');
         row.className = 'rf-stat-item rf-stats-row--mischief';
         row.innerHTML = `
           <span class="rf-stat-label">
             ${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}
           </span>
-          <span class="rf-stat-value">${triggers.mailbox}</span>
+          <span class="rf-stat-value">${boostedMailbox}</span>
         `;
         body.appendChild(row);
       }
@@ -1907,7 +1918,7 @@ function renderDeviceStatsCard(extra, queueLength) {
         row.className = 'rf-stat-item rf-stats-row--mischief';
         row.innerHTML = `
           <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_button_label', '🔴 Button presses:'))}
+            ${escapeHtml(lofCopy('trigger_button_label', '🔴 Naughty or Nice Checks:'))}
           </span>
           <span class="rf-stat-value">${triggers.button}</span>
         `;
@@ -2078,7 +2089,7 @@ function addSpeakerCard(extra) {
   const fmLabel = lofCopy('speaker_fm_label', 'FM radio');
   const fmText = lofCopy(
     'speaker_fm_text',
-    'Prefer the car stereo? Tune to 88.3 FM near the show.'
+    'Prefer the car stereo? Tune to 107.7 FM near the show.'
   );
   const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
 
