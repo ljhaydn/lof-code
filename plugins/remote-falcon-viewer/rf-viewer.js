@@ -13,11 +13,15 @@
   const nextTitleEl = document.getElementById('rf-next-title');
   const modeEl      = document.getElementById('rf-mode-value');
 
-  // Persist stream state across re-renders of the extras panel
+// Persist stream state across re-renders of the extras panel
 const lofStreamState = {
   init: false,
   visible: false
 };
+
+// V1.5: Stream + wake lock tracking
+let wakeLock = null;
+let wakeLockEnabled = false;
 
 // V1.5: Adaptive polling tracking
 let lastInteractionTime = Date.now();
@@ -178,6 +182,14 @@ if (typeof document !== 'undefined') {
   document.addEventListener('click', trackUserActivity, { passive: true });
   document.addEventListener('touchstart', trackUserActivity, { passive: true });
   document.addEventListener('keydown', trackUserActivity, { passive: true });
+
+  // If the tab becomes visible again and the user asked to keep the screen awake,
+  // try to re-acquire the wake lock.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && wakeLockEnabled) {
+      acquireWakeLockIfNeeded();
+    }
+  });
 }
 
 // Global guardrails
@@ -185,19 +197,57 @@ let lastGlobalActionTime = 0;
 const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
 
   // Local “identity” for this device
-  const STORAGE_REQUESTS_KEY = 'lofRequestedSongs_v1';
-  const STORAGE_STATS_KEY    = 'lofViewerStats_v1';
-  const STORAGE_GLOW_KEY     = 'lofGlowLastTime_v1';
-  const STORAGE_PLAYED_KEY   = 'lofPlayedCounts_v1';
+  const STORAGE_REQUESTS_KEY   = 'lofRequestedSongs_v1';
+  const STORAGE_STATS_KEY      = 'lofViewerStats_v1';
+  const STORAGE_GLOW_KEY       = 'lofGlowLastTime_v1';
+  const STORAGE_PLAYED_KEY     = 'lofPlayedCounts_v1';
+  const STORAGE_WAKE_LOCK_KEY  = 'lofKeepAwakeEnabled_v1';
 
   let requestedSongNames = loadRequestedSongs();
   let viewerStats        = loadStats();
   let playedCounts       = loadPlayedCounts();
 
+  // Wake lock preference (persisted)
+  try {
+    wakeLockEnabled = window.localStorage.getItem(STORAGE_WAKE_LOCK_KEY) === 'true';
+  } catch (e) {
+    wakeLockEnabled = false;
+  }
+
   // last requested song (name) this session
   let lastRequestedSequenceName = null;
   // cache last phase for banner logic
   let lastPhase = 'idle';
+// V1.5: Screen Wake Lock helpers (to reduce mobile audio interruptions)
+async function acquireWakeLockIfNeeded() {
+  if (!wakeLockEnabled) return;
+  if (typeof navigator === 'undefined' || !navigator.wakeLock) return;
+
+  try {
+    // If we already hold a lock, do nothing
+    if (wakeLock) return;
+
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => {
+      wakeLock = null;
+    });
+  } catch (err) {
+    console.warn('[LOF V1.5] Wake lock request failed:', err);
+    wakeLock = null;
+  }
+}
+
+function releaseWakeLock() {
+  try {
+    if (wakeLock && typeof wakeLock.release === 'function') {
+      wakeLock.release();
+    }
+  } catch (e) {
+    // ignore
+  } finally {
+    wakeLock = null;
+  }
+}
 
   /* -------------------------
    * Local storage helpers
@@ -2080,6 +2130,27 @@ function addSpeakerCard(extra) {
         </button>
         <div class="rf-audio-help">
           Opens a small player at the bottom so you can keep exploring the controls.
+          On some phones, you may need to tap the play button in the bar and keep this page open to continue listening.
+        </div>
+      </div>
+
+      <div class="rf-audio-option rf-audio-option--keep-awake">
+        <label class="rf-keep-awake">
+          <input type="checkbox" class="rf-keep-awake-toggle" />
+          <span>${escapeHtml(
+            lofCopy(
+              'wake_lock_label',
+              'Keep my screen awake while listening'
+            )
+          )}</span>
+        </label>
+        <div class="rf-audio-help">
+          ${escapeHtml(
+            lofCopy(
+              'wake_lock_help',
+              'Prevents your screen from sleeping so audio is less likely to pause.'
+            )
+          )}
         </div>
       </div>
 
@@ -2386,6 +2457,8 @@ function addSpeakerCard(extra) {
 
         const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
         streamBtn.textContent = startLabel + ' 🎧';
+        // When the stream bar is hidden, release any wake lock we were holding
+        releaseWakeLock();
       } else {
         // Start stream
         if (!lofStreamState.init) {
@@ -2403,6 +2476,10 @@ function addSpeakerCard(extra) {
         const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
         streamBtn.textContent = stopLabel;
         lofStreamState.visible = true;
+        // If the user opted to keep the screen awake, try to acquire a wake lock
+        if (wakeLockEnabled) {
+          acquireWakeLockIfNeeded();
+        }
       }
     });
 
@@ -2413,6 +2490,35 @@ function addSpeakerCard(extra) {
     } else {
       const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
       streamBtn.textContent = startLabel + ' 🎧';
+    }
+  }
+
+  const keepAwakeToggle = card.querySelector('.rf-keep-awake-toggle');
+  if (keepAwakeToggle) {
+    // Initialize from persisted preference
+    keepAwakeToggle.checked = !!wakeLockEnabled;
+
+    keepAwakeToggle.addEventListener('change', () => {
+      wakeLockEnabled = !!keepAwakeToggle.checked;
+      try {
+        window.localStorage.setItem(
+          STORAGE_WAKE_LOCK_KEY,
+          wakeLockEnabled ? 'true' : 'false'
+        );
+      } catch (e) {}
+
+      if (wakeLockEnabled && lofStreamState.visible) {
+        // Only hold a wake lock while the PulseMesh bar is visible
+        acquireWakeLockIfNeeded();
+      } else if (!wakeLockEnabled) {
+        releaseWakeLock();
+      }
+    });
+
+    // If the user previously enabled keep-awake and the stream footer is already visible,
+    // attempt to acquire the wake lock on first render.
+    if (keepAwakeToggle.checked && lofStreamState.visible) {
+      acquireWakeLockIfNeeded();
     }
   }
 }
