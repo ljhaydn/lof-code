@@ -433,8 +433,8 @@ class RF_Viewer_Plugin {
                 <div class="rf-viewer-headline">How tonight works</div>
                 <div class="rf-viewer-subcopy">
                     • Tap a song to add it to the queue.<br>
-                    • One request per device so everyone gets a turn.<br>
-                    • Your pick will glow when it’s playing, then rest.
+                    • Requests play in the order they are received.<br>
+                    • Your pick will glow when it’s playing.
                 </div>
             </div>
 
