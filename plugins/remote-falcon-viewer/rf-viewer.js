@@ -2186,12 +2186,7 @@ function addSpeakerCard(extra) {
           }
 
           if (rem > 0) {
-            const minutes = Math.ceil(rem / 60);
-            const label = minutes <= 1
-              ? 'about 1 minute'
-              : `about ${minutes} minutes`;
-
-            if (countdownEl) countdownEl.textContent = label;
+            if (countdownEl) countdownEl.textContent = lofFormatTime(rem);
             if (timerRow) timerRow.style.display = 'flex';
 
             // Start or update the smooth countdown state
@@ -2225,14 +2220,13 @@ function addSpeakerCard(extra) {
                   if (timerRow) timerRow.style.display = 'none';
                   clearInterval(speakerCountdownTimer);
                   speakerCountdownTimer = null;
+                  // When countdown reaches zero, pull a fresh status so the
+                  // button label and state reflect speakers turning OFF.
+                  refreshSpeakerStatus();
                   return;
                 }
 
-                const mins = Math.ceil(remaining / 60);
-                const lbl = mins <= 1
-                  ? 'about 1 minute'
-                  : `about ${mins} minutes`;
-                countdownEl.textContent = lbl;
+                countdownEl.textContent = lofFormatTime(remaining);
               }, 1000);
             }
           } else {
