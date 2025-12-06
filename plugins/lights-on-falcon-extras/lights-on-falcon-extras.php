@@ -14,6 +14,7 @@ class LOF_Viewer_Extras {
 
     const OPTION_SETTINGS       = 'lof_viewer_extras_settings';
     const OPTION_GLOW_STATS     = 'lof_viewer_extras_glow_stats';
+    const OPTION_GLOW_LOG       = 'lof_viewer_extras_glow_log';
     const OPTION_SPEAKER_STATE  = 'lof_viewer_extras_speaker_state';
 
     public function __construct() {
@@ -785,6 +786,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
         $settings = $this->get_settings();
         $today    = current_time( 'Y-m-d' );
 
+        // --- Update nightly stats (existing behavior) ---
         $stats = get_option(
             self::OPTION_GLOW_STATS,
             [
@@ -812,6 +814,35 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
         $stats['date']  = $today;
 
         update_option( self::OPTION_GLOW_STATS, $stats );
+
+        // --- NEW: Persist full Glow submission to a log option ---
+        $data    = $request->get_json_params();
+        $message = isset( $data['message'] ) ? sanitize_textarea_field( (string) $data['message'] ) : '';
+        $name    = isset( $data['name'] ) ? sanitize_text_field( (string) $data['name'] ) : '';
+
+        $ip        = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+        $userAgent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
+
+        $log = get_option( self::OPTION_GLOW_LOG, [] );
+        if ( ! is_array( $log ) ) {
+            $log = [];
+        }
+
+        $log[] = [
+            'timestamp'   => current_time( 'mysql' ),
+            'date'        => $today,
+            'message'     => $message,
+            'name'        => $name,
+            'ip'          => $ip,
+            'user_agent'  => $userAgent,
+        ];
+
+        // Soft cap to avoid unbounded growth: keep the most recent 2000 entries.
+        if ( count( $log ) > 2000 ) {
+            $log = array_slice( $log, -2000 );
+        }
+
+        update_option( self::OPTION_GLOW_LOG, $log );
 
         return new \WP_REST_Response(
             [
