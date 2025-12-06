@@ -1079,6 +1079,13 @@ function updateBanner(phase, enabled) {
     syncRequestedSongsWithStatus(nowSeq, queue);
   }
 
+    // V1.5: Simple mobile detection for stream behavior
+  function lofIsLikelyMobile() {
+    if (typeof navigator === 'undefined') return false;
+    const ua = navigator.userAgent || '';
+    return /iPhone|iPad|iPod|Android/i.test(ua);
+  }
+
   /* -------------------------
    * Now Playing progress helpers
    * ------------------------- */
@@ -2443,43 +2450,60 @@ function addSpeakerCard(extra) {
 
   const streamBtn = card.querySelector('.js-open-global-stream');
   if (streamBtn) {
-    streamBtn.addEventListener('click', () => {
+        streamBtn.addEventListener('click', () => {
       const footer =
         document.getElementById('lof-stream-footer') ||
         document.getElementById('rf-stream-footer');
       if (!footer) return;
 
+      const footerSrc = footer.getAttribute('data-src');
+      const streamUrl = footerSrc || pulsemeshUrl;
+
       if (lofStreamState.visible) {
-        // Stop stream
+        // Stop embedded stream (desktop case)
         footer.classList.remove('active');
         footer.classList.remove('rf-stream-footer--visible');
         lofStreamState.visible = false;
 
         const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
         streamBtn.textContent = startLabel + ' 🎧';
+
         // When the stream bar is hidden, release any wake lock we were holding
         releaseWakeLock();
-      } else {
-        // Start stream
-        if (!lofStreamState.init) {
-          const iframe = document.createElement('iframe');
-          const footerSrc = footer.getAttribute('data-src');
-          iframe.src = footerSrc || pulsemeshUrl;
-          iframe.allow = 'autoplay';
-          iframe.className = 'rf-audio-iframe';
-          footer.appendChild(iframe);
-          lofStreamState.init = true;
-        }
-        footer.classList.add('active');
-        footer.classList.add('rf-stream-footer--visible');
+        return;
+      }
 
-        const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
-        streamBtn.textContent = stopLabel;
-        lofStreamState.visible = true;
-        // If the user opted to keep the screen awake, try to acquire a wake lock
-        if (wakeLockEnabled) {
-          acquireWakeLockIfNeeded();
+      // MOBILE — open PulseMesh in a new tab so the tap counts as a gesture
+      if (lofIsLikelyMobile()) {
+        try {
+          window.open(streamUrl, '_blank', 'noopener');
+        } catch (e) {
+          // Fallback if popups are blocked: navigate this tab
+          window.location.href = streamUrl;
         }
+        return;
+      }
+
+      // DESKTOP — embed PulseMesh in the bottom footer
+      if (!lofStreamState.init) {
+        const iframe = document.createElement('iframe');
+        iframe.src = streamUrl;
+        iframe.allow = 'autoplay';
+        iframe.className = 'rf-audio-iframe';
+        footer.appendChild(iframe);
+        lofStreamState.init = true;
+      }
+
+      footer.classList.add('active');
+      footer.classList.add('rf-stream-footer--visible');
+
+      const stopLabel = lofCopy('stream_btn_stop', 'Hide stream');
+      streamBtn.textContent = stopLabel;
+      lofStreamState.visible = true;
+
+      // If the user opted to keep the screen awake, try to acquire a wake lock
+      if (wakeLockEnabled) {
+        acquireWakeLockIfNeeded();
       }
     });
 
