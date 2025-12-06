@@ -2141,24 +2141,8 @@ function addSpeakerCard(extra) {
         </div>
       </div>
 
-      <div class="rf-audio-option rf-audio-option--keep-awake">
-        <label class="rf-keep-awake">
-          <input type="checkbox" class="rf-keep-awake-toggle" />
-          <span>${escapeHtml(
-            lofCopy(
-              'wake_lock_label',
-              'Keep my screen awake while listening'
-            )
-          )}</span>
-        </label>
-        <div class="rf-audio-help">
-          ${escapeHtml(
-            lofCopy(
-              'wake_lock_help',
-              'Prevents your screen from sleeping so audio is less likely to pause.'
-            )
-          )}
-        </div>
+      <div class="rf-audio-option rf-audio-option--keep-awake" style="display:none;">
+        <!-- keep-awake temporarily hidden -->
       </div>
 
       <div class="rf-audio-option rf-audio-option--fm">
@@ -2450,7 +2434,7 @@ function addSpeakerCard(extra) {
 
   const streamBtn = card.querySelector('.js-open-global-stream');
   if (streamBtn) {
-        streamBtn.addEventListener('click', () => {
+    streamBtn.addEventListener('click', () => {
       const footer =
         document.getElementById('lof-stream-footer') ||
         document.getElementById('rf-stream-footer');
@@ -2463,6 +2447,13 @@ function addSpeakerCard(extra) {
         // Stop embedded stream (desktop case)
         footer.classList.remove('active');
         footer.classList.remove('rf-stream-footer--visible');
+
+        // Remove the iframe so the PulseMesh player actually stops audio
+        const existingIframe = footer.querySelector('.rf-audio-iframe');
+        if (existingIframe && existingIframe.parentNode) {
+          existingIframe.parentNode.removeChild(existingIframe);
+        }
+        lofStreamState.init = false;
         lofStreamState.visible = false;
 
         const startLabel = lofCopy('stream_btn_start', 'Listen on your phone');
