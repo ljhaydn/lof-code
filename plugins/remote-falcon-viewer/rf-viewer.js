@@ -2050,7 +2050,14 @@ function renderDeviceStatsCard(extra, queueLength) {
 
         const data = await res.json().catch(() => null);
 
-        if (res.ok && data && data.success) {
+        const isOk =
+          res.ok &&
+          data &&
+          (data.status === 'ok' ||
+            data.status === 'OK' ||
+            data.success === true);
+
+        if (isOk) {
           saveLastGlowTime(now);
           const msg = lofCopy(
             'glow_success_toast',
