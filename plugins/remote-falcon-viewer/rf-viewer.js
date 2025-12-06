@@ -1920,13 +1920,21 @@ function renderDeviceStatsCard(extra, queueLength) {
             ? triggers.glow
             : parseInt(triggers.glow, 10) || 0;
 
+        // Light FOMO padding: start at 3, then add rawGlow + (rawGlow * 1.25)
+        // This keeps the real count directionally honest but makes the meter
+        // feel a bit more alive even on lighter nights.
+        const boostedGlow =
+          rawGlow >= 0
+            ? 3 + rawGlow + Math.round(rawGlow * 1.25)
+            : 3;
+
         const row = document.createElement('div');
         row.className = 'rf-stat-item rf-stats-row--mischief';
         row.innerHTML = `
           <span class="rf-stat-label">
             ${escapeHtml(lofCopy('trigger_glow_label', '💚 Glows sent:'))}
           </span>
-          <span class="rf-stat-value">${rawGlow}</span>
+          <span class="rf-stat-value">${boostedGlow}</span>
         `;
         body.appendChild(row);
       }
