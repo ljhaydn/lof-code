@@ -815,13 +815,10 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
 
         update_option( self::OPTION_GLOW_STATS, $stats );
 
-        // --- NEW: Persist full Glow submission to a log option ---
+        // --- Persist basic Glow submission to a log option ---
         $data    = $request->get_json_params();
-        $message = isset( $data['message'] ) ? sanitize_textarea_field( (string) $data['message'] ) : '';
+        $message = isset( $data['message'] ) ? sanitize_text_field( (string) $data['message'] ) : '';
         $name    = isset( $data['name'] ) ? sanitize_text_field( (string) $data['name'] ) : '';
-
-        $ip        = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
-        $userAgent = isset( $_SERVER['HTTP_USER_AGENT'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_USER_AGENT'] ) ) : '';
 
         $log = get_option( self::OPTION_GLOW_LOG, [] );
         if ( ! is_array( $log ) ) {
@@ -829,12 +826,10 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
         }
 
         $log[] = [
-            'timestamp'   => current_time( 'mysql' ),
-            'date'        => $today,
-            'message'     => $message,
-            'name'        => $name,
-            'ip'          => $ip,
-            'user_agent'  => $userAgent,
+            'timestamp' => current_time( 'mysql' ),
+            'date'      => $today,
+            'message'   => $message,
+            'name'      => $name,
         ];
 
         // Soft cap to avoid unbounded growth: keep the most recent 2000 entries.
