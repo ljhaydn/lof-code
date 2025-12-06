@@ -2041,10 +2041,6 @@ function addSpeakerCard(extra) {
 
   extra.appendChild(card);
 
-  // Kick off initial speaker status + protection checks so the UI is accurate on first render
-  refreshSpeakerStatus();
-  checkSpeakerProtection();
-
   // Ensure the global stream footer knows which URL to use
   (function ensureStreamFooterDataSrc() {
     const footer =
@@ -2077,6 +2073,11 @@ function addSpeakerCard(extra) {
   if (timerRow) timerRow.style.display = 'none';
 
   // Speaker button is always visible on all widths now
+
+  // Kick off initial speaker status + protection checks so the UI is accurate on first render
+  // (moved here, after statusText is defined)
+  refreshSpeakerStatus();
+  checkSpeakerProtection();
 
   async function refreshSpeakerStatus() {
     if (!statusText) return;
