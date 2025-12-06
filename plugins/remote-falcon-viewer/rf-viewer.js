@@ -311,51 +311,31 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
   }
 
 function syncRequestedSongsWithStatus(nowSeq, queue) {
-  // Ensure we always have an array shape
+  // V1.5: Keep this device's requested songs stable for the current day
+  // so "You picked this" and "Your pick is playing" chips remain reliable
+  // across refreshes and intermission transitions.
   if (!Array.isArray(requestedSongNames)) {
     requestedSongNames = [];
     saveRequestedSongs();
     return;
   }
 
-  // Build a set of all sequence keys that are still "active" for this device:
-  // - the currently playing sequence (if any)
-  // - any sequences still present in the live RF request queue
-  const activeKeys = new Set();
+  // Deduplicate in case we've stored both internal keys and labels multiple times.
+  const unique = Array.from(
+    new Set(
+      requestedSongNames.filter((x) => typeof x === 'string' && x.trim() !== '')
+    )
+  );
 
-  // Now-playing
-  if (nowSeq && (nowSeq.name || nowSeq.displayName)) {
-    if (nowSeq.name) activeKeys.add(nowSeq.name);
-    if (nowSeq.displayName) activeKeys.add(nowSeq.displayName);
-  }
-
-  // Request queue
-  if (Array.isArray(queue)) {
-    for (let i = 0; i < queue.length; i++) {
-      const item = queue[i];
-      if (!item || typeof item !== 'object') continue;
-      const seq = item.sequence && typeof item.sequence === 'object' ? item.sequence : {};
-      const key = seq.name || seq.displayName;
-      if (!key) continue;
-      activeKeys.add(key);
-      // Also add the alternate label if both name and displayName exist so we
-      // can correctly match whichever variant was stored.
-      if (seq.name && seq.displayName) {
-        activeKeys.add(seq.name);
-        activeKeys.add(seq.displayName);
-      }
-    }
-  }
-
-  // Only keep requested song identifiers that still appear in the active set.
-  // Once a requested song has played and fully left the queue, its chips will
-  // be cleared on the next render.
-  const filtered = requestedSongNames.filter((name) => activeKeys.has(name));
-
-  if (filtered.length !== requestedSongNames.length) {
-    requestedSongNames = filtered;
+  if (unique.length !== requestedSongNames.length) {
+    requestedSongNames = unique;
     saveRequestedSongs();
   }
+
+  // Intentionally do NOT remove entries based on now/queue here.
+  // Remote Falcon may represent the same song with different keys between
+  // queue and now-playing, and we don't want to accidentally drop chips
+  // just because the representation changed during playback.
 }
   function getLastGlowTime() {
     try {
