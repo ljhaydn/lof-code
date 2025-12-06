@@ -354,6 +354,13 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     });
   }
 
+  // If RF hasn’t reported any active songs or queue entries yet, do not clear
+  // stored requests based on this snapshot. This avoids dropping the very
+  // first pick during intermission or right as a new song is starting.
+  if (active.size === 0) {
+    return;
+  }
+
   // Only remove requests that are fully inactive
   const filtered = requestedSongNames.filter((name) => active.has(name));
 
