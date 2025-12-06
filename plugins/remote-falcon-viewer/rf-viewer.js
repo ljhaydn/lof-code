@@ -311,31 +311,46 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
   }
 
 function syncRequestedSongsWithStatus(nowSeq, queue) {
-  // V1.5: Keep this device's requested songs stable for the current day
-  // so "You picked this" and "Your pick is playing" chips remain reliable
-  // across refreshes and intermission transitions.
+  // Ensure correct array shape
   if (!Array.isArray(requestedSongNames)) {
     requestedSongNames = [];
     saveRequestedSongs();
     return;
   }
 
-  // Deduplicate in case we've stored both internal keys and labels multiple times.
+  // Deduplicate
   const unique = Array.from(
     new Set(
       requestedSongNames.filter((x) => typeof x === 'string' && x.trim() !== '')
     )
   );
 
-  if (unique.length !== requestedSongNames.length) {
-    requestedSongNames = unique;
-    saveRequestedSongs();
+  requestedSongNames = unique;
+
+  // Build a set of active keys: now-playing + queue entries
+  const active = new Set();
+
+  if (nowSeq) {
+    const nk = nowSeq.name || nowSeq.displayName;
+    if (nk) active.add(nk);
   }
 
-  // Intentionally do NOT remove entries based on now/queue here.
-  // Remote Falcon may represent the same song with different keys between
-  // queue and now-playing, and we don't want to accidentally drop chips
-  // just because the representation changed during playback.
+  if (Array.isArray(queue)) {
+    queue.forEach((item) => {
+      if (!item || !item.sequence) return;
+      const seq = item.sequence;
+      const k = seq.name || seq.displayName;
+      if (k) active.add(k);
+    });
+  }
+
+  // Only remove requests that are fully inactive
+  const filtered = requestedSongNames.filter((name) => active.has(name));
+
+  if (filtered.length !== requestedSongNames.length) {
+    requestedSongNames = filtered;
+    saveRequestedSongs();
+  }
 }
   function getLastGlowTime() {
     try {
