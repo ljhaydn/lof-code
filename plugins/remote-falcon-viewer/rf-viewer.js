@@ -1198,8 +1198,9 @@ function updateBanner(phase, enabled) {
     const btnGlow = makeBtn('Send a Glow 💛');
     btnGlow.addEventListener('click', () => {
       const target =
-        document.querySelector('.rf-tonight') ||
-        document.getElementById('rf-footer-glow');
+        document.getElementById('rf-footer-glow') ||
+        document.querySelector('.rf-glow-card') ||
+        document.querySelector('.rf-tonight');
       if (target && typeof target.scrollIntoView === 'function') {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
