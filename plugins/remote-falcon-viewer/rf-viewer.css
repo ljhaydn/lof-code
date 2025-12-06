@@ -769,7 +769,7 @@
 }
 
 /* Rounded animated candy cane frame */
-.rf-card--now-playing::before {
+.rf-card--now-playing::after {
   content: '';
   position: absolute;
   inset: -2px;
