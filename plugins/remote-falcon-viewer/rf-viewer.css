@@ -1400,12 +1400,12 @@
  * ================================================================ */
 
 /* Speaker cards should behave like informational panels,
-   not like selectable song tiles. */
+   not like selectable song tiles, but controls inside must stay clickable. */
 .rf-card--speaker,
 .rf-card.rf-speaker-card {
   cursor: default !important;           /* Card itself not clickable */
   transition: none !important;          /* No hover animation */
-  pointer-events: none;                 /* Swallow card-level clicks */
+  pointer-events: auto;                 /* Allow inner controls to receive clicks */
 }
 
 .rf-card--speaker:hover,
@@ -1432,21 +1432,33 @@
  * V1.5: STREAM FOOTER - Visibility Toggle
  * ================================================================ */
 
+/* Base stream footer container; hidden until activated */
 .rf-stream-footer {
-  display: none; /* V1.5: Hidden by default */
+  display: none; /* Hidden by default */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
   text-align: center;
-  padding: 14px 20px;
-  margin-top: 24px;
-  background: rgba(15, 58, 44, 0.6);
-  border-radius: var(--radius-sm);
-  border: 2px solid rgba(255, 215, 0, 0.3);
-  box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 58, 44, 0.9);
+  border-top: 2px solid rgba(255, 215, 0, 0.6);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  height: 64px;           /* Enough to show the embedded player controls */
+  max-height: 120px;
+  overflow: hidden;
 }
 
-.rf-stream-footer.active {
-  display: block; /* V1.5: Show when streaming */
+/* When active, show the bar */
+.rf-stream-footer.active,
+#lof-stream-footer.rf-stream-footer--visible,
+#rf-stream-footer.rf-stream-footer--visible {
+  display: block;
 }
 
+/* Optional helper text inside the footer, if used */
 .rf-stream-footer-text {
   font-size: 0.85rem;
   color: var(--lof-text-muted);
@@ -1454,15 +1466,18 @@
   font-weight: 500;
 }
 
-/* Hide the actual iframe */
-.rf-stream-footer iframe {
-  position: absolute;
-  left: -9999px;
-  width: 0;
-  height: 0;
+/* Embedded PulseMesh iframe: fill the footer bar */
+.rf-stream-footer iframe,
+#lof-stream-footer .rf-audio-iframe,
+#rf-stream-footer .rf-audio-iframe {
+  position: relative;
+  left: 0;
+  width: 100%;
+  height: 100%;
   border: none;
-  opacity: 0;
-  pointer-events: none;
+  opacity: 1;
+  pointer-events: auto;
+  display: block;
 }
 
 /* ----------------------------------------------------------------
