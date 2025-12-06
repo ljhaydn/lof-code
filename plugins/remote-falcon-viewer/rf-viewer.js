@@ -909,8 +909,7 @@ function updateBanner(phase, enabled) {
       headlineEl.textContent = title;
 
       const tokens = {
-        queueCount: queueLength,
-        requestLimit: requestLimit || ''
+        queueCount: queueLength
       };
 
       const intro = lofCopy(
@@ -927,13 +926,13 @@ function updateBanner(phase, enabled) {
         parts.push(applyTokens(queueLineTmpl, tokens));
       }
 
-      if (requestLimit && requestLimit > 0) {
-        const limitLineTmpl = lofCopy(
-          'header_jukebox_limit',
-          'You can request up to {requestLimit} songs from this device while the queue is open.'
-        );
-        parts.push(applyTokens(limitLineTmpl, tokens));
-      }
+      // Generic fairness message that doesn&apos;t rely on RF&apos;s per-sequence limit
+      parts.push(
+        lofCopy(
+          'header_jukebox_fair',
+          'You can request songs from this device while the queue is open. If the queue gets extra long, we may pause new requests so everyone gets a turn.'
+        )
+      );
 
       if (locationMethod && locationMethod !== 'NONE') {
         parts.push(
