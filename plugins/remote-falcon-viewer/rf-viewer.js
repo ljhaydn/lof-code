@@ -331,16 +331,26 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   const active = new Set();
 
   if (nowSeq) {
-    const nk = nowSeq.name || nowSeq.displayName;
-    if (nk) active.add(nk);
+    if (nowSeq.name && typeof nowSeq.name === 'string') {
+      active.add(nowSeq.name);
+    }
+    if (nowSeq.displayName && typeof nowSeq.displayName === 'string') {
+      active.add(nowSeq.displayName);
+    }
   }
 
   if (Array.isArray(queue)) {
     queue.forEach((item) => {
       if (!item || !item.sequence) return;
       const seq = item.sequence;
-      const k = seq.name || seq.displayName;
-      if (k) active.add(k);
+      if (!seq || typeof seq !== 'object') return;
+
+      if (seq.name && typeof seq.name === 'string') {
+        active.add(seq.name);
+      }
+      if (seq.displayName && typeof seq.displayName === 'string') {
+        active.add(seq.displayName);
+      }
     });
   }
 
