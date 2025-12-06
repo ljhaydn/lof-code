@@ -40,6 +40,11 @@ let userConfirmedLocal = false;
 // V1.5: Polling interval tracking
 let currentPollInterval = null;
 
+// V1.5: Speaker status polling + countdown (for more "real-time" speaker timer)
+let speakerStatusPollTimer = null;
+let speakerCountdownTimer = null;
+let speakerCountdownState = null; // { remainingBase, updatedAt }
+
   // -----------------------------
   // LOF EXTRAS CONFIG
   // -----------------------------
@@ -2091,6 +2096,17 @@ function addSpeakerCard(extra) {
 
   extra.appendChild(card);
 
+  // Clear any previous timers when the speaker card is re-rendered
+  if (speakerStatusPollTimer) {
+    clearTimeout(speakerStatusPollTimer);
+    speakerStatusPollTimer = null;
+  }
+  if (speakerCountdownTimer) {
+    clearInterval(speakerCountdownTimer);
+    speakerCountdownTimer = null;
+  }
+  speakerCountdownState = null;
+
   // Ensure the global stream footer knows which URL to use
   (function ensureStreamFooterDataSrc() {
     const footer =
@@ -2156,8 +2172,18 @@ function addSpeakerCard(extra) {
             'speaker_status_on',
             'Speakers are currently ON near the show.'
           );
-
           const baseText = msg || statusOnText;
+
+          statusText.textContent = baseText;
+
+          // Update the button label when speakers are active
+          if (btn) {
+            const activeLabel = lofCopy(
+              'speaker_btn_on_active',
+              'Speakers are ON 🔊'
+            );
+            btn.textContent = activeLabel;
+          }
 
           if (rem > 0) {
             const minutes = Math.ceil(rem / 60);
@@ -2165,14 +2191,69 @@ function addSpeakerCard(extra) {
               ? 'about 1 minute'
               : `about ${minutes} minutes`;
 
-            statusText.textContent = baseText;
             if (countdownEl) countdownEl.textContent = label;
             if (timerRow) timerRow.style.display = 'flex';
+
+            // Start or update the smooth countdown state
+            const nowMs = Date.now();
+            if (!speakerCountdownState) {
+              speakerCountdownState = {
+                remainingBase: rem,
+                updatedAt: nowMs
+              };
+            } else {
+              speakerCountdownState.remainingBase = rem;
+              speakerCountdownState.updatedAt = nowMs;
+            }
+
+            if (!speakerCountdownTimer && countdownEl) {
+              speakerCountdownTimer = setInterval(() => {
+                if (!speakerCountdownState || !countdownEl) return;
+
+                const now = Date.now();
+                const elapsedSec = Math.max(
+                  0,
+                  (now - speakerCountdownState.updatedAt) / 1000
+                );
+                const remaining = Math.max(
+                  0,
+                  Math.round(speakerCountdownState.remainingBase - elapsedSec)
+                );
+
+                if (remaining <= 0) {
+                  countdownEl.textContent = '';
+                  if (timerRow) timerRow.style.display = 'none';
+                  clearInterval(speakerCountdownTimer);
+                  speakerCountdownTimer = null;
+                  return;
+                }
+
+                const mins = Math.ceil(remaining / 60);
+                const lbl = mins <= 1
+                  ? 'about 1 minute'
+                  : `about ${mins} minutes`;
+                countdownEl.textContent = lbl;
+              }, 1000);
+            }
           } else {
-            statusText.textContent = baseText;
+            // ON but no remainingSeconds reported
             if (countdownEl) countdownEl.textContent = '';
             if (timerRow) timerRow.style.display = 'none';
+            speakerCountdownState = null;
+            if (speakerCountdownTimer) {
+              clearInterval(speakerCountdownTimer);
+              speakerCountdownTimer = null;
+            }
           }
+
+          // While speakers are ON, periodically refresh from backend so mid-song
+          // extensions are reflected in the UI.
+          if (speakerStatusPollTimer) {
+            clearTimeout(speakerStatusPollTimer);
+          }
+          speakerStatusPollTimer = setTimeout(() => {
+            refreshSpeakerStatus();
+          }, 20000); // re-sync every 20s while ON
         } else {
           // Speaker OFF
           const statusOffText = lofCopy(
@@ -2183,11 +2264,37 @@ function addSpeakerCard(extra) {
           statusText.textContent = msg || statusOffText;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
+
+          // Reset countdown + polling when OFF
+          speakerCountdownState = null;
+          if (speakerCountdownTimer) {
+            clearInterval(speakerCountdownTimer);
+            speakerCountdownTimer = null;
+          }
+          if (speakerStatusPollTimer) {
+            clearTimeout(speakerStatusPollTimer);
+            speakerStatusPollTimer = null;
+          }
+
+          // Restore the default button label when speakers are off
+          if (btn) {
+            btn.textContent = btnLabelOn;
+          }
         }
       } else if (msg) {
         statusText.textContent = msg;
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
+        // On unknown/partial responses, stop any active timers
+        speakerCountdownState = null;
+        if (speakerCountdownTimer) {
+          clearInterval(speakerCountdownTimer);
+          speakerCountdownTimer = null;
+        }
+        if (speakerStatusPollTimer) {
+          clearTimeout(speakerStatusPollTimer);
+          speakerStatusPollTimer = null;
+        }
       } else {
         statusText.textContent = lofCopy(
           'speaker_status_unknown',
@@ -2195,6 +2302,16 @@ function addSpeakerCard(extra) {
         );
         if (countdownEl) countdownEl.textContent = '';
         if (timerRow) timerRow.style.display = 'none';
+        // On unknown/partial responses, stop any active timers
+        speakerCountdownState = null;
+        if (speakerCountdownTimer) {
+          clearInterval(speakerCountdownTimer);
+          speakerCountdownTimer = null;
+        }
+        if (speakerStatusPollTimer) {
+          clearTimeout(speakerStatusPollTimer);
+          speakerStatusPollTimer = null;
+        }
       }
     } catch (e) {
       statusText.textContent = lofCopy(
@@ -2203,6 +2320,16 @@ function addSpeakerCard(extra) {
       );
       if (countdownEl) countdownEl.textContent = '';
       if (timerRow) timerRow.style.display = 'none';
+      // On errors, stop any active timers
+      speakerCountdownState = null;
+      if (speakerCountdownTimer) {
+        clearInterval(speakerCountdownTimer);
+        speakerCountdownTimer = null;
+      }
+      if (speakerStatusPollTimer) {
+        clearTimeout(speakerStatusPollTimer);
+        speakerStatusPollTimer = null;
+      }
     }
   }
 
