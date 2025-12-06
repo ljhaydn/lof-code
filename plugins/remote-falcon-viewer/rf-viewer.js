@@ -1914,11 +1914,15 @@ function renderDeviceStatsCard(extra, queueLength) {
       }
 
       // --- Begin Glow block ---
-      if (typeof triggers.glow !== 'undefined') {
-        const rawGlow =
-          typeof triggers.glow === 'number'
-            ? triggers.glow
-            : parseInt(triggers.glow, 10) || 0;
+      {
+        let rawGlow = 0;
+
+        if (triggers && Object.prototype.hasOwnProperty.call(triggers, 'glow')) {
+          rawGlow =
+            typeof triggers.glow === 'number'
+              ? triggers.glow
+              : parseInt(triggers.glow, 10) || 0;
+        }
 
         // Light FOMO padding: start at 3, then add rawGlow + (rawGlow * 1.25)
         // This keeps the real count directionally honest but makes the meter
