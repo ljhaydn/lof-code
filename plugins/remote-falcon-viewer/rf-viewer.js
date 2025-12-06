@@ -1913,6 +1913,25 @@ function renderDeviceStatsCard(extra, queueLength) {
         body.appendChild(row);
       }
 
+      // --- Begin Glow block ---
+      if (typeof triggers.glow !== 'undefined') {
+        const rawGlow =
+          typeof triggers.glow === 'number'
+            ? triggers.glow
+            : parseInt(triggers.glow, 10) || 0;
+
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--mischief';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_glow_label', '💚 Glows sent:'))}
+          </span>
+          <span class="rf-stat-value">${rawGlow}</span>
+        `;
+        body.appendChild(row);
+      }
+      // --- End Glow block ---
+
       if (typeof triggers.button !== 'undefined') {
         const row = document.createElement('div');
         row.className = 'rf-stat-item rf-stats-row--mischief';
