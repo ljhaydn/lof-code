@@ -200,6 +200,7 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
   const STORAGE_REQUESTS_KEY   = 'lofRequestedSongs_v1';
   const STORAGE_STATS_KEY      = 'lofViewerStats_v1';
   const STORAGE_GLOW_KEY       = 'lofGlowLastTime_v1';
+  const STORAGE_GLOW_TOTAL_KEY = 'lofGlowLastTotal_v1';
   const STORAGE_PLAYED_KEY     = 'lofPlayedCounts_v1';
   const STORAGE_WAKE_LOCK_KEY  = 'lofKeepAwakeEnabled_v1';
 
@@ -438,6 +439,25 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   function saveLastGlowTime(ts) {
     try {
       window.localStorage.setItem(STORAGE_GLOW_KEY, String(ts));
+    } catch (e) {}
+  }
+
+  function getLastGlowTotal() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_GLOW_TOTAL_KEY);
+      if (!raw) return 0;
+      const n = parseInt(raw, 10);
+      return isNaN(n) ? 0 : n;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  function saveLastGlowTotal(total) {
+    try {
+      const n = parseInt(total, 10);
+      if (isNaN(n) || n < 0) return;
+      window.localStorage.setItem(STORAGE_GLOW_TOTAL_KEY, String(n));
     } catch (e) {}
   }
 
@@ -1924,6 +1944,20 @@ function renderDeviceStatsCard(extra, queueLength) {
               : parseInt(triggers.glow, 10) || 0;
         }
 
+        // If the trigger API doesn't yet expose a glow count (or it's zero),
+        // fall back to the last known nightly total we received from the
+        // Glow endpoint on this device.
+        if (rawGlow <= 0) {
+          try {
+            const storedTotal = getLastGlowTotal();
+            if (storedTotal > 0) {
+              rawGlow = storedTotal;
+            }
+          } catch (e) {
+            // ignore; we'll just use baseline padding
+          }
+        }
+
         // Light FOMO padding: start at 3, then add rawGlow + (rawGlow * 1.25)
         // This keeps the real count directionally honest but makes the meter
         // feel a bit more alive even on lighter nights.
@@ -2101,13 +2135,18 @@ function renderDeviceStatsCard(extra, queueLength) {
           if (countEl) countEl.textContent = `0 / ${maxLen}`;
 
           // Update the Mischief Meter "Glows sent" row using the latest total
-          // from the backend so the number feels live right after sending.
+          // from the backend so the number feels live right after sending,
+          // and persist that total locally so refreshes on this device stay
+          // in sync with tonight's glow count.
           try {
             const rawTotal =
               data && typeof data.total === 'number'
                 ? data.total
                 : null;
             if (rawTotal !== null && rawTotal >= 0) {
+              // Persist last known nightly total for future loads
+              saveLastGlowTotal(rawTotal);
+
               const boostedGlow =
                 3 + rawTotal + Math.round(rawTotal * 1.25);
 
