@@ -269,6 +269,7 @@ function lof_speaker_get_state($stateKey) {
         'last_updated'         => 0,
         'last_notified_status' => '',    // last status reported by notify()
         'last_notified_at'     => 0,
+        'has_extended_mid_song'=> false, // whether we already extended once for current ON window
     ];
 
     return array_merge($defaults, $state);
@@ -338,18 +339,28 @@ function lof_speaker_apply_mid_song_guard(&$state, $stateKey, $extensionThreshol
         return;
     }
 
-    // Best-effort: ask FPP how long is left in the current media.
-    $songRemaining = lof_speaker_get_song_remaining_seconds();
-    if ($songRemaining === null || $songRemaining <= 0) {
-        // We couldn't determine song length; do nothing.
+    // If we've already extended once for this ON window, don't keep extending forever.
+    if (!empty($state['has_extended_mid_song'])) {
         return;
     }
 
+    // Best-effort: ask FPP how long is left in the current media.
+    $songRemaining = lof_speaker_get_song_remaining_seconds();
+
+    // If we can't determine song length, fall back to a safe fixed extension so we
+    // don't cut off mid-song. This will still only happen once per ON window.
+    if ($songRemaining === null || $songRemaining <= 0) {
+        // e.g. 3× the threshold, minimum 90s.
+        $songRemaining = max($extensionThreshold * 3, 90);
+    }
+
     // If the song will still be playing after our window ends, extend our window
-    // so the speakers stay on until the song finishes.
+    // so the speakers stay on until the song finishes (or at least for the
+    // best-effort fallback window).
     if ($songRemaining > $remaining) {
-        $state['expires_at']   = $now + $songRemaining;
-        $state['last_updated'] = $now;
+        $state['expires_at']            = $now + $songRemaining;
+        $state['last_updated']          = $now;
+        $state['has_extended_mid_song'] = true;
         lof_speaker_save_state($stateKey, $state);
     }
 }
@@ -426,8 +437,9 @@ if ($action === 'notify') {
     if ($statusParam === 'on') {
         // Treat as confirmation that ON script ran.
         if ($state['status'] !== 'on' || lof_speaker_remaining_seconds($state) === 0) {
-            $state['status']     = 'on';
-            $state['expires_at'] = $now + $speakerSecs;
+            $state['status']               = 'on';
+            $state['expires_at']           = $now + $speakerSecs;
+            $state['has_extended_mid_song'] = false;
         }
         $state['last_updated'] = $now;
         lof_speaker_save_state($stateKey, $state);
@@ -438,9 +450,10 @@ if ($action === 'notify') {
 
     if ($statusParam === 'off') {
         // Confirmation that OFF script ran.
-        $state['status']       = 'off';
-        $state['expires_at']   = $now;
-        $state['last_updated'] = $now;
+        $state['status']               = 'off';
+        $state['expires_at']           = $now;
+        $state['last_updated']         = $now;
+        $state['has_extended_mid_song'] = false;
         lof_speaker_save_state($stateKey, $state);
 
         $payload = lof_speaker_build_payload($state, $speakerMode, 'Speaker OFF confirmed by controller.');
@@ -561,11 +574,12 @@ if ($action === 'on') {
     }
 
     // Update WP state window.
-    $now                  = time();
-    $state['status']      = 'on';
-    $state['expires_at']  = $now + $speakerSecs;
-    $state['last_source'] = $sourceParam ?: 'viewer';
-    $state['last_updated']= $now;
+    $now                          = time();
+    $state['status']              = 'on';
+    $state['expires_at']          = $now + $speakerSecs;
+    $state['last_source']         = $sourceParam ?: 'viewer';
+    $state['last_updated']        = $now;
+    $state['has_extended_mid_song'] = false;
     lof_speaker_save_state($stateKey, $state);
 
     $remaining = lof_speaker_remaining_seconds($state);
