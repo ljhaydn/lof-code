@@ -1933,7 +1933,8 @@ function renderDeviceStatsCard(extra, queueLength) {
             : 3;
 
         const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--mischief';
+        row.className =
+          'rf-stat-item rf-stats-row--mischief rf-stats-row--glow';
         row.innerHTML = `
           <span class="rf-stat-label">
             ${escapeHtml(lofCopy('trigger_glow_label', '💚 Glows sent:'))}
@@ -2098,6 +2099,29 @@ function renderDeviceStatsCard(extra, queueLength) {
           messageEl.value = '';
           if (nameEl) nameEl.value = '';
           if (countEl) countEl.textContent = `0 / ${maxLen}`;
+
+          // Update the Mischief Meter "Glows sent" row using the latest total
+          // from the backend so the number feels live right after sending.
+          try {
+            const rawTotal =
+              data && typeof data.total === 'number'
+                ? data.total
+                : null;
+            if (rawTotal !== null && rawTotal >= 0) {
+              const boostedGlow =
+                3 + rawTotal + Math.round(rawTotal * 1.25);
+
+              const glowValueEl = document.querySelector(
+                '.rf-stats-row--glow .rf-stat-value'
+              );
+              if (glowValueEl) {
+                glowValueEl.textContent = String(boostedGlow);
+              }
+            }
+          } catch (updateErr) {
+            // If anything goes wrong updating the UI, fail silently and keep
+            // the success toast; this is purely an enhancement.
+          }
         } else {
           const msg = lofCopy(
             'glow_error_toast',
