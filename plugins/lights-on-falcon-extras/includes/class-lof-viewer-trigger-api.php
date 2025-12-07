@@ -116,7 +116,7 @@ function lof_viewer_get_trigger_counts( WP_REST_Request $request ) {
  */
 function lof_viewer_surprise_me( WP_REST_Request $request ) {
     // 1) Fetch current show details from the RF proxy
-    $show_url = rest_url( 'rf/v1/show-details' );
+    $show_url = rest_url( 'rf/v1/showDetails' );
 
     $show_resp = wp_remote_get(
         $show_url,
