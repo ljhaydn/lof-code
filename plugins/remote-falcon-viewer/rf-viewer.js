@@ -1397,12 +1397,28 @@ function updateBanner(phase, enabled) {
 
       const keyName = seq.name || '';
       const labelName = seq.displayName || '';
+
+      // Check the persistent requested list first
       const wasRequested = (
         (keyName && requestedSongNames.includes(keyName)) ||
         (labelName && requestedSongNames.includes(labelName))
       );
 
-      if (wasRequested) {
+      // Safety net: if this is the currently playing song and it matches
+      // the last requested sequence name this session, always show the
+      // "Your pick is playing" chip even if local request tracking has
+      // already been trimmed by sync logic.
+      let showRequestedChip = wasRequested;
+      if (!showRequestedChip && isNow && lastRequestedSequenceName) {
+        if (
+          keyName === lastRequestedSequenceName ||
+          labelName === lastRequestedSequenceName
+        ) {
+          showRequestedChip = true;
+        }
+      }
+
+      if (showRequestedChip) {
         const chip = document.createElement('div');
         chip.className = 'rf-card-chip';
         if (isNow) {
@@ -1990,6 +2006,24 @@ function renderDeviceStatsCard(extra, queueLength) {
         `;
         body.appendChild(row);
       }
+
+            if (typeof triggers.surprise !== 'undefined') {
+        const rawSurprise =
+          typeof triggers.surprise === 'number'
+            ? triggers.surprise
+            : parseInt(triggers.surprise, 10) || 0;
+
+        const row = document.createElement('div');
+        row.className =
+          'rf-stat-item rf-stats-row--mischief rf-stats-row--surprise';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_surprise_label', '🎁 Surprise songs launched:'))}
+          </span>
+          <span class="rf-stat-value">${rawSurprise}</span>
+        `;
+        body.appendChild(row);
+      }
     })
     .catch((err) => {
       console.warn('[LOF V1.5] Trigger counts update failed:', err);
@@ -2503,6 +2537,17 @@ function addSpeakerCard(extra) {
 
   if (btn) {
     btn.addEventListener('click', async () => {
+      // Hard guard: never allow speakers to be turned on while RF/FPP report intermission.
+      // This uses the same phase logic that drives the viewer banner and dimming.
+      if (lastPhase === 'intermission') {
+        const msg = lofCopy(
+          'speaker_intermission_blocked',
+          'Speakers only come on during show songs so intermission stays a little quieter.'
+        );
+        showToast(msg, 'error');
+        return;
+      }
+
       btn.disabled = true;
       const oldText = btn.textContent;
       btn.textContent = 'Talking to the show…';
