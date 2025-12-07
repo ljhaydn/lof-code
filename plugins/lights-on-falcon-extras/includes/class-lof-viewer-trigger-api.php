@@ -21,6 +21,16 @@ add_action( 'rest_api_init', function () {
             'permission_callback' => '__return_true',
         )
     );
+
+    register_rest_route(
+        'lof-viewer/v1',
+        '/surprise-me',
+        array(
+            'methods'             => array( 'GET', 'POST' ),
+            'callback'            => 'lof_viewer_surprise_me',
+            'permission_callback' => '__return_true',
+        )
+    );
 } );
 
 /**
@@ -94,5 +104,22 @@ function lof_viewer_get_trigger_counts( WP_REST_Request $request ) {
             'counts'  => $counts,
         ),
         200
+    );
+}
+
+/**
+ * GET/POST /wp-json/lof-viewer/v1/surprise-me
+ *
+ * Placeholder endpoint for "Surprise Me" random song requests.
+ * This currently only returns a structured response so callers
+ * can distinguish "route exists but not wired up" from 404s.
+ */
+function lof_viewer_surprise_me( WP_REST_Request $request ) {
+    return new WP_REST_Response(
+        array(
+            'success' => false,
+            'message' => 'Surprise Me endpoint is registered but not yet wired to queue a random song.',
+        ),
+        501
     );
 }
