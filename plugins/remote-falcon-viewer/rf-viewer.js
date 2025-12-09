@@ -1370,18 +1370,9 @@ function updateBanner(phase, enabled) {
 
     const nextDisplayRaw = playingNextRaw || playingNextFromSchedule || '';
 
-    // Use a friendlier fallback for active show phases so "Up Next" never
-    // looks empty while the show is clearly running.
-    const phaseForFallback = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');
-
     const nextDisplay = nextSeq
       ? (nextSeq.displayName || nextSeq.name || nextDisplayRaw)
-      : (
-          nextDisplayRaw ||
-          ((phaseForFallback === 'showtime' || phaseForFallback === 'intermission')
-            ? 'More music from tonight’s playlist'
-            : '—')
-        );
+      : (nextDisplayRaw || '—');
 
     const nowArtist = nowSeq && nowSeq.artist ? nowSeq.artist : '';
 
