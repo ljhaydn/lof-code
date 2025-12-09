@@ -840,9 +840,7 @@ function updateBanner(phase, enabled) {
   
   const config = getLofConfig();
   
-  // V1.5: Correct hierarchy - Manual override > RF API > Schedule
-  
-  // 1. Check manual override first
+  // Manual override: offseason always wins
   if (config && config.holiday_mode === 'offseason') {
     banner.style.display = 'block';
     banner.className = 'rf-viewer-banner rf-banner--offseason';
@@ -850,17 +848,35 @@ function updateBanner(phase, enabled) {
     bodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
     return;
   }
-  
-  // 2. Check if RF API says controls are paused
-  if (enabled === false) {
+
+  // Derive show state from schedule + RF phase
+  const showState = getShowState(phase);
+
+  if (showState === 'showtime') {
     banner.style.display = 'block';
-    banner.className = 'rf-viewer-banner rf-banner--controls_paused';
-    titleEl.textContent = lofCopy('banner_paused_title', 'Viewer control is paused');
-    bodyEl.textContent = lofCopy('banner_paused_body', 'Interactive controls are temporarily off. Enjoy the show!');
+    banner.className = 'rf-viewer-banner rf-banner--showtime';
+    titleEl.textContent = lofCopy('banner_showtime_title', 'Showtime 🎶');
+    bodyEl.textContent = lofCopy('banner_showtime_body', 'Lights, audio, and neighbors in sync.');
     return;
   }
-  
-  // 3. Hide banner when controls are active
+
+  if (showState === 'intermission') {
+    banner.style.display = 'block';
+    banner.className = 'rf-viewer-banner rf-banner--intermission';
+    titleEl.textContent = lofCopy('banner_intermission_title', 'Intermission');
+    bodyEl.textContent = lofCopy('banner_intermission_body', 'The lights are catching their breath between songs.');
+    return;
+  }
+
+  if (showState === 'afterhours') {
+    banner.style.display = 'block';
+    banner.className = 'rf-viewer-banner rf-banner--afterhours';
+    titleEl.textContent = lofCopy('banner_afterhours_title', 'We’re taking a breather');
+    bodyEl.textContent = lofCopy('banner_afterhours_body', 'The lights are resting until the next show.');
+    return;
+  }
+
+  // Fallback: hide the banner if we don't have a clear state
   banner.style.display = 'none';
 }
 
@@ -1278,21 +1294,58 @@ function updateBanner(phase, enabled) {
 
     const modeLabel = formatModeLabel(currentMode, currentControlEnabled);
 
+    // Prefer explicit sequence objects from RF when available, but still
+    // support older payloads that only send name/displayName strings.
     const playingNowRaw  = data.playingNow || '';
     const playingNextRaw = data.playingNext || '';
+    const playingNextFromSchedule = data.playingNextFromSchedule || '';
+
+    const playingNowSequence =
+      data.playingNowSequence && typeof data.playingNowSequence === 'object'
+        ? data.playingNowSequence
+        : null;
+
+    const playingNextSequence =
+      data.playingNextSequence && typeof data.playingNextSequence === 'object'
+        ? data.playingNextSequence
+        : null;
 
     ensureHeader();
     ensureMainLayout();
     ensureBanner();
 
-    const nowSeq = sequences.find(
-      (s) => s.name === playingNowRaw || s.displayName === playingNowRaw
-    ) || null;
+    // NOW PLAYING
+    let nowSeq = null;
+    if (playingNowSequence) {
+      nowSeq = playingNowSequence;
+    } else {
+      nowSeq =
+        sequences.find(
+          (s) => s.name === playingNowRaw || s.displayName === playingNowRaw
+        ) || null;
+    }
 
-    let nextSeq = sequences.find(
-      (s) => s.name === playingNextRaw || s.displayName === playingNextRaw
-    ) || null;
+    // NEXT UP
+    let nextSeq = null;
 
+    // 1) Trust RF's explicit next sequence object when present
+    if (playingNextSequence) {
+      nextSeq = playingNextSequence;
+    }
+
+    // 2) Fall back to matching playingNext / playingNextFromSchedule against the sequence list
+    if (!nextSeq) {
+      const nextRawCombined = playingNextRaw || playingNextFromSchedule || '';
+      if (nextRawCombined) {
+        nextSeq =
+          sequences.find(
+            (s) =>
+              s.name === nextRawCombined || s.displayName === nextRawCombined
+          ) || null;
+      }
+    }
+
+    // 3) Finally, fall back to the first queued request if we still don't have a next sequence
     if (!nextSeq && rawRequests.length > 0 && rawRequests[0].sequence) {
       nextSeq = rawRequests[0].sequence;
     }
@@ -1301,14 +1354,15 @@ function updateBanner(phase, enabled) {
       ? (nowSeq.displayName || nowSeq.name || playingNowRaw)
       : (playingNowRaw || 'Nothing currently playing');
 
+    const nextDisplayRaw = playingNextRaw || playingNextFromSchedule || '';
     const nextDisplay = nextSeq
-      ? (nextSeq.displayName || nextSeq.name || playingNextRaw)
-      : (playingNextRaw || '—');
+      ? (nextSeq.displayName || nextSeq.name || nextDisplayRaw)
+      : (nextDisplayRaw || '—');
 
     const nowArtist = nowSeq && nowSeq.artist ? nowSeq.artist : '';
 
     const nowKey  = nowSeq  ? (nowSeq.name  || nowSeq.displayName) : playingNowRaw;
-    const nextKey = nextSeq ? (nextSeq.name || nextSeq.displayName) : playingNextRaw;
+    const nextKey = nextSeq ? (nextSeq.name || nextSeq.displayName) : nextDisplayRaw;
     currentNowKey = nowKey || null;
 
     // DIM LOGIC (uses display title):
@@ -1440,12 +1494,32 @@ function updateBanner(phase, enabled) {
       }
 
       const btn = card.querySelector('.rf-card-btn');
-      if (btn && currentControlEnabled) {
-        btn.addEventListener('click', () => handleAction(currentMode, seq, btn));
+      if (btn) {
+        if (!currentControlEnabled) {
+          // RF says viewer control is off – keep the button visually disabled
+          btn.disabled = true;
+        } else {
+          btn.disabled = false;
+          btn.addEventListener('click', () => {
+            // Optional LOF-side geofence: if enabled and the visitor has not
+            // confirmed they are local, block the request with a friendly toast.
+            const config = getLofConfig();
+            if (config && config.geoCheckEnabled && !userConfirmedLocal) {
+              const msg = lofCopy(
+                'geo_request_blocked',
+                'Song requests are reserved for guests at the show. If you’re here in person, tap “I’m here - full access” above and try again.'
+              );
+              showToast(msg, 'error');
+              return;
+            }
+
+            handleAction(currentMode, seq, btn);
+          });
+        }
       }
 
-    gridEl.appendChild(card);
-  });
+      gridEl.appendChild(card);
+    });
 
   addSurpriseCard();
 
