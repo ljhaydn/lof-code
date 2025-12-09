@@ -494,10 +494,13 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   // V1.5: Perform geo check using Cloudflare headers + browser geolocation
 async function performGeoCheck() {
   if (geoCheckPerformed || userConfirmedLocal) return;
-  geoCheckPerformed = true;
   
   const config = getLofConfig();
   if (!config || !config.geoCheckEnabled) return;
+
+  // We now know we have a real config and geo is enabled, so we can
+  // safely mark the check as performed for this page load.
+  geoCheckPerformed = true;
   
   let distance = null;
   let city = null;
@@ -1366,9 +1369,19 @@ function updateBanner(phase, enabled) {
       : (playingNowRaw || 'Nothing currently playing');
 
     const nextDisplayRaw = playingNextRaw || playingNextFromSchedule || '';
+
+    // Use a friendlier fallback for active show phases so "Up Next" never
+    // looks empty while the show is clearly running.
+    const phaseForFallback = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');
+
     const nextDisplay = nextSeq
       ? (nextSeq.displayName || nextSeq.name || nextDisplayRaw)
-      : (nextDisplayRaw || '—');
+      : (
+          nextDisplayRaw ||
+          ((phaseForFallback === 'showtime' || phaseForFallback === 'intermission')
+            ? 'More music from tonight’s playlist'
+            : '—')
+        );
 
     const nowArtist = nowSeq && nowSeq.artist ? nowSeq.artist : '';
 
