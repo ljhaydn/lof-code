@@ -569,26 +569,29 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 function showGeoMessage(distance, city) {
   const extra = document.getElementById('rf-extra-panel');
   if (!extra) return;
-  
+
   const card = document.createElement('div');
   card.className = 'rf-card rf-card--geo';
-  
+
   let noticeClass, message;
-  
+
   if (distance !== null && distance < 5) {
-    // Local visitor
+    // Local visitor – automatically grant full access
     noticeClass = 'rf-geo-notice--local';
     const cityText = city ? ` You're in ${city}!` : '';
     message = lofCopy('geo_local_message', `Welcome neighbor!${cityText} 🎄`);
+
+    userConfirmedLocal = true;
+    try {
+      localStorage.setItem('lofUserConfirmedLocal', 'true');
+    } catch (e) {}
   } else if (distance !== null && distance >= 5) {
-    // Far visitor
+    // Far visitor – show "I'm here" button so they can self-confirm
     noticeClass = 'rf-geo-notice--far';
     message = lofCopy('geo_far_message', 'Visiting from afar? Come see the show in person! 🌟');
-    
-    // V1.5 FIX: Get button text before building HTML string to avoid nested template literal issues
+
     const confirmBtnText = lofCopy('geo_confirm_btn', 'I\'m here - full access');
-    
-    // Add "I'm here" button
+
     card.innerHTML = `
       <div class="rf-geo-notice ${noticeClass}">
         <div class="rf-geo-message">${escapeHtml(message)}</div>
@@ -600,17 +603,25 @@ function showGeoMessage(distance, city) {
     extra.prepend(card);
     return;
   } else {
-    // Fallback
+    // Fallback – no reliable distance; err on the side of granting access
     noticeClass = 'rf-geo-notice--fallback';
-    message = lofCopy('geo_fallback_message', 'Location services unavailable - full access granted');
+    message = lofCopy(
+      'geo_fallback_message',
+      'Location services unavailable - full access granted'
+    );
+
+    userConfirmedLocal = true;
+    try {
+      localStorage.setItem('lofUserConfirmedLocal', 'true');
+    } catch (e) {}
   }
-  
+
   card.innerHTML = `
     <div class="rf-geo-notice ${noticeClass}">
       <div class="rf-geo-message">${escapeHtml(message)}</div>
     </div>
   `;
-  
+
   extra.prepend(card);
 }
 

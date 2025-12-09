@@ -85,12 +85,38 @@ class LOF_API {
                 : 15,
         ];
 
+        // V1.5: Geo + Cloudflare metadata for the viewer page.
+        // For the 2025 season we always enable the geo card and derive visitor
+        // location from Cloudflare headers when available.
+        $geo_enabled = true;
+
+        $cloudflare = [
+            'city'    => isset($_SERVER['HTTP_CF_IPCITY']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_IPCITY'])) : '',
+            'region'  => isset($_SERVER['HTTP_CF_REGION']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_REGION'])) : '',
+            'country' => isset($_SERVER['HTTP_CF_IPCOUNTRY']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_CF_IPCOUNTRY'])) : '',
+        ];
+
+        if (isset($_SERVER['HTTP_CF_IPLATITUDE']) && isset($_SERVER['HTTP_CF_IPLONGITUDE'])) {
+            $cloudflare['latitude']  = (float) $_SERVER['HTTP_CF_IPLATITUDE'];
+            $cloudflare['longitude'] = (float) $_SERVER['HTTP_CF_IPLONGITUDE'];
+        }
+
+        // Approximate show location – used only for viewer geo copy and distance
+        // calculations. If the display ever moves, this is the single place to update.
+        $show_lat  = 33.8334;
+        $show_long = -118.17243;
+
         return [
-            'holiday_mode' => $holiday_mode,
-            'features'     => $features,
-            'copy'         => $copy,
-            'showtimes'    => $showtimes,
-            'speaker'      => $speakerConfig,
+            'holiday_mode'    => $holiday_mode,
+            'features'        => $features,
+            'copy'            => $copy,
+            'showtimes'       => $showtimes,
+            'speaker'         => $speakerConfig,
+            // V1.5 geo + Cloudflare data for rf-viewer.js
+            'geoCheckEnabled' => $geo_enabled,
+            'showLatitude'    => $show_lat,
+            'showLongitude'   => $show_long,
+            'cloudflare'      => $cloudflare,
         ];
     }
 
