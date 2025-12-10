@@ -671,8 +671,34 @@ try {
    * Header + Layout helpers
    * ------------------------- */
 
+  // Helper to ensure the hero shell (container for banner, header, and status panel)
+  function ensureHeroShell() {
+    if (!viewerRoot || !statusPanel) return null;
+
+    let shell = document.getElementById('lof-hero-shell');
+    if (!shell) {
+      shell = document.createElement('div');
+      shell.id = 'lof-hero-shell';
+      shell.className = 'lof-hero-shell';
+
+      // Insert the shell where the status panel currently lives
+      if (statusPanel.parentNode === viewerRoot) {
+        viewerRoot.insertBefore(shell, statusPanel);
+        shell.appendChild(statusPanel);
+      } else {
+        // Fallback: put shell at the top of the viewerRoot
+        viewerRoot.insertBefore(shell, viewerRoot.firstChild);
+      }
+    }
+
+    return shell;
+  }
+
   function ensureHeader() {
     if (!viewerRoot || !statusPanel) return;
+
+    const shell = ensureHeroShell();
+    if (!shell) return;
 
     let header = document.getElementById('rf-viewer-header');
     if (!header) {
@@ -701,12 +727,21 @@ try {
       header.appendChild(myStatus);
       header.appendChild(controls);
 
-      viewerRoot.insertBefore(header, statusPanel);
+      // Insert header between banner (if present) and status panel inside the hero shell
+      const banner = document.getElementById('rf-viewer-banner');
+      if (banner && banner.parentNode === shell) {
+        shell.insertBefore(header, statusPanel);
+      } else {
+        shell.insertBefore(header, statusPanel);
+      }
     }
   }
 
   function ensureBanner() {
     if (!viewerRoot) return;
+
+    const shell = ensureHeroShell();
+    if (!shell) return;
 
     let banner = document.getElementById('rf-viewer-banner');
     if (!banner) {
@@ -715,7 +750,7 @@ try {
       banner.className = 'rf-viewer-banner';
       // lightweight inline baseline styling so it doesn't look broken even without CSS
       banner.style.padding = '0.75rem 1rem';
-      banner.style.marginBottom = '0.75rem';
+      banner.style.marginBottom = '0.5rem';
       banner.style.borderRadius = '0.75rem';
       banner.style.background = 'rgba(0,0,0,0.25)';
       banner.style.backdropFilter = 'blur(6px)';
@@ -733,14 +768,14 @@ try {
       banner.appendChild(title);
       banner.appendChild(body);
 
-      // Insert banner above header (if header exists), otherwise above status panel.
+      // Place banner at the top of the hero shell, before header and status panel
       const header = document.getElementById('rf-viewer-header');
-      if (header && header.parentNode === viewerRoot) {
-        viewerRoot.insertBefore(banner, header);
-      } else if (statusPanel) {
-        viewerRoot.insertBefore(banner, statusPanel);
+      if (header && header.parentNode === shell) {
+        shell.insertBefore(banner, header);
+      } else if (statusPanel && statusPanel.parentNode === shell) {
+        shell.insertBefore(banner, statusPanel);
       } else {
-        viewerRoot.insertBefore(banner, viewerRoot.firstChild);
+        shell.insertBefore(banner, shell.firstChild);
       }
     }
   }

@@ -98,6 +98,80 @@
  * V1.5: EPIC HERO SECTION - Award-Winning First Impression
  * ================================================================ */
 
+/* V1.5: Unified Hero Shell - wraps banner + header + status panel */
+#lof-hero-shell.lof-hero-shell {
+  position: relative;
+  margin: 0 auto 32px;
+  padding: 20px 22px 22px;
+  max-width: 980px;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(ellipse at top, rgba(255, 248, 231, 0.08), transparent 60%),
+    radial-gradient(ellipse at bottom right, rgba(212, 241, 232, 0.06), transparent 55%),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    var(--glow-gold),
+    var(--shadow-float);
+  backdrop-filter: blur(10px);
+}
+
+/* Inside the hero shell, treat banner, header, and status as sections
+   of one card instead of separate floating blocks */
+#lof-hero-shell.lof-hero-shell .rf-viewer-banner,
+#lof-hero-shell.lof-hero-shell .rf-viewer-header,
+#lof-hero-shell.lof-hero-shell .rf-status-panel {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Banner sits at the top of the hero with softer styling */
+#lof-hero-shell.lof-hero-shell .rf-viewer-banner {
+  padding: 14px 18px 10px;
+  border-width: 0;
+  background: transparent;
+  text-align: center;
+}
+
+#lof-hero-shell.lof-hero-shell #rf-banner-title {
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+#lof-hero-shell.lof-hero-shell #rf-banner-body {
+  font-size: 0.9rem;
+}
+
+/* Header becomes the central hero copy */
+#lof-hero-shell.lof-hero-shell .rf-viewer-header {
+  margin: 6px 0 10px;
+}
+
+/* Status panel acts as the hero footer */
+#lof-hero-shell.lof-hero-shell .rf-status-panel {
+  margin-top: 10px;
+  padding: 16px 18px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Disable the sweeping shimmer inside the hero to keep it calm */
+#lof-hero-shell.lof-hero-shell .rf-status-panel::after {
+  display: none;
+}
+
+/* Slightly pill-ify the Now/Next columns inside hero */
+#lof-hero-shell.lof-hero-shell .rf-now,
+#lof-hero-shell.lof-hero-shell .rf-next {
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .rf-hero-section {
   margin-bottom: 32px;
   display: flex;
