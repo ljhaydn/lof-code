@@ -152,10 +152,6 @@
 /* Status panel acts as the hero footer */
 #lof-hero-shell.lof-hero-shell .rf-status-panel {
   margin-top: 10px;
-  padding: 16px 18px 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: transparent;
-  box-shadow: none;
 }
 
 /* Disable the sweeping shimmer inside the hero to keep it calm */
@@ -163,13 +159,13 @@
   display: none;
 }
 
-/* Slightly pill-ify the Now/Next columns inside hero */
+/* Remove pill styling from Now/Next columns inside hero */
 #lof-hero-shell.lof-hero-shell .rf-now,
 #lof-hero-shell.lof-hero-shell .rf-next {
-  padding: 8px 10px;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
 }
 
 .rf-hero-section {
@@ -1035,6 +1031,15 @@
   box-shadow:
     0 0 25px rgba(212, 241, 232, 0.3),
     var(--shadow-card);
+}
+
+/* V1.5: Spacing between Surprise card and footer Glow card */
+.rf-card--surprise {
+  margin-bottom: 18px;
+}
+
+.rf-glow-card {
+  margin-top: 18px;
 }
 
 /* UNAVAILABLE */

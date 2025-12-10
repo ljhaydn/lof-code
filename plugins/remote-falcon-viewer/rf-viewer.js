@@ -2416,16 +2416,13 @@ function addSpeakerCard(extra) {
 
       <div class="rf-audio-option rf-audio-option--stream">
         <div class="rf-label">${escapeHtml(streamLabel)}</div>
-        <button
-          type="button"
-          class="rf-glow-btn js-open-global-stream"
-          data-label="${escapeHtml(streamLabel)}"
-        >
-          ${escapeHtml(streamLabel)} 🎧
-        </button>
         <div class="rf-audio-help">
-          Opens a small player at the bottom so you can keep exploring the controls.
-          On some phones, you may need to tap the play button in the bar and keep this page open to continue listening.
+          ${escapeHtml(
+            lofCopy(
+              'speaker_stream_help',
+              'Use the audio bar at the bottom of this page to listen on your phone. Tap play and leave this page open while you explore the controls.'
+            )
+          )}
         </div>
       </div>
 
