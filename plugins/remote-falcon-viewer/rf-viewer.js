@@ -831,7 +831,11 @@ try {
 
     if (inWindow) {
       if (phase === 'intermission') return 'intermission';
-      return 'showtime';
+      if (phase === 'showtime') return 'showtime';
+
+      // Inside a scheduled show window but RF/FPP report idle:
+      // treat this as an intermission / warmup period instead of full showtime.
+      return 'intermission';
     }
 
     // Not in a show window
@@ -1370,9 +1374,23 @@ function updateBanner(phase, enabled) {
 
     const nextDisplayRaw = playingNextRaw || playingNextFromSchedule || '';
 
+    // When RF doesn't provide an explicit "next" (intermission, idle, or empty
+    // queue), avoid a sad-looking blank by showing a friendly fallback while
+    // the show is clearly active.
+    const isIntermissionTitle =
+      nowDisplay && /intermission/i.test(nowDisplay.toString());
+    const hasAnyQueue =
+      Array.isArray(rawRequests) && rawRequests.length > 0;
+    const hasAnyActivity = !!playingNowRaw || hasAnyQueue;
+
     const nextDisplay = nextSeq
       ? (nextSeq.displayName || nextSeq.name || nextDisplayRaw)
-      : (nextDisplayRaw || '—');
+      : (
+          nextDisplayRaw ||
+          (isIntermissionTitle || hasAnyActivity
+            ? 'More music from tonight\u2019s playlist'
+            : '—')
+        );
 
     const nowArtist = nowSeq && nowSeq.artist ? nowSeq.artist : '';
 
