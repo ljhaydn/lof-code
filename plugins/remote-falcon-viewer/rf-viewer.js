@@ -492,18 +492,12 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
   }
 
   // V1.5: Perform geo check using Cloudflare headers + browser geolocation
-async function performGeoCheck() {
-  if (geoCheckPerformed || userConfirmedLocal) return;
-  
-  const config = getLofConfig();
-  if (!config || !config.geoCheckEnabled) return;
+  async function performGeoCheck(extra) {
+    const config = getLofConfig();
+    if (!config || !config.geoCheckEnabled) return;
 
-  // We now know we have a real config and geo is enabled, so we can
-  // safely mark the check as performed for this page load.
-  geoCheckPerformed = true;
-  
-  let distance = null;
-  let city = null;
+    let distance = null;
+    let city = null;
   
   // Try Cloudflare headers first
   if (config.cloudflare && config.cloudflare.city) {
@@ -537,11 +531,11 @@ async function performGeoCheck() {
               showLat,
               showLon
             );
-            showGeoMessage(distance, city);
+                        showGeoMessage(distance, city, extra);
           },
           () => {
             // Failed - show fallback
-            showGeoMessage(null, city);
+            showGeoMessage(null, city, extra);
           },
           { timeout: 5000, maximumAge: 300000 }
         );
@@ -553,7 +547,7 @@ async function performGeoCheck() {
   }
   
   // Show message with what we have
-  showGeoMessage(distance, city);
+  showGeoMessage(distance, city, extra);
 }
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -569,9 +563,17 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-function showGeoMessage(distance, city) {
-  const extra = document.getElementById('rf-extra-panel');
+function showGeoMessage(distance, city, extra) {
+  if (!extra) {
+    extra = document.getElementById('rf-extra-panel');
+  }
   if (!extra) return;
+
+  // Always keep exactly one geo card
+  const existing = extra.querySelector('.rf-card--geo');
+  if (existing) {
+    existing.remove();
+  }
 
   const card = document.createElement('div');
   card.className = 'rf-card rf-card--geo';
@@ -634,9 +636,33 @@ window.lofConfirmLocal = function() {
   try {
     localStorage.setItem('lofUserConfirmedLocal', 'true');
   } catch (e) {}
+
   const geoCard = document.querySelector('.rf-card--geo');
-  if (geoCard) geoCard.remove();
-  showToast(lofCopy('geo_confirmed_toast', 'Welcome! Full access granted 🎄'), 'success');
+  if (geoCard) {
+    const notice = geoCard.querySelector('.rf-geo-notice');
+    if (notice) {
+      notice.classList.remove('rf-geo-notice--far', 'rf-geo-notice--fallback');
+      notice.classList.add('rf-geo-notice--local');
+    }
+
+    const msgEl = geoCard.querySelector('.rf-geo-message');
+    if (msgEl) {
+      msgEl.textContent = lofCopy(
+        'geo_local_message',
+        'Welcome neighbor! 🎄'
+      );
+    }
+
+    const btn = geoCard.querySelector('.rf-geo-confirm-btn');
+    if (btn) {
+      btn.remove();
+    }
+  }
+
+  showToast(
+    lofCopy('geo_confirmed_toast', 'Welcome! Full access granted 🎄'),
+    'success'
+  );
 };
 
 // Check localStorage on load
@@ -1806,53 +1832,51 @@ async function fetchTriggerCounts() {
 }
 
   function renderExtraPanel(mode, enabled, data, queueLength) {
-  const extra = document.getElementById('rf-extra-panel');
-  if (!extra) return;
+    const extra = document.getElementById('rf-extra-panel');
+    if (!extra) return;
 
-  extra.innerHTML = '';
-  
-  // V1.5: Perform geo check on first render
-  if (!geoCheckPerformed && !userConfirmedLocal) {
-    performGeoCheck();
+    extra.innerHTML = '';
+
+    // V1.5: Always perform geo check so the geo card stays in sync
+    performGeoCheck(extra);
+
+    if (!enabled) {
+      extra.innerHTML = `
+        <div class="rf-extra-title">Viewer control paused</div>
+        <div class="rf-extra-sub">
+          When interactive mode is back on, you'll see the live request queue or top-voted songs here.
+        </div>
+      `;
+    } else if (mode === 'JUKEBOX') {
+      renderQueue(extra, data);
+    } else if (mode === 'VOTING') {
+      renderLeaderboard(extra, data);
+    } else {
+      extra.innerHTML = `
+        <div class="rf-extra-title">Show status</div>
+        <div class="rf-extra-sub">
+          Interactive controls are on, but this mode doesn't expose queue or vote data.
+        </div>
+      `;
+    }
+
+    // Render device stats card with trigger counts
+    renderDeviceStatsCard(extra, queueLength);
+
+    // IMPORTANT: Do NOT add the in-panel Glow teaser anymore.
+    // The full Glow form lives in the footer only, so viewers have a single,
+    // consistent place to send a Glow.
+    // (Intentionally no call to addGlowTeaser(extra) here.)
+
+    // Speaker / "Need sound?" card lives at the bottom of the extras panel
+    addSpeakerCard(extra);
+
+    // Ensure the full Glow form lives in the footer
+    const footerGlow = document.getElementById('rf-footer-glow');
+    if (footerGlow && !footerGlow.hasChildNodes()) {
+      addGlowCard(footerGlow);
+    }
   }
-
-  if (!enabled) {
-    extra.innerHTML = `
-      <div class="rf-extra-title">Viewer control paused</div>
-      <div class="rf-extra-sub">
-        When interactive mode is back on, you'll see the live request queue or top-voted songs here.
-      </div>
-    `;
-  } else if (mode === 'JUKEBOX') {
-    renderQueue(extra, data);
-  } else if (mode === 'VOTING') {
-    renderLeaderboard(extra, data);
-  } else {
-    extra.innerHTML = `
-      <div class="rf-extra-title">Show status</div>
-      <div class="rf-extra-sub">
-        Interactive controls are on, but this mode doesn't expose queue or vote data.
-      </div>
-    `;
-  }
-
-  // Render device stats card with trigger counts
-  renderDeviceStatsCard(extra, queueLength);
-
-  // IMPORTANT: Do NOT add the in-panel Glow teaser anymore.
-  // The full Glow form lives in the footer only, so viewers have a single,
-  // consistent place to send a Glow.
-  // (Intentionally no call to addGlowTeaser(extra) here.)
-
-  // Speaker / "Need sound?" card lives at the bottom of the extras panel
-  addSpeakerCard(extra);
-
-  // Ensure the full Glow form lives in the footer
-  const footerGlow = document.getElementById('rf-footer-glow');
-  if (footerGlow && !footerGlow.hasChildNodes()) {
-    addGlowCard(footerGlow);
-  }
-}
 
 function renderQueue(extra, data) {
   const rawRequests = Array.isArray(data.requests) ? data.requests : [];
