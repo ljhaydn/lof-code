@@ -1322,9 +1322,9 @@ function updateBanner(phase, enabled) {
     });
     row.appendChild(btnGlow);
 
-    // Surprise me → trigger surprise logic and scroll to the card, when enabled
+    // Surprise me → always show the button so the row feels consistent.
+    const btnSurprise = makeBtn('Surprise me ✨');
     if (enabled) {
-      const btnSurprise = makeBtn('Surprise me ✨');
       btnSurprise.addEventListener('click', () => {
         handleSurpriseMe();
         const target = document.querySelector('.rf-card--surprise');
@@ -1332,11 +1332,13 @@ function updateBanner(phase, enabled) {
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       });
-      row.appendChild(btnSurprise);
       row.classList.remove('rf-controls-row--disabled');
     } else {
+      // When viewer control is paused, keep the button visible but disabled
+      btnSurprise.disabled = true;
       row.classList.add('rf-controls-row--disabled');
     }
+    row.appendChild(btnSurprise);
   }
 
   /* -------------------------
@@ -1837,8 +1839,13 @@ async function fetchTriggerCounts() {
 
     extra.innerHTML = '';
 
-    // V1.5: Always perform geo check so the geo card stays in sync
-    performGeoCheck(extra);
+    // V1.5: Always perform geo check so the geo card stays in sync.
+    // Wrapped in try/catch so a geo error can never break the queue / stats panel.
+    try {
+      performGeoCheck(extra);
+    } catch (e) {
+      console.warn('[LOF V1.5] Geo check failed:', e);
+    }
 
     if (!enabled) {
       extra.innerHTML = `
