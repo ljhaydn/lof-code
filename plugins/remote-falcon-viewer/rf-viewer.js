@@ -1619,20 +1619,11 @@ function updateBanner(phase, enabled) {
 
   addSurpriseCard();
 
-  // Only re-render extras when something meaningful changes
-  const extraSignature = JSON.stringify({
-    mode: currentMode,
-    enabled: currentControlEnabled,
-    queueLen: queueLength,
-    votesLen: Array.isArray(rawVotes) ? rawVotes.length : 0,
-    requests: viewerStats ? viewerStats.requests : 0,
-    surprise: viewerStats ? viewerStats.surprise : 0
-  });
+    addSurpriseCard();
 
-  if (extraSignature !== lastExtraSignature) {
-    lastExtraSignature = extraSignature;
-    renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
-  }
+  // V1.5: Always re-render the extras panel so geo + config-driven cards
+  // stay perfectly in sync with the current viewer + Cloudflare state.
+  renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
 }
 
   /* -------------------------
@@ -1877,7 +1868,23 @@ async function fetchTriggerCounts() {
 
     // Speaker / "Need sound?" card lives at the bottom of the extras panel
     addSpeakerCard(extra);
+  // Clear any previous timers when the speaker card is re-rendered
+  // ... (your existing timer reset code will already be here)
 
+  // --- V1.5: After-hours / paused guardrail for outdoor speakers ---
+  const btnOn = card.querySelector('.js-speaker-on');
+  if (btnOn) {
+    const phase = lastPhase || 'idle';
+    const canUseOutdoor = currentControlEnabled && phase === 'showtime';
+
+    if (!canUseOutdoor) {
+      btnOn.disabled = true;
+      btnOn.textContent = lofCopy(
+        'speaker_afterhours_label',
+        'Speakers available during show hours'
+      );
+    }
+  }
     // Ensure the full Glow form lives in the footer
     const footerGlow = document.getElementById('rf-footer-glow');
     if (footerGlow && !footerGlow.hasChildNodes()) {
@@ -2872,42 +2879,53 @@ function addSpeakerCard(extra) {
    * Surprise Me card
    * ------------------------- */
 
-  function addSurpriseCard() {
-    if (!gridEl) return;
-    if (!currentControlEnabled) return;
-    if (!currentVisibleSequences || !currentVisibleSequences.length) return;
+function addSurpriseCard() {
+  if (!gridEl) return;
 
-    const card = document.createElement('div');
-    card.className = 'rf-card rf-card--surprise';
+  // Remove any existing surprise card so we don't duplicate on re-render
+  const existing = gridEl.querySelector('.rf-card--surprise');
+  if (existing && existing.parentNode === gridEl) {
+    gridEl.removeChild(existing);
+  }
 
-    const title    = lofCopy('surprise_title', 'Can’t pick just one?');
-    const subtitle = lofCopy('surprise_sub', 'Let us queue up a random crowd-pleaser for you.');
-    const btnText  = lofCopy('surprise_btn', 'Surprise me ✨');
+  const title = lofCopy('surprise_title', 'Can’t pick just one?');
+  const sub   = lofCopy(
+    'surprise_sub',
+    'Let us queue up a random crowd-pleaser for you.'
+  );
+  const btnLabelEnabled  = lofCopy('surprise_btn', 'Surprise me ✨');
+  const btnLabelDisabled = lofCopy(
+    'surprise_disabled',
+    'Viewer control is currently paused.'
+  );
 
-    card.innerHTML = `
-      <div class="rf-card-title">${escapeHtml(title)}</div>
-      <div class="rf-card-artist">
-        ${escapeHtml(subtitle)}
-      </div>
-      <div class="rf-card-meta">
-        <span class="rf-card-duration">We’ll choose from tonight’s available songs.</span>
-      </div>
-      <div class="rf-card-actions">
-        <button class="rf-card-btn">
-          ${escapeHtml(btnText)}
-        </button>
-      </div>
-    `;
+  const card = document.createElement('div');
+  card.className = 'rf-card rf-card--surprise';
 
-    const btn = card.querySelector('.rf-card-btn');
-    if (btn) {
+  card.innerHTML = `
+    <div class="rf-card-title">${escapeHtml(title)}</div>
+    <div class="rf-card-artist">${escapeHtml(sub)}</div>
+    <div class="rf-card-actions">
+      <button class="rf-card-btn rf-card-btn--surprise">
+        ${escapeHtml(currentControlEnabled ? btnLabelEnabled : btnLabelDisabled)}
+      </button>
+    </div>
+  `;
+
+  const btn = card.querySelector('.rf-card-btn--surprise');
+  if (btn) {
+    if (!currentControlEnabled) {
+      // Keep the card visible but make it obvious that interaction is paused
+      btn.disabled = true;
+    } else {
       btn.addEventListener('click', () => {
         handleSurpriseMe();
       });
     }
-
-    gridEl.appendChild(card);
   }
+
+  gridEl.appendChild(card);
+}
 
   /* -------------------------
    * Actions (request / vote)
