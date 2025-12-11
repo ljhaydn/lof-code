@@ -1617,14 +1617,28 @@ function updateBanner(phase, enabled) {
       gridEl.appendChild(card);
     });
 
-  addSurpriseCard();
-
+    // V1.5: Surprise-Me card (render once per details refresh)
     addSurpriseCard();
 
-  // V1.5: Always re-render the extras panel so geo + config-driven cards
-  // stay perfectly in sync with the current viewer + Cloudflare state.
-  renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
-}
+    // V1.5: Only re-render the extras panel when its core inputs change.
+    // This keeps the "Tonight from this device" Mischief Meter and the
+    // speaker "time left" timer from blinking every few seconds as
+    // showDetails polls, while still updating when it actually matters.
+    const extraSignature = JSON.stringify({
+      mode: currentMode,
+      enabled: currentControlEnabled,
+      queueLength: queueLength,
+      phase: phase
+    });
+
+    if (extraSignature !== lastExtraSignature) {
+      lastExtraSignature = extraSignature;
+
+      // Rebuild geo card + queue/leaderboard + device stats + speaker card
+      // only when viewer mode, enabled state, queue length, or phase change.
+      renderExtraPanel(currentMode, currentControlEnabled, data, queueLength);
+    }
+  }
 
   /* -------------------------
    * FPP Now Playing timing (for progress bar)
@@ -1868,23 +1882,7 @@ async function fetchTriggerCounts() {
 
     // Speaker / "Need sound?" card lives at the bottom of the extras panel
     addSpeakerCard(extra);
-  // Clear any previous timers when the speaker card is re-rendered
-  // ... (your existing timer reset code will already be here)
 
-  // --- V1.5: After-hours / paused guardrail for outdoor speakers ---
-  const btnOn = card.querySelector('.js-speaker-on');
-  if (btnOn) {
-    const phase = lastPhase || 'idle';
-    const canUseOutdoor = currentControlEnabled && phase === 'showtime';
-
-    if (!canUseOutdoor) {
-      btnOn.disabled = true;
-      btnOn.textContent = lofCopy(
-        'speaker_afterhours_label',
-        'Speakers available during show hours'
-      );
-    }
-  }
     // Ensure the full Glow form lives in the footer
     const footerGlow = document.getElementById('rf-footer-glow');
     if (footerGlow && !footerGlow.hasChildNodes()) {
