@@ -215,8 +215,9 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
     wakeLockEnabled = false;
   }
 
-  // last requested song (name) this session
-  let lastRequestedSequenceName = null;
+  // V1.5 FIX: Track ALL requested song names this session (not just the last one)
+  // This prevents the "Your pick is playing" badge from disappearing when making additional requests
+  const sessionRequestedNames = new Set();
   // cache last phase for banner logic
   let lastPhase = 'idle';
 // V1.5: Screen Wake Lock helpers (to reduce mobile audio interruptions)
@@ -910,6 +911,129 @@ try {
     return 'afterhours';
   }
 
+/**
+ * V1.5: Comprehensive show state machine
+ * Returns one of: 'preshow', 'showtime', 'intermission', 'paused', 'offhours', 'offline'
+ * 
+ * @param {Object} options
+ * @param {boolean} options.viewerControlEnabled - RF viewerControlEnabled flag
+ * @param {string} options.playingNow - Current song name (raw)
+ * @param {string} options.fppStatus - FPP status_name ('playing', 'idle', etc.)
+ * @param {Object} options.schedule - FPP schedule data (optional)
+ * @returns {string} Show state identifier
+ */
+function computeShowState(options) {
+  const {
+    viewerControlEnabled = false,
+    playingNow = '',
+    fppStatus = 'idle',
+    schedule = null
+  } = options || {};
+
+  const config = getLofConfig();
+  
+  // Manual override: offseason always wins
+  if (config && config.holiday_mode === 'offseason') {
+    return 'offline';
+  }
+
+  const isPlaying = fppStatus === 'playing';
+  const hasPlayingNow = !!(playingNow && playingNow.trim());
+  const isIntermission = hasPlayingNow && /intermission/i.test(playingNow);
+  const isStandby = hasPlayingNow && /standby/i.test(playingNow);
+  const isRealSong = hasPlayingNow && !isIntermission && !isStandby;
+
+  // S4: Controls Paused - RF disabled but FPP playing
+  if (!viewerControlEnabled && isPlaying && isRealSong) {
+    return 'paused';
+  }
+
+  // S3: Intermission - playing intermission sequence
+  if (viewerControlEnabled && isPlaying && isIntermission) {
+    return 'intermission';
+  }
+
+  // S2: Showtime - playing real song with controls enabled
+  if (viewerControlEnabled && isPlaying && isRealSong) {
+    return 'showtime';
+  }
+
+  // S1: Pre-show - controls enabled but nothing playing yet
+  if (viewerControlEnabled && !isPlaying) {
+    // Check if we're within schedule window
+    const showState = getShowState('idle');
+    if (showState === 'offseason') {
+      return 'offline';
+    }
+    return 'preshow';
+  }
+
+  // S5/S6: Off-hours or fully offline
+  if (!viewerControlEnabled && !isPlaying) {
+    const showState = getShowState('idle');
+    if (showState === 'offseason') {
+      return 'offline';
+    }
+    return 'offhours';
+  }
+
+  // Fallback
+  return 'offhours';
+}
+
+/**
+ * V1.5: Get button states based on show state
+ * @param {string} showState - Result from computeShowState()
+ * @returns {Object} Button enable/disable flags
+ */
+function getButtonStates(showState) {
+  const states = {
+    preshow:      { pickSong: true,  glow: true,  surprise: true,  speaker: true  },
+    showtime:     { pickSong: true,  glow: true,  surprise: true,  speaker: true  },
+    intermission: { pickSong: true,  glow: true,  surprise: true,  speaker: false },
+    paused:       { pickSong: false, glow: true,  surprise: false, speaker: true  },
+    offhours:     { pickSong: false, glow: true,  surprise: false, speaker: false },
+    offline:      { pickSong: false, glow: true,  surprise: false, speaker: false }
+  };
+  
+  return states[showState] || states.offhours;
+}
+
+/**
+ * V1.5: Get smart time messaging for off-hours/offline states
+ * Uses actual schedule data instead of arbitrary hour cutoffs
+ * @param {string} showState - Result from computeShowState()
+ * @returns {string} User-friendly time message
+ */
+function getSmartTimeMessage(showState) {
+  const config = getLofConfig();
+  const now = new Date();
+  const hour = now.getHours();
+  
+  if (showState === 'offline') {
+    return lofCopy('time_offline', 'See you next season! 💤');
+  }
+  
+  if (showState === 'offhours') {
+    // Smart logic: if it's very late (after midnight, before 5 AM), 
+    // the show just ended - say "back tonight" not "back tomorrow"
+    if (hour >= 0 && hour < 5) {
+      return lofCopy('time_offhours_latenight', 'Show\'s over for tonight. Back at 5 PM today!');
+    }
+    
+    // Normal daytime - show starts later
+    if (hour >= 5 && hour < 17) {
+      return lofCopy('time_offhours_daytime', 'Show starts at 5 PM tonight!');
+    }
+    
+    // Evening but show hasn't started or ended early
+    return lofCopy('time_offhours_evening', 'Check back soon — the show runs most evenings.');
+  }
+  
+  // For active states, no time message needed
+  return '';
+}
+
 function updateBanner(phase, enabled) {
   const banner = document.getElementById('rf-viewer-banner');
   const titleEl = document.getElementById('rf-banner-title');
@@ -1554,15 +1678,12 @@ function updateBanner(phase, enabled) {
         (labelName && requestedSongNames.includes(labelName))
       );
 
-      // Safety net: if this is the currently playing song and it matches
-      // the last requested sequence name this session, always show the
-      // "Your pick is playing" chip even if local request tracking has
-      // already been trimmed by sync logic.
       let showRequestedChip = wasRequested;
-      if (!showRequestedChip && isNow && lastRequestedSequenceName) {
+      // V1.5 FIX: Check against ALL session-requested names, not just the last one
+      if (!showRequestedChip && isNow && sessionRequestedNames.size > 0) {
         if (
-          keyName === lastRequestedSequenceName ||
-          labelName === lastRequestedSequenceName
+          (keyName && sessionRequestedNames.has(keyName)) ||
+          (labelName && sessionRequestedNames.has(labelName))
         ) {
           showRequestedChip = true;
         }
@@ -2053,13 +2174,29 @@ function renderQueue(extra, data) {
 function renderDeviceStatsCard(extra, queueLength) {
   const stats = viewerStats || { requests: 0, surprise: 0 };
 
-  // Persona / vibe line
+  // V1.5 ENHANCED: Vibe check factors in multiple signals, not just queue
   const vibeLabel = lofCopy('stats_vibe_label', 'Falcon vibe check');
-  let vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
-  if (queueLength >= 3 && queueLength <= 7) {
-    vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
-  } else if (queueLength > 7) {
+  
+  // Calculate activity score from multiple sources
+  const deviceRequests = stats.requests || 0;
+  const deviceSurprises = stats.surprise || 0;
+  const baseActivity = queueLength + (deviceRequests * 0.3) + (deviceSurprises * 0.5);
+  
+  // Time-based boost: later = more energy (after 8 PM = +1, after 10 PM = +2)
+  const hour = new Date().getHours();
+  const timeBoost = hour >= 22 ? 2 : (hour >= 20 ? 1 : 0);
+  
+  const activityScore = baseActivity + timeBoost;
+  
+  let vibeText;
+  if (activityScore >= 8) {
     vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
+  } else if (activityScore >= 4) {
+    vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
+  } else if (activityScore >= 2) {
+    vibeText = lofCopy('stats_vibe_warming', 'Warming up ✨');
+  } else {
+    vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
   }
 
   const card = document.createElement('div');
@@ -3024,7 +3161,13 @@ function addSurpriseCard() {
         const keyName = seq.name || '';
         const labelName = seq.displayName || '';
 
-        lastRequestedSequenceName = keyName || labelName || null;
+        // V1.5 FIX: Add to session Set (accumulates, never overwrites)
+        if (keyName) {
+          sessionRequestedNames.add(keyName);
+        }
+        if (labelName) {
+          sessionRequestedNames.add(labelName);
+        }
 
         // Track both internal key and friendly label so chips stay in sync
         if (keyName) {
@@ -3096,11 +3239,12 @@ function addSurpriseCard() {
     });
   }
   
-  // Exclude last requested this session
-  if (lastRequestedSequenceName) {
+  // V1.5 FIX: Exclude ALL session-requested songs, not just the last one
+  if (sessionRequestedNames.size > 0) {
     pool = pool.filter(seq => {
       const key = seq.name || seq.displayName;
-      return key !== lastRequestedSequenceName;
+      const label = seq.displayName || seq.name;
+      return !sessionRequestedNames.has(key) && !sessionRequestedNames.has(label);
     });
   }
   
