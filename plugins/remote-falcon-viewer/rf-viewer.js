@@ -12,6 +12,7 @@
   const nowTitleEl    = document.getElementById('rf-now-title');
   const nowArtistEl   = document.getElementById('rf-now-artist');
   const nextTitleEl   = document.getElementById('rf-next-title');
+  const modeEl        = document.getElementById('rf-mode-value');
   
   // V1.5: New hero elements (may be null if using old PHP)
   const heroBannerEl      = document.getElementById('rf-hero-banner');
