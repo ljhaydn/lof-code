@@ -1883,6 +1883,116 @@
   border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
+/* Hero Audio Section */
+.rf-hero-audio {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.rf-hero-audio-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--lof-white);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.rf-hero-audio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rf-audio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 248, 231, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 248, 231, 0.1);
+}
+
+.rf-audio-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.rf-audio-label {
+  font-weight: 600;
+  color: var(--lof-white);
+  font-size: 0.9rem;
+  min-width: 90px;
+}
+
+.rf-audio-detail {
+  color: var(--lof-gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rf-audio-btn {
+  background: linear-gradient(145deg, var(--lof-pink), var(--lof-burgundy));
+  color: var(--lof-white);
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rf-audio-btn:hover {
+  transform: scale(1.02);
+  box-shadow: var(--glow-pink);
+}
+
+.rf-audio-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Audio section hidden during intermission */
+.rf-state-intermission .rf-hero-audio,
+.rf-state-offhours .rf-hero-audio,
+.rf-state-offline .rf-hero-audio {
+  display: none;
+}
+
+/* Hero Geo Status Line */
+.rf-hero-geo {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--lof-text-muted);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.rf-hero-geo:empty {
+  display: none;
+}
+
+.rf-hero-geo-local {
+  color: var(--lof-gold);
+}
+
+.rf-hero-geo-link {
+  color: var(--lof-pink);
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rf-hero-geo-link:hover {
+  color: var(--lof-white);
+}
+
 /* "More Songs" uncategorized header */
 .rf-category-header--other {
   border-bottom-style: dashed;
@@ -1939,6 +2049,35 @@
   .rf-hero-mystatus {
     font-size: 0.9rem;
     padding: 10px 12px;
+  }
+  
+  .rf-hero-audio {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .rf-hero-audio-title {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  
+  .rf-audio-option {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  
+  .rf-audio-label {
+    font-size: 0.85rem;
+    min-width: 80px;
+  }
+  
+  .rf-audio-detail {
+    font-size: 0.85rem;
+  }
+  
+  .rf-hero-geo {
+    font-size: 0.85rem;
+    padding: 6px 10px;
   }
 }
 
@@ -2169,25 +2308,29 @@
  * ================================================================ */
 
 /* Category Tabs - Mobile */
+/* Category Section - wrapper for title + tabs */
+.rf-category-section {
+  margin-bottom: 16px;
+}
+
+.rf-category-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--lof-gold);
+  margin-bottom: 12px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
 .rf-category-tabs {
   display: flex;
   gap: 8px;
-  padding: 12px 0 16px;
+  padding: 8px 0 12px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  background: linear-gradient(to bottom, 
-    rgba(15, 58, 44, 0.98) 0%,
-    rgba(15, 58, 44, 0.95) 80%,
-    rgba(15, 58, 44, 0) 100%
-  );
-  margin: 0 -16px;
-  padding-left: 16px;
-  padding-right: 16px;
 }
 
 .rf-category-tabs::-webkit-scrollbar {

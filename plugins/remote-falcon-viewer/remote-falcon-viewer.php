@@ -411,6 +411,28 @@ class RF_Viewer_Plugin {
                 <!-- Smart Time Message -->
                 <div class="rf-hero-time" id="rf-hero-time"></div>
                 
+                <!-- Audio Section: How to hear the music -->
+                <div class="rf-hero-audio" id="rf-hero-audio">
+                    <div class="rf-hero-audio-title">🔊 How to hear the music</div>
+                    <div class="rf-hero-audio-options">
+                        <div class="rf-audio-option" data-type="fm">
+                            <span class="rf-audio-icon">📻</span>
+                            <span class="rf-audio-label">In your car</span>
+                            <span class="rf-audio-detail">Tune to 107.7 FM</span>
+                        </div>
+                        <div class="rf-audio-option" data-type="speaker">
+                            <span class="rf-audio-icon">🔊</span>
+                            <span class="rf-audio-label">At the display</span>
+                            <button class="rf-audio-btn" id="rf-hero-speaker-btn">Turn speakers on</button>
+                        </div>
+                        <div class="rf-audio-option" data-type="stream">
+                            <span class="rf-audio-icon">📱</span>
+                            <span class="rf-audio-label">On your phone</span>
+                            <span class="rf-audio-detail">Player at bottom ↓</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- CTA: Main call to action -->
                 <div class="rf-hero-cta" id="rf-hero-cta">
                     <div class="rf-hero-cta-title" id="rf-hero-cta-title"></div>
@@ -438,6 +460,9 @@ class RF_Viewer_Plugin {
                 
                 <!-- My Status: Personalized queue position -->
                 <div class="rf-hero-mystatus" id="rf-hero-mystatus"></div>
+                
+                <!-- Geo Status: Location check inline -->
+                <div class="rf-hero-geo" id="rf-hero-geo"></div>
                 
                 <!-- Controls Row -->
                 <div class="rf-controls-row" id="rf-controls-row"></div>

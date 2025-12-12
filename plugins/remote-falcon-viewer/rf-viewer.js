@@ -23,6 +23,9 @@
   const heroCtaTitleEl    = document.getElementById('rf-hero-cta-title');
   const heroCtaBodyEl     = document.getElementById('rf-hero-cta-body');
   const heroMyStatusEl    = document.getElementById('rf-hero-mystatus');
+  const heroAudioEl       = document.getElementById('rf-hero-audio');
+  const heroGeoEl         = document.getElementById('rf-hero-geo');
+  const heroSpeakerBtn    = document.getElementById('rf-hero-speaker-btn');
   
   // Legacy refs for backward compatibility
   const statusPanel = heroEl || document.querySelector('.rf-status-panel');
@@ -600,6 +603,14 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 function showGeoMessage(distance, city, extra) {
+  // V1.5 Bundle B: Update hero geo line first
+  updateHeroGeo(distance, city);
+  
+  // If we have the hero geo element, skip the card in extra panel
+  if (heroGeoEl) {
+    return;
+  }
+  
   if (!extra) {
     extra = document.getElementById('rf-extra-panel');
   }
@@ -673,6 +684,12 @@ window.lofConfirmLocal = function() {
     localStorage.setItem('lofUserConfirmedLocal', 'true');
   } catch (e) {}
 
+  // V1.5 Bundle B: Update hero geo line
+  if (heroGeoEl) {
+    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor! 🎄</span>';
+  }
+
+  // Also update extra panel geo card if it exists (backward compat)
   const geoCard = document.querySelector('.rf-card--geo');
   if (geoCard) {
     const notice = geoCard.querySelector('.rf-geo-notice');
@@ -707,6 +724,87 @@ try {
     userConfirmedLocal = true;
   }
 } catch (e) {}
+
+/**
+ * V1.5 Bundle B: Update hero geo status line
+ * Shows inline geo status in the hero instead of a separate card
+ */
+function updateHeroGeo(distance, city) {
+  if (!heroGeoEl) return;
+  
+  const config = getLofConfig();
+  if (!config || !config.geoCheckEnabled) {
+    heroGeoEl.innerHTML = '';
+    return;
+  }
+  
+  // If user already confirmed, show welcome
+  if (userConfirmedLocal) {
+    const cityText = city ? ' You\'re in ' + city + '!' : '';
+    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor!' + escapeHtml(cityText) + ' 🎄</span>';
+    return;
+  }
+  
+  if (distance !== null && distance < 5) {
+    // Local visitor – automatically grant full access
+    const cityText = city ? ' You\'re in ' + city + '!' : '';
+    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor!' + escapeHtml(cityText) + ' 🎄</span>';
+    userConfirmedLocal = true;
+    try {
+      localStorage.setItem('lofUserConfirmedLocal', 'true');
+    } catch (e) {}
+  } else if (distance !== null && distance >= 5) {
+    // Far visitor – show unlock link
+    heroGeoEl.innerHTML = '📍 Near the display? <span class="rf-hero-geo-link" onclick="window.lofConfirmLocal()">Tap to unlock full access</span>';
+  } else {
+    // No distance data – still show unlock option
+    heroGeoEl.innerHTML = '📍 At the show? <span class="rf-hero-geo-link" onclick="window.lofConfirmLocal()">Tap to unlock requests</span>';
+  }
+}
+
+/**
+ * V1.5 Bundle B: Wire up hero speaker button
+ */
+function initHeroSpeakerButton() {
+  if (!heroSpeakerBtn) return;
+  
+  heroSpeakerBtn.addEventListener('click', async function() {
+    // Check show state first
+    const blockedStates = ['intermission', 'offhours', 'offline'];
+    if (blockedStates.includes(currentShowState)) {
+      showToast(lofCopy('speaker_unavailable', 'Speakers are only available during songs'), 'info');
+      return;
+    }
+    
+    heroSpeakerBtn.disabled = true;
+    heroSpeakerBtn.textContent = 'Turning on...';
+    
+    try {
+      const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=on', {
+        method: 'GET',
+        credentials: 'same-origin'
+      });
+      
+      if (res.ok) {
+        heroSpeakerBtn.textContent = '✓ Speakers on!';
+        showToast(lofCopy('speaker_on_success', 'Speakers are now on! 🔊'), 'success');
+        
+        // Reset button after a delay
+        setTimeout(() => {
+          heroSpeakerBtn.textContent = 'Turn speakers on';
+          heroSpeakerBtn.disabled = false;
+        }, 3000);
+      } else {
+        throw new Error('Speaker request failed');
+      }
+    } catch (err) {
+      console.warn('[LOF] Hero speaker button error:', err);
+      heroSpeakerBtn.textContent = 'Try again';
+      heroSpeakerBtn.disabled = false;
+      showToast(lofCopy('speaker_error', 'Could not turn on speakers'), 'error');
+    }
+  });
+}
 
   /* -------------------------
    * Fetch showDetails via WP proxy
@@ -1061,12 +1159,12 @@ function getSmartTimeMessage(showState) {
     // Smart logic: if it's very late (after midnight, before 5 AM), 
     // the show just ended - say "back tonight" not "back tomorrow"
     if (hour >= 0 && hour < 5) {
-      return lofCopy('time_offhours_latenight', 'Show\'s over for tonight. Back at 5 PM today!');
+      return lofCopy('time_offhours_latenight', 'Show\'s over for tonight. Lights & requests back at 5 PM!');
     }
     
     // Normal daytime - show starts later
     if (hour >= 5 && hour < 17) {
-      return lofCopy('time_offhours_daytime', 'Show starts at 5 PM tonight!');
+      return lofCopy('time_offhours_daytime', 'Lights & requests open at 5 PM. First scheduled show at 6 PM!');
     }
     
     // Evening but show hasn't started or ended early
@@ -1646,7 +1744,12 @@ function updateSmartTimeMessage(showState) {
   function renderCategoryTabs(categories, container) {
     if (!container) return;
     
-    // Remove existing tabs
+    // Remove existing tabs wrapper (includes title)
+    const existingWrapper = container.querySelector('.rf-category-section');
+    if (existingWrapper) {
+      existingWrapper.remove();
+    }
+    // Also remove old-style tabs without wrapper
     const existingTabs = container.querySelector('.rf-category-tabs');
     if (existingTabs) {
       existingTabs.remove();
@@ -1657,6 +1760,16 @@ function updateSmartTimeMessage(showState) {
       activeCategoryFilter = null;
       return;
     }
+
+    // Create wrapper for title + tabs
+    const sectionWrapper = document.createElement('div');
+    sectionWrapper.className = 'rf-category-section';
+
+    // Add title
+    const title = document.createElement('div');
+    title.className = 'rf-category-title';
+    title.textContent = lofCopy('category_section_title', 'Tonight\'s Songs');
+    sectionWrapper.appendChild(title);
 
     const tabsWrapper = document.createElement('div');
     tabsWrapper.className = 'rf-category-tabs';
@@ -1688,8 +1801,10 @@ function updateSmartTimeMessage(showState) {
       tabsWrapper.appendChild(tab);
     });
 
-    // Insert tabs before the grid
-    container.insertBefore(tabsWrapper, container.firstChild);
+    sectionWrapper.appendChild(tabsWrapper);
+
+    // Insert section before the grid
+    container.insertBefore(sectionWrapper, container.firstChild);
   }
 
   /**
@@ -1992,6 +2107,8 @@ function updateSmartTimeMessage(showState) {
       // Remove tabs if not needed
       const gridParent = gridEl.parentElement;
       if (gridParent) {
+        const existingSection = gridParent.querySelector('.rf-category-section');
+        if (existingSection) existingSection.remove();
         const existingTabs = gridParent.querySelector('.rf-category-tabs');
         if (existingTabs) existingTabs.remove();
       }
@@ -3748,6 +3865,9 @@ function addSurpriseCard() {
 
 // LOF Extras config
 lofLoadConfig();
+
+// V1.5 Bundle B: Initialize hero speaker button
+initHeroSpeakerButton();
 
 // V1.5: Set initial poll interval
 currentPollInterval = POLL_INTERVAL_ACTIVE;
