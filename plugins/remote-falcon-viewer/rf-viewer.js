@@ -1879,20 +1879,61 @@ function updateBanner(phase, enabled) {
     if (!gridEl) return;
     gridEl.innerHTML = '';
 
-    const visibleSequences = sequences
-      .filter((s) => s.visible && s.active)
-      .sort((a, b) => {
+    // V1.5: Get unique categories first to know if we need category sorting
+    const allVisibleSequences = sequences
+      .filter((s) => s.visible && s.active);
+    
+    const categories = getUniqueCategories(allVisibleSequences);
+    const hasCategories = categories.length > 1;
+    const mobile = isMobileView();
+
+    // V1.5: Sort sequences - on desktop with categories, sort by category first
+    let visibleSequences;
+    if (hasCategories && !mobile) {
+      // Desktop with categories: sort by category order, then by sequence order
+      visibleSequences = allVisibleSequences.slice().sort((a, b) => {
+        const aCat = a.category || '';
+        const bCat = b.category || '';
+        
+        // Get category order indices
+        const aCatIndex = CATEGORY_ORDER.indexOf(aCat);
+        const bCatIndex = CATEGORY_ORDER.indexOf(bCat);
+        
+        // Category comparison
+        let catCompare;
+        if (aCatIndex !== -1 && bCatIndex !== -1) {
+          catCompare = aCatIndex - bCatIndex;
+        } else if (aCatIndex !== -1) {
+          catCompare = -1; // a's category is in list, b's isn't
+        } else if (bCatIndex !== -1) {
+          catCompare = 1; // b's category is in list, a's isn't
+        } else if (aCat && bCat) {
+          catCompare = aCat.localeCompare(bCat); // alphabetical
+        } else if (aCat) {
+          catCompare = -1; // a has category, b doesn't
+        } else if (bCat) {
+          catCompare = 1; // b has category, a doesn't
+        } else {
+          catCompare = 0; // neither has category
+        }
+        
+        if (catCompare !== 0) return catCompare;
+        
+        // Within same category, sort by order
         const ao = typeof a.order === 'number' ? a.order : 9999;
         const bo = typeof b.order === 'number' ? b.order : 9999;
         return ao - bo;
       });
+    } else {
+      // Mobile or no categories: just sort by order
+      visibleSequences = allVisibleSequences.slice().sort((a, b) => {
+        const ao = typeof a.order === 'number' ? a.order : 9999;
+        const bo = typeof b.order === 'number' ? b.order : 9999;
+        return ao - bo;
+      });
+    }
 
     currentVisibleSequences = visibleSequences;
-
-    // V1.5: Get unique categories for tabs/headers
-    const categories = getUniqueCategories(visibleSequences);
-    const hasCategories = categories.length > 1;
-    const mobile = isMobileView();
 
     // V1.5: Render category tabs for mobile (above grid)
     if (hasCategories && mobile) {
@@ -2851,6 +2892,10 @@ function addSpeakerCard(extra) {
   // Use the default PulseMesh URL (can be overridden via footer data-src)
   const pulsemeshUrl = LOF_STREAM_URL_DEFAULT || 'https://player.pulsemesh.io/d/G073';
 
+  // V1.5: Check if speaker button should be disabled based on show state
+  const speakerBlockedStates = ['intermission', 'offhours', 'offline'];
+  const speakerDisabled = speakerBlockedStates.includes(currentShowState);
+
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card rf-card--speaker'; // V1.5: Add --speaker class
 
@@ -2876,7 +2921,7 @@ function addSpeakerCard(extra) {
           type="button"
           class="rf-speaker-btn js-speaker-on"
         >
-          ${escapeHtml(btnLabelOn)}
+          ${escapeHtml(speakerDisabled ? 'Speakers unavailable' : btnLabelOn)}
         </button>
         <div class="rf-audio-help">
           ${escapeHtml(
@@ -2959,6 +3004,12 @@ function addSpeakerCard(extra) {
   const statusText = card.querySelector('.rf-speaker-body');
   const countdownEl = card.querySelector('.lof-speaker-countdown-inline');
   const timerRow = card.querySelector('.rf-speaker-timer-row');
+
+  // V1.5: Apply disabled state to speaker button based on show state
+  if (btn && speakerDisabled) {
+    btn.disabled = true;
+    btn.classList.add('rf-speaker-btn--disabled');
+  }
 
   // hide timer row by default
   if (timerRow) timerRow.style.display = 'none';
@@ -3154,13 +3205,22 @@ function addSpeakerCard(extra) {
 
   if (btn) {
     btn.addEventListener('click', async () => {
-      // Hard guard: never allow speakers to be turned on while RF/FPP report intermission.
-      // This uses the same phase logic that drives the viewer banner and dimming.
-      if (lastPhase === 'intermission') {
-        const msg = lofCopy(
-          'speaker_intermission_blocked',
-          'Speakers only come on during show songs so intermission stays a little quieter.'
-        );
+      // V1.5: Block speakers during intermission, offhours, and offline states
+      // Uses the show state machine for consistent behavior across the UI
+      const blockedStates = ['intermission', 'offhours', 'offline'];
+      if (blockedStates.includes(currentShowState)) {
+        let msg;
+        if (currentShowState === 'intermission') {
+          msg = lofCopy(
+            'speaker_intermission_blocked',
+            'Speakers only come on during show songs so intermission stays a little quieter.'
+          );
+        } else {
+          msg = lofCopy(
+            'speaker_offhours_blocked',
+            'Speakers are only available during show hours. Check back when the lights are on!'
+          );
+        }
         showToast(msg, 'error');
         return;
       }

@@ -2033,6 +2033,18 @@
   box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
 }
 
+/* V1.5: Speaker button disabled state */
+.rf-speaker-btn--disabled,
+.rf-speaker-btn--disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--lof-forest);
+  border-color: rgba(255, 248, 231, 0.2);
+  color: var(--lof-text-dim);
+  box-shadow: none;
+  transform: none;
+}
+
 /* ================================================================
  * V1.5: SHOW STATE CLASSES
  * Applied to #rf-viewer for global state-based styling
