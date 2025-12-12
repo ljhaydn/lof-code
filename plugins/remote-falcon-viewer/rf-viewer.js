@@ -6,14 +6,14 @@
   const viewerRoot  = document.getElementById('rf-viewer');
   const gridEl      = document.getElementById('rf-grid');
 
-  // V1.5: Updated element refs for unified hero structure
-  const heroEl        = document.getElementById('rf-hero');
-  const nowCardEl     = document.getElementById('rf-now');
+  // V1.5: Updated element refs - support both old and new hero structures
+  const heroEl        = document.getElementById('rf-hero') || document.querySelector('.rf-hero');
+  const nowCardEl     = document.getElementById('rf-now') || document.querySelector('.rf-now');
   const nowTitleEl    = document.getElementById('rf-now-title');
   const nowArtistEl   = document.getElementById('rf-now-artist');
   const nextTitleEl   = document.getElementById('rf-next-title');
   
-  // V1.5: New hero elements
+  // V1.5: New hero elements (may be null if using old PHP)
   const heroBannerEl      = document.getElementById('rf-hero-banner');
   const heroBannerTitleEl = document.getElementById('rf-hero-banner-title');
   const heroBannerBodyEl  = document.getElementById('rf-hero-banner-body');
@@ -23,8 +23,8 @@
   const heroCtaBodyEl     = document.getElementById('rf-hero-cta-body');
   const heroMyStatusEl    = document.getElementById('rf-hero-mystatus');
   
-  // Legacy refs for backward compatibility (point to new structure)
-  const statusPanel = heroEl;
+  // Legacy refs for backward compatibility
+  const statusPanel = heroEl || document.querySelector('.rf-status-panel');
 
 // Persist stream state across re-renders of the extras panel
 const lofStreamState = {
@@ -732,20 +732,121 @@ try {
    * Header + Layout helpers
    * ------------------------- */
 
-  // V1.5: Hero shell no longer needed - PHP provides the structure
-  // Keep function as no-op for backward compatibility
+  // V1.5: Hero shell - create wrapper if using old PHP structure
   function ensureHeroShell() {
-    return heroEl;
+    // If new structure exists, use it
+    if (document.getElementById('rf-hero')) {
+      return document.getElementById('rf-hero');
+    }
+    
+    // Old structure: create shell around status-panel
+    if (!viewerRoot) return null;
+    const oldStatusPanel = document.querySelector('.rf-status-panel');
+    if (!oldStatusPanel) return null;
+
+    let shell = document.getElementById('lof-hero-shell');
+    if (!shell) {
+      shell = document.createElement('div');
+      shell.id = 'lof-hero-shell';
+      shell.className = 'lof-hero-shell';
+
+      if (oldStatusPanel.parentNode === viewerRoot) {
+        viewerRoot.insertBefore(shell, oldStatusPanel);
+        shell.appendChild(oldStatusPanel);
+      } else {
+        viewerRoot.insertBefore(shell, viewerRoot.firstChild);
+      }
+    }
+
+    return shell;
   }
 
-  // V1.5: Header elements now exist in PHP - this is a no-op for compatibility
+  // V1.5: Header elements - create if using old PHP structure
   function ensureHeader() {
-    return;
+    // If new structure exists, nothing to create
+    if (document.getElementById('rf-hero-cta')) {
+      return;
+    }
+    
+    if (!viewerRoot) return;
+
+    const shell = ensureHeroShell();
+    if (!shell) return;
+
+    let header = document.getElementById('rf-viewer-header');
+    if (!header) {
+      header = document.createElement('div');
+      header.id = 'rf-viewer-header';
+      header.className = 'rf-viewer-header';
+
+      const headline = document.createElement('div');
+      headline.id = 'rf-viewer-headline';
+      headline.className = 'rf-viewer-headline';
+
+      const subcopy = document.createElement('div');
+      subcopy.id = 'rf-viewer-subcopy';
+      subcopy.className = 'rf-viewer-subcopy';
+
+      const myStatus = document.createElement('div');
+      myStatus.id = 'rf-viewer-my-status';
+      myStatus.className = 'rf-viewer-my-status';
+
+      header.appendChild(headline);
+      header.appendChild(subcopy);
+      header.appendChild(myStatus);
+
+      const oldStatusPanel = shell.querySelector('.rf-status-panel');
+      if (oldStatusPanel) {
+        shell.insertBefore(header, oldStatusPanel);
+      } else {
+        shell.appendChild(header);
+      }
+    }
   }
 
-  // V1.5: Banner elements now exist in PHP - this is a no-op for compatibility
+  // V1.5: Banner - create if using old PHP structure  
   function ensureBanner() {
-    return;
+    // If new structure exists, nothing to create
+    if (document.getElementById('rf-hero-banner')) {
+      return;
+    }
+    
+    if (!viewerRoot) return;
+
+    const shell = ensureHeroShell();
+    if (!shell) return;
+
+    let banner = document.getElementById('rf-viewer-banner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'rf-viewer-banner';
+      banner.className = 'rf-viewer-banner';
+      banner.style.padding = '0.75rem 1rem';
+      banner.style.marginBottom = '0.5rem';
+      banner.style.borderRadius = '0.75rem';
+      banner.style.background = 'rgba(0,0,0,0.25)';
+      banner.style.backdropFilter = 'blur(6px)';
+      banner.style.color = 'inherit';
+
+      const title = document.createElement('div');
+      title.id = 'rf-banner-title';
+      title.style.fontWeight = '600';
+
+      const body = document.createElement('div');
+      body.id = 'rf-banner-body';
+      body.style.fontSize = '0.9rem';
+      body.style.opacity = '0.9';
+
+      banner.appendChild(title);
+      banner.appendChild(body);
+
+      const header = document.getElementById('rf-viewer-header');
+      if (header && header.parentNode === shell) {
+        shell.insertBefore(banner, header);
+      } else {
+        shell.insertBefore(banner, shell.firstChild);
+      }
+    }
   }
 
   function ensureControls() {
@@ -977,69 +1078,78 @@ function getSmartTimeMessage(showState) {
 
 /**
  * V1.5: Update hero banner based on current show state
- * Uses currentShowState (computed from state machine) for consistency
+ * Supports both new (rf-hero-banner-*) and old (rf-viewer-banner, rf-banner-*) element IDs
  */
 function updateBanner(phase, enabled) {
-  if (!heroBannerEl || !heroBannerTitleEl || !heroBannerBodyEl) return;
+  // Try new elements first, fall back to old
+  const banner = heroBannerEl || document.getElementById('rf-viewer-banner');
+  const titleEl = heroBannerTitleEl || document.getElementById('rf-banner-title');
+  const bodyEl = heroBannerBodyEl || document.getElementById('rf-banner-body');
+  
+  if (!banner || !titleEl || !bodyEl) return;
   
   const config = getLofConfig();
   
   // Use the currentShowState computed by the state machine for consistency
   const showState = currentShowState;
   
+  // Determine class prefix based on which elements we're using
+  const isNewStructure = !!heroBannerEl;
+  const classPrefix = isNewStructure ? 'rf-hero-banner' : 'rf-viewer-banner';
+  
   // Default: hide banner
-  heroBannerEl.style.display = 'none';
-  heroBannerEl.className = 'rf-hero-banner';
+  banner.style.display = 'none';
+  banner.className = classPrefix;
   
   // Also update smart time message
   updateSmartTimeMessage(showState);
   
   // Manual override: offseason always wins
   if (config && config.holiday_mode === 'offseason') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--offseason');
-    heroBannerTitleEl.textContent = lofCopy('banner_offseason_title', 'We\'re resting up for next season');
-    heroBannerBodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--offseason');
+    titleEl.textContent = lofCopy('banner_offseason_title', 'We\'re resting up for next season');
+    bodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
     return;
   }
 
   if (showState === 'showtime') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--showtime');
-    heroBannerTitleEl.textContent = lofCopy('banner_showtime_title', 'Showtime 🎶');
-    heroBannerBodyEl.textContent = lofCopy('banner_showtime_body', 'Lights, audio, and neighbors in sync.');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--showtime');
+    titleEl.textContent = lofCopy('banner_showtime_title', 'Showtime 🎶');
+    bodyEl.textContent = lofCopy('banner_showtime_body', 'Lights, audio, and neighbors in sync.');
     return;
   }
 
   if (showState === 'intermission') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--intermission');
-    heroBannerTitleEl.textContent = lofCopy('banner_intermission_title', 'We\'re taking a breather');
-    heroBannerBodyEl.textContent = lofCopy('banner_intermission_body', 'The lights are catching their breath. Queue up your next request!');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--intermission');
+    titleEl.textContent = lofCopy('banner_intermission_title', 'We\'re taking a breather');
+    bodyEl.textContent = lofCopy('banner_intermission_body', 'The lights are catching their breath. Queue up your next request!');
     return;
   }
 
   if (showState === 'preshow') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--preshow');
-    heroBannerTitleEl.textContent = lofCopy('banner_preshow_title', 'Getting ready ✨');
-    heroBannerBodyEl.textContent = lofCopy('banner_preshow_body', 'The show is warming up. Get your requests in!');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--preshow');
+    titleEl.textContent = lofCopy('banner_preshow_title', 'Getting ready ✨');
+    bodyEl.textContent = lofCopy('banner_preshow_body', 'The show is warming up. Get your requests in!');
     return;
   }
   
   if (showState === 'paused') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--paused');
-    heroBannerTitleEl.textContent = lofCopy('banner_paused_title', 'Controls paused');
-    heroBannerBodyEl.textContent = lofCopy('banner_paused_body', 'Enjoy the show — we\'ll turn requests back on soon.');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--paused');
+    titleEl.textContent = lofCopy('banner_paused_title', 'Controls paused');
+    bodyEl.textContent = lofCopy('banner_paused_body', 'Enjoy the show — we\'ll turn requests back on soon.');
     return;
   }
 
   if (showState === 'offhours' || showState === 'offline') {
-    heroBannerEl.style.display = 'block';
-    heroBannerEl.classList.add('rf-hero-banner--offhours');
-    heroBannerTitleEl.textContent = lofCopy('banner_offhours_title', 'Show\'s taking a break');
-    heroBannerBodyEl.textContent = lofCopy('banner_offhours_body', 'The lights are resting until the next show.');
+    banner.style.display = 'block';
+    banner.classList.add(classPrefix + '--offhours');
+    titleEl.textContent = lofCopy('banner_offhours_title', 'Show\'s taking a break');
+    bodyEl.textContent = lofCopy('banner_offhours_body', 'The lights are resting until the next show.');
     return;
   }
 }
