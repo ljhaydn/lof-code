@@ -2719,7 +2719,7 @@ function renderDeviceStatsCard(extra, queueLength) {
 
   extra.appendChild(card);
 
-  // Lazy-load Mischief Meter counts and enhance the card in-place
+  // Lazy-load Show Activity counts and enhance the card in-place
   fetchTriggerCounts()
     .then((triggers) => {
       if (!triggers) return;
@@ -2733,7 +2733,7 @@ function renderDeviceStatsCard(extra, queueLength) {
 
       const sectionLabel = document.createElement('div');
       sectionLabel.className = 'rf-stat-section-label';
-      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Tonight\'s Show Activity');
+      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Show Activity');
       body.appendChild(sectionLabel);
 
       if (typeof triggers.mailbox !== 'undefined') {
@@ -2831,6 +2831,49 @@ function renderDeviceStatsCard(extra, queueLength) {
             ${escapeHtml(lofCopy('trigger_surprise_label', '🎁 Surprise songs launched:'))}
           </span>
           <span class="rf-stat-value">${rawSurprise}</span>
+        `;
+        body.appendChild(row);
+      }
+
+      // V1.5 Bundle B: Add speaker presses if available
+      if (typeof triggers.speaker !== 'undefined') {
+        const rawSpeaker =
+          typeof triggers.speaker === 'number'
+            ? triggers.speaker
+            : parseInt(triggers.speaker, 10) || 0;
+
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--mischief';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_speaker_label', '🔊 Speaker button taps:'))}
+          </span>
+          <span class="rf-stat-value">${rawSpeaker}</span>
+        `;
+        body.appendChild(row);
+      }
+
+      // V1.5 Bundle B: Add popular songs if available
+      if (triggers.popular_tonight) {
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--popular';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_popular_tonight', '🎵 Most requested tonight:'))}
+          </span>
+          <span class="rf-stat-value rf-stat-value--song">${escapeHtml(triggers.popular_tonight)}</span>
+        `;
+        body.appendChild(row);
+      }
+
+      if (triggers.popular_alltime) {
+        const row = document.createElement('div');
+        row.className = 'rf-stat-item rf-stats-row--popular';
+        row.innerHTML = `
+          <span class="rf-stat-label">
+            ${escapeHtml(lofCopy('trigger_popular_alltime', '👑 All-time favorite:'))}
+          </span>
+          <span class="rf-stat-value rf-stat-value--song">${escapeHtml(triggers.popular_alltime)}</span>
         `;
         body.appendChild(row);
       }

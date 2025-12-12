@@ -1390,6 +1390,20 @@
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
+/* V1.5 Bundle B: Song name stat values - smaller, allow wrap */
+.rf-stat-value--song {
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 50%;
+  text-align: right;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.rf-stats-row--popular {
+  padding: 6px 0;
+}
+
 .rf-stat-divider {
   height: 1px;
   background: linear-gradient(
@@ -2276,11 +2290,21 @@
 /* V1.5: Speaker / "Need sound?" contents */
 .rf-speaker-card .rf-audio-option {
   cursor: default;
+  /* Override hero audio styling - make stacked, not row */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  /* Remove any interactive styling */
+  pointer-events: none;
 }
 
+/* Only buttons inside are interactive */
+.rf-speaker-card .rf-audio-option button,
 .rf-speaker-card .rf-glow-btn,
 .rf-speaker-card .rf-speaker-btn {
   cursor: pointer;
+  pointer-events: auto;
 }
 
 /* V1.5: Slightly larger text on mobile for queue, leaderboard, and Need Sound help text */
@@ -2298,14 +2322,19 @@
 
 /* V1.5: Ensure "Need sound?" sections don't glow like song cards */
 .rf-card.rf-speaker-card .rf-audio-option,
-.rf-card.rf-speaker-card .rf-audio-option:hover {
-  box-shadow: none;
-  transform: none;
+.rf-card.rf-speaker-card .rf-audio-option:hover,
+.rf-card.rf-speaker-card .rf-audio-option:focus,
+.rf-card.rf-speaker-card .rf-audio-option:active {
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: rgba(255, 248, 231, 0.1) !important;
+  outline: none !important;
 }
 
 .rf-card.rf-speaker-card .rf-audio-option::before,
 .rf-card.rf-speaker-card .rf-audio-option::after {
-  animation: none;
+  animation: none !important;
+  display: none !important;
 }
 
 
@@ -2378,7 +2407,7 @@
   background: linear-gradient(145deg, var(--lof-pink), var(--lof-burgundy));
   border-color: var(--lof-pink);
   color: var(--lof-white);
-  box-shadow: var(--glow-pink);
+  /* No box-shadow - keeps it clean without revealing container */
 }
 
 /* Category Headers - Desktop */
