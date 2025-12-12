@@ -620,10 +620,27 @@
   
   .rf-main-right {
     order: 1;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
   
   .rf-main-left {
     order: 2;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure extra panel cards don't overflow on mobile */
+  .rf-extra-panel,
+  .rf-card--device-stats,
+  .rf-card--speaker,
+  .rf-card--geo {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 }
 

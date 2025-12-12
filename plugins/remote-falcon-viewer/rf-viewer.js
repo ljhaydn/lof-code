@@ -23,9 +23,7 @@
   const heroCtaTitleEl    = document.getElementById('rf-hero-cta-title');
   const heroCtaBodyEl     = document.getElementById('rf-hero-cta-body');
   const heroMyStatusEl    = document.getElementById('rf-hero-mystatus');
-  const heroAudioEl       = document.getElementById('rf-hero-audio');
   const heroGeoEl         = document.getElementById('rf-hero-geo');
-  const heroSpeakerBtn    = document.getElementById('rf-hero-speaker-btn');
   
   // Legacy refs for backward compatibility
   const statusPanel = heroEl || document.querySelector('.rf-status-panel');
@@ -762,50 +760,6 @@ function updateHeroGeo(distance, city) {
   }
 }
 
-/**
- * V1.5 Bundle B: Wire up hero speaker button
- */
-function initHeroSpeakerButton() {
-  if (!heroSpeakerBtn) return;
-  
-  heroSpeakerBtn.addEventListener('click', async function() {
-    // Check show state first
-    const blockedStates = ['intermission', 'offhours', 'offline'];
-    if (blockedStates.includes(currentShowState)) {
-      showToast(lofCopy('speaker_unavailable', 'Speakers are only available during songs'), 'info');
-      return;
-    }
-    
-    heroSpeakerBtn.disabled = true;
-    heroSpeakerBtn.textContent = 'Turning on...';
-    
-    try {
-      const res = await fetch('/wp-content/themes/integrations/lof-speaker.php?action=on', {
-        method: 'GET',
-        credentials: 'same-origin'
-      });
-      
-      if (res.ok) {
-        heroSpeakerBtn.textContent = '✓ Speakers on!';
-        showToast(lofCopy('speaker_on_success', 'Speakers are now on! 🔊'), 'success');
-        
-        // Reset button after a delay
-        setTimeout(() => {
-          heroSpeakerBtn.textContent = 'Turn speakers on';
-          heroSpeakerBtn.disabled = false;
-        }, 3000);
-      } else {
-        throw new Error('Speaker request failed');
-      }
-    } catch (err) {
-      console.warn('[LOF] Hero speaker button error:', err);
-      heroSpeakerBtn.textContent = 'Try again';
-      heroSpeakerBtn.disabled = false;
-      showToast(lofCopy('speaker_error', 'Could not turn on speakers'), 'error');
-    }
-  });
-}
-
   /* -------------------------
    * Fetch showDetails via WP proxy
    * ------------------------- */
@@ -1401,6 +1355,17 @@ function updateSmartTimeMessage(showState) {
       nowMatches.push(nowLabel || nowKeyName);
     }
 
+    // V1.5 Bundle B: Get current song's remaining time for wait calculation
+    let currentSongRemaining = 0;
+    if (window.LOFNowTiming && typeof window.LOFNowTiming.duration === 'number') {
+      const timing = window.LOFNowTiming;
+      const baseElapsed = typeof timing.elapsed === 'number' ? timing.elapsed : 0;
+      const startedAt = typeof timing.updatedAt === 'number' ? timing.updatedAt : Date.now();
+      const deltaSec = Math.max(0, (Date.now() - startedAt) / 1000);
+      const elapsed = Math.min(timing.duration, baseElapsed + deltaSec);
+      currentSongRemaining = Math.max(0, timing.duration - elapsed);
+    }
+
     if (Array.isArray(queue)) {
       for (let i = 0; i < queue.length; i++) {
         const item = queue[i];
@@ -1415,8 +1380,8 @@ function updateSmartTimeMessage(showState) {
         if (requestedSongNames.includes(key)) {
           const pos = i + 1;
           
-          // V1.5: Calculate estimated wait time
-          let estimatedWaitSec = 0;
+          // V1.5 Bundle B: Calculate estimated wait time including current song
+          let estimatedWaitSec = currentSongRemaining; // Start with current song's remaining time
           for (let j = 0; j < i; j++) {
             const prevItem = queue[j];
             if (prevItem && prevItem.sequence) {
@@ -2768,7 +2733,7 @@ function renderDeviceStatsCard(extra, queueLength) {
 
       const sectionLabel = document.createElement('div');
       sectionLabel.className = 'rf-stat-section-label';
-      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Tonight’s Mischief Meter');
+      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Tonight\'s Show Activity');
       body.appendChild(sectionLabel);
 
       if (typeof triggers.mailbox !== 'undefined') {
@@ -3865,9 +3830,6 @@ function addSurpriseCard() {
 
 // LOF Extras config
 lofLoadConfig();
-
-// V1.5 Bundle B: Initialize hero speaker button
-initHeroSpeakerButton();
 
 // V1.5: Set initial poll interval
 currentPollInterval = POLL_INTERVAL_ACTIVE;
