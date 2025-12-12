@@ -1,17 +1,30 @@
 (function () {
   const base = (window.RFViewer && RFViewer.base) ? RFViewer.base : '';
   
-  console.log('[LOF viewer] rf-viewer.js loaded');
+  console.log('[LOF viewer] rf-viewer.js V1.5.0 loaded');
   
   const viewerRoot  = document.getElementById('rf-viewer');
-  const statusPanel = document.querySelector('.rf-status-panel');
   const gridEl      = document.getElementById('rf-grid');
 
-  const nowCardEl   = document.querySelector('.rf-now');
-  const nowTitleEl  = document.getElementById('rf-now-title');
-  const nowArtistEl = document.getElementById('rf-now-artist');
-  const nextTitleEl = document.getElementById('rf-next-title');
-  const modeEl      = document.getElementById('rf-mode-value');
+  // V1.5: Updated element refs for unified hero structure
+  const heroEl        = document.getElementById('rf-hero');
+  const nowCardEl     = document.getElementById('rf-now');
+  const nowTitleEl    = document.getElementById('rf-now-title');
+  const nowArtistEl   = document.getElementById('rf-now-artist');
+  const nextTitleEl   = document.getElementById('rf-next-title');
+  
+  // V1.5: New hero elements
+  const heroBannerEl      = document.getElementById('rf-hero-banner');
+  const heroBannerTitleEl = document.getElementById('rf-hero-banner-title');
+  const heroBannerBodyEl  = document.getElementById('rf-hero-banner-body');
+  const heroTimeEl        = document.getElementById('rf-hero-time');
+  const heroCtaEl         = document.getElementById('rf-hero-cta');
+  const heroCtaTitleEl    = document.getElementById('rf-hero-cta-title');
+  const heroCtaBodyEl     = document.getElementById('rf-hero-cta-body');
+  const heroMyStatusEl    = document.getElementById('rf-hero-mystatus');
+  
+  // Legacy refs for backward compatibility (point to new structure)
+  const statusPanel = heroEl;
 
 // Persist stream state across re-renders of the extras panel
 const lofStreamState = {
@@ -719,113 +732,20 @@ try {
    * Header + Layout helpers
    * ------------------------- */
 
-  // Helper to ensure the hero shell (container for banner, header, and status panel)
+  // V1.5: Hero shell no longer needed - PHP provides the structure
+  // Keep function as no-op for backward compatibility
   function ensureHeroShell() {
-    if (!viewerRoot || !statusPanel) return null;
-
-    let shell = document.getElementById('lof-hero-shell');
-    if (!shell) {
-      shell = document.createElement('div');
-      shell.id = 'lof-hero-shell';
-      shell.className = 'lof-hero-shell';
-
-      // Insert the shell where the status panel currently lives
-      if (statusPanel.parentNode === viewerRoot) {
-        viewerRoot.insertBefore(shell, statusPanel);
-        shell.appendChild(statusPanel);
-      } else {
-        // Fallback: put shell at the top of the viewerRoot
-        viewerRoot.insertBefore(shell, viewerRoot.firstChild);
-      }
-    }
-
-    return shell;
+    return heroEl;
   }
 
+  // V1.5: Header elements now exist in PHP - this is a no-op for compatibility
   function ensureHeader() {
-    if (!viewerRoot || !statusPanel) return;
-
-    const shell = ensureHeroShell();
-    if (!shell) return;
-
-    let header = document.getElementById('rf-viewer-header');
-    if (!header) {
-      header = document.createElement('div');
-      header.id = 'rf-viewer-header';
-      header.className = 'rf-viewer-header';
-
-      const headline = document.createElement('div');
-      headline.id = 'rf-viewer-headline';
-      headline.className = 'rf-viewer-headline';
-
-      const subcopy = document.createElement('div');
-      subcopy.id = 'rf-viewer-subcopy';
-      subcopy.className = 'rf-viewer-subcopy';
-
-      const myStatus = document.createElement('div');
-      myStatus.id = 'rf-viewer-my-status';
-      myStatus.className = 'rf-viewer-my-status';
-
-      const controls = document.createElement('div');
-      controls.id = 'rf-viewer-controls';
-      controls.className = 'rf-viewer-controls';
-
-      header.appendChild(headline);
-      header.appendChild(subcopy);
-      header.appendChild(myStatus);
-      header.appendChild(controls);
-
-      // Insert header between banner (if present) and status panel inside the hero shell
-      const banner = document.getElementById('rf-viewer-banner');
-      if (banner && banner.parentNode === shell) {
-        shell.insertBefore(header, statusPanel);
-      } else {
-        shell.insertBefore(header, statusPanel);
-      }
-    }
+    return;
   }
 
+  // V1.5: Banner elements now exist in PHP - this is a no-op for compatibility
   function ensureBanner() {
-    if (!viewerRoot) return;
-
-    const shell = ensureHeroShell();
-    if (!shell) return;
-
-    let banner = document.getElementById('rf-viewer-banner');
-    if (!banner) {
-      banner = document.createElement('div');
-      banner.id = 'rf-viewer-banner';
-      banner.className = 'rf-viewer-banner';
-      // lightweight inline baseline styling so it doesn't look broken even without CSS
-      banner.style.padding = '0.75rem 1rem';
-      banner.style.marginBottom = '0.5rem';
-      banner.style.borderRadius = '0.75rem';
-      banner.style.background = 'rgba(0,0,0,0.25)';
-      banner.style.backdropFilter = 'blur(6px)';
-      banner.style.color = 'inherit';
-
-      const title = document.createElement('div');
-      title.id = 'rf-banner-title';
-      title.style.fontWeight = '600';
-
-      const body = document.createElement('div');
-      body.id = 'rf-banner-body';
-      body.style.fontSize = '0.9rem';
-      body.style.opacity = '0.9';
-
-      banner.appendChild(title);
-      banner.appendChild(body);
-
-      // Place banner at the top of the hero shell, before header and status panel
-      const header = document.getElementById('rf-viewer-header');
-      if (header && header.parentNode === shell) {
-        shell.insertBefore(banner, header);
-      } else if (statusPanel && statusPanel.parentNode === shell) {
-        shell.insertBefore(banner, statusPanel);
-      } else {
-        shell.insertBefore(banner, shell.firstChild);
-      }
-    }
+    return;
   }
 
   function ensureControls() {
@@ -1055,54 +975,92 @@ function getSmartTimeMessage(showState) {
   return '';
 }
 
+/**
+ * V1.5: Update hero banner based on current show state
+ * Uses currentShowState (computed from state machine) for consistency
+ */
 function updateBanner(phase, enabled) {
-  const banner = document.getElementById('rf-viewer-banner');
-  const titleEl = document.getElementById('rf-banner-title');
-  const bodyEl = document.getElementById('rf-banner-body');
-  
-  if (!banner || !titleEl || !bodyEl) return;
+  if (!heroBannerEl || !heroBannerTitleEl || !heroBannerBodyEl) return;
   
   const config = getLofConfig();
   
+  // Use the currentShowState computed by the state machine for consistency
+  const showState = currentShowState;
+  
+  // Default: hide banner
+  heroBannerEl.style.display = 'none';
+  heroBannerEl.className = 'rf-hero-banner';
+  
+  // Also update smart time message
+  updateSmartTimeMessage(showState);
+  
   // Manual override: offseason always wins
   if (config && config.holiday_mode === 'offseason') {
-    banner.style.display = 'block';
-    banner.className = 'rf-viewer-banner rf-banner--offseason';
-    titleEl.textContent = lofCopy('banner_offseason_title', 'We\'re resting up for next season');
-    bodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--offseason');
+    heroBannerTitleEl.textContent = lofCopy('banner_offseason_title', 'We\'re resting up for next season');
+    heroBannerBodyEl.textContent = lofCopy('banner_offseason_body', 'Check back soon for more glowing chaos.');
     return;
   }
 
-  // Derive show state from schedule + RF phase
-  const showState = getShowState(phase);
-
   if (showState === 'showtime') {
-    banner.style.display = 'block';
-    banner.className = 'rf-viewer-banner rf-banner--showtime';
-    titleEl.textContent = lofCopy('banner_showtime_title', 'Showtime 🎶');
-    bodyEl.textContent = lofCopy('banner_showtime_body', 'Lights, audio, and neighbors in sync.');
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--showtime');
+    heroBannerTitleEl.textContent = lofCopy('banner_showtime_title', 'Showtime 🎶');
+    heroBannerBodyEl.textContent = lofCopy('banner_showtime_body', 'Lights, audio, and neighbors in sync.');
     return;
   }
 
   if (showState === 'intermission') {
-    banner.style.display = 'block';
-    banner.className = 'rf-viewer-banner rf-banner--intermission';
-    titleEl.textContent = lofCopy('banner_intermission_title', 'Intermission');
-    bodyEl.textContent = lofCopy('banner_intermission_body', 'The lights are catching their breath between songs.');
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--intermission');
+    heroBannerTitleEl.textContent = lofCopy('banner_intermission_title', 'We\'re taking a breather');
+    heroBannerBodyEl.textContent = lofCopy('banner_intermission_body', 'The lights are catching their breath. Queue up your next request!');
     return;
   }
 
-  if (showState === 'afterhours') {
-    banner.style.display = 'block';
-    banner.className = 'rf-viewer-banner rf-banner--afterhours';
-    titleEl.textContent = lofCopy('banner_afterhours_title', 'We’re taking a breather');
-    bodyEl.textContent = lofCopy('banner_afterhours_body', 'The lights are resting until the next show.');
+  if (showState === 'preshow') {
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--preshow');
+    heroBannerTitleEl.textContent = lofCopy('banner_preshow_title', 'Getting ready ✨');
+    heroBannerBodyEl.textContent = lofCopy('banner_preshow_body', 'The show is warming up. Get your requests in!');
+    return;
+  }
+  
+  if (showState === 'paused') {
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--paused');
+    heroBannerTitleEl.textContent = lofCopy('banner_paused_title', 'Controls paused');
+    heroBannerBodyEl.textContent = lofCopy('banner_paused_body', 'Enjoy the show — we\'ll turn requests back on soon.');
     return;
   }
 
-  // Fallback: hide the banner if we don't have a clear state
-  banner.style.display = 'none';
+  if (showState === 'offhours' || showState === 'offline') {
+    heroBannerEl.style.display = 'block';
+    heroBannerEl.classList.add('rf-hero-banner--offhours');
+    heroBannerTitleEl.textContent = lofCopy('banner_offhours_title', 'Show\'s taking a break');
+    heroBannerBodyEl.textContent = lofCopy('banner_offhours_body', 'The lights are resting until the next show.');
+    return;
+  }
 }
+
+/**
+ * V1.5: Update smart time message
+ * Shows "Show starts at 5 PM!" when off-hours
+ */
+function updateSmartTimeMessage(showState) {
+  if (!heroTimeEl) return;
+  
+  const message = getSmartTimeMessage(showState);
+  
+  if (message) {
+    heroTimeEl.textContent = message;
+    heroTimeEl.style.display = 'block';
+  } else {
+    heroTimeEl.style.display = 'none';
+  }
+}
+
 
   function applyPersonaToSubcopy(subcopyEl) {
     if (!subcopyEl) return;
@@ -1127,39 +1085,24 @@ function updateBanner(phase, enabled) {
     subcopyEl.textContent = base + extra;
   }
 
+  // V1.5: Update hero CTA section based on mode
   function updateHeaderCopy(mode, enabled, prefs, queueLength, phase) {
-    const headlineEl = document.getElementById('rf-viewer-headline');
-    const subcopyEl  = document.getElementById('rf-viewer-subcopy');
+    // V1.5: Use new hero CTA elements, fall back to old IDs for compatibility
+    const headlineEl = heroCtaTitleEl || document.getElementById('rf-viewer-headline');
+    const subcopyEl  = heroCtaBodyEl || document.getElementById('rf-viewer-subcopy');
     if (!headlineEl || !subcopyEl) return;
 
-    const requestLimit   = prefs.jukeboxRequestLimit || null;
-    const locationMethod = prefs.locationCheckMethod || 'NONE';
+    // Hide CTA if controls are disabled (banner shows the message instead)
+    if (heroCtaEl && !enabled) {
+      heroCtaEl.style.display = 'none';
+      return;
+    } else if (heroCtaEl) {
+      heroCtaEl.style.display = 'block';
+    }
 
+    const locationMethod = prefs.locationCheckMethod || 'NONE';
     const late = isLateNight();
     let parts = [];
-
-    // Phase contribution (pre-header flavor)
-    if (phase === 'intermission') {
-      // We can optionally prepend intermission flavor here if we want;
-      // the main banner now carries most of that weight.
-    } else if (phase === 'showtime') {
-      // Likewise, banner covers most of the "showtime" vibe.
-    }
-
-    if (!enabled) {
-      const title = lofCopy(
-        'header_paused_title',
-        'Viewer control is currently paused'
-      );
-      const body  = lofCopy(
-        'header_paused_body',
-        'You can still enjoy the show — we’ll turn song requests and voting back on soon.'
-      );
-      headlineEl.textContent = title;
-      subcopyEl.textContent  = body;
-      applyPersonaToSubcopy(subcopyEl);
-      return;
-    }
 
     if (mode === 'JUKEBOX') {
       const title = lofCopy(
@@ -1168,10 +1111,6 @@ function updateBanner(phase, enabled) {
       );
       headlineEl.textContent = title;
 
-      const tokens = {
-        queueCount: queueLength
-      };
-
       const intro = lofCopy(
         'header_jukebox_intro',
         'Requests join the queue in the order they come in.'
@@ -1179,14 +1118,10 @@ function updateBanner(phase, enabled) {
       parts.push(intro);
 
       if (queueLength > 0) {
-        const queueLineTmpl = lofCopy(
-          'header_jukebox_queue',
-          'There are currently {queueCount} songs in the queue.'
-        );
-        parts.push(applyTokens(queueLineTmpl, tokens));
+        parts.push('There are currently ' + queueLength + ' songs in the queue.');
       }
 
-      // Generic fairness message that doesn&apos;t rely on RF&apos;s per-sequence limit
+      // Shortened fairness message
       parts.push(
         lofCopy(
           'header_jukebox_fair',
@@ -1194,22 +1129,9 @@ function updateBanner(phase, enabled) {
         )
       );
 
+      // Show geo notice if geo check is enabled
       if (locationMethod && locationMethod !== 'NONE') {
-        parts.push(
-          lofCopy(
-            'header_jukebox_geo',
-            'Viewer control may be limited to guests near the show location.'
-          )
-        );
-      }
-
-      if (late) {
-        parts.push(
-          lofCopy(
-            'header_jukebox_late',
-            'Late-night Falcon fans are the real MVPs. 🌙'
-          )
-        );
+        parts.push("You're officially part of the neighborhood DJ crew.");
       }
 
       subcopyEl.textContent = parts.join(' ');
@@ -1227,22 +1149,12 @@ function updateBanner(phase, enabled) {
         'Songs with the most votes rise to the top. Tap a track below to help decide what plays next.'
       );
       headlineEl.textContent = title;
-      parts.push(intro);
-
-      if (late) {
-        parts.push(
-          lofCopy(
-            'header_voting_late',
-            'Bonus points for after-dark voting energy. 🌒'
-          )
-        );
-      }
-
-      subcopyEl.textContent = parts.join(' ');
+      subcopyEl.textContent = intro;
       applyPersonaToSubcopy(subcopyEl);
       return;
     }
 
+    // Fallback
     const fallbackTitle = lofCopy(
       'header_default_title',
       'Interactive show controls'
@@ -1257,8 +1169,10 @@ function updateBanner(phase, enabled) {
     applyPersonaToSubcopy(subcopyEl);
   }
 
+  // V1.5: Update personalized status line with estimated wait time
   function updateMyStatusLine(nowSeq, queue, nowKey) {
-    const el = document.getElementById('rf-viewer-my-status');
+    // V1.5: Use new hero mystatus element, fall back to old ID
+    const el = heroMyStatusEl || document.getElementById('rf-viewer-my-status');
     if (!el) return;
 
     if (!Array.isArray(requestedSongNames) || requestedSongNames.length === 0) {
@@ -1284,15 +1198,28 @@ function updateBanner(phase, enabled) {
         if (!item || typeof item !== 'object') continue;
 
         const seq   = item.sequence || {};
-        const key   = seq.name || seq.displayName;              // internal key for matching
-        const label = seq.displayName || seq.name || '';        // friendly title for display
+        const key   = seq.name || seq.displayName;
+        const label = seq.displayName || seq.name || '';
+        const duration = seq.duration || 0;
 
         if (!key) continue;
         if (requestedSongNames.includes(key)) {
-          // Use the current index + 1 so the position tracks live queue order,
-          // even if RF's stored "position" is not updated as the queue drains.
           const pos = i + 1;
-          queueMatches.push({ name: label || key, pos });
+          
+          // V1.5: Calculate estimated wait time
+          let estimatedWaitSec = 0;
+          for (let j = 0; j < i; j++) {
+            const prevItem = queue[j];
+            if (prevItem && prevItem.sequence) {
+              estimatedWaitSec += (prevItem.sequence.duration || 180); // default 3 min
+            }
+          }
+          
+          queueMatches.push({ 
+            name: label || key, 
+            pos: pos,
+            estimatedWait: estimatedWaitSec
+          });
         }
       }
     }
@@ -1306,22 +1233,31 @@ function updateBanner(phase, enabled) {
 
       if (hasNowMatches) {
         if (nowMatches.length === 1) {
-          parts.push(`Your request “${nowMatches[0]}” is playing right now. Enjoy the glow ✨`);
+          parts.push('Your request "' + nowMatches[0] + '" is playing right now. Enjoy the glow ✨');
         } else {
-          parts.push(`One of your picks is playing now! (${nowMatches.join(', ')})`);
+          parts.push('One of your picks is playing now! (' + nowMatches.join(', ') + ')');
         }
       }
 
       if (hasQueueMatches) {
         if (queueMatches.length === 1) {
           const item = queueMatches[0];
-          const queueText = `Your song “${item.name}” is currently #${item.pos} in the queue.`;
+          // V1.5: Include estimated wait time
+          const waitMin = Math.round(item.estimatedWait / 60);
+          let queueText = 'Your song "' + item.name + '" is currently #' + item.pos + ' in the queue';
+          if (waitMin > 0) {
+            queueText += ' (~' + waitMin + ' min wait)';
+          }
+          queueText += '.';
           parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
         } else {
           const queueParts = queueMatches
             .sort((a, b) => a.pos - b.pos)
-            .map((x) => `“${x.name}” (#${x.pos})`);
-          const queueText = `Your picks are moving up: ${queueParts.join(', ')}`;
+            .map(function(x) {
+              const waitMin = Math.round(x.estimatedWait / 60);
+              return '"' + x.name + '" (#' + x.pos + (waitMin > 0 ? ', ~' + waitMin + 'm' : '') + ')';
+            });
+          const queueText = 'Your picks are moving up: ' + queueParts.join(', ');
           parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
         }
       }
@@ -1332,7 +1268,7 @@ function updateBanner(phase, enabled) {
     }
 
     el.textContent = text;
-    el.style.display = 'block';
+    el.style.display = text ? 'block' : 'none';
 
     // Keep requested chips synced
     syncRequestedSongsWithStatus(nowSeq, queue);
@@ -1953,22 +1889,42 @@ function updateBanner(phase, enabled) {
 
     // V1.5: Track which category we last rendered (for headers)
     let lastRenderedCategory = null;
+    let uncategorizedHeaderShown = false;
 
     visibleSequences.forEach((seq) => {
       // V1.5: Desktop category headers - insert before first card of each category
-      if (hasCategories && !mobile && seq.category && seq.category !== lastRenderedCategory) {
-        const header = document.createElement('div');
-        header.className = 'rf-category-header';
-        header.dataset.category = seq.category;
+      if (hasCategories && !mobile) {
+        const seqCategory = seq.category || null;
         
-        // Count songs in this category
-        const categoryCount = visibleSequences.filter(s => s.category === seq.category).length;
-        header.innerHTML = `
-          <span class="rf-category-header-text">${escapeHtml(seq.category)}</span>
-          <span class="rf-category-header-count">${categoryCount} songs</span>
-        `;
-        gridEl.appendChild(header);
-        lastRenderedCategory = seq.category;
+        if (seqCategory && seqCategory !== lastRenderedCategory) {
+          // Normal category header
+          const header = document.createElement('div');
+          header.className = 'rf-category-header';
+          header.dataset.category = seqCategory;
+          
+          // Count songs in this category
+          const categoryCount = visibleSequences.filter(s => s.category === seqCategory).length;
+          header.innerHTML = `
+            <span class="rf-category-header-text">${escapeHtml(seqCategory)}</span>
+            <span class="rf-category-header-count">${categoryCount} songs</span>
+          `;
+          gridEl.appendChild(header);
+          lastRenderedCategory = seqCategory;
+        } else if (!seqCategory && !uncategorizedHeaderShown) {
+          // Uncategorized songs header - show once before first uncategorized song
+          const uncatCount = visibleSequences.filter(s => !s.category).length;
+          if (uncatCount > 0) {
+            const header = document.createElement('div');
+            header.className = 'rf-category-header rf-category-header--other';
+            header.dataset.category = '';
+            header.innerHTML = `
+              <span class="rf-category-header-text">More Songs</span>
+              <span class="rf-category-header-count">${uncatCount} songs</span>
+            `;
+            gridEl.appendChild(header);
+            uncategorizedHeaderShown = true;
+          }
+        }
       }
 
       const card = document.createElement('div');

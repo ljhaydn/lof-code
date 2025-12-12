@@ -1,7 +1,7 @@
 <?php
 /**
- * Plugin Name: Remote Falcon Viewer (Native)
- * Description: Native Remote Falcon viewer using the External API via a secure WP proxy + shortcode [rf_viewer].
+ * Plugin Name: Remote Falcon Viewer
+ * Description: Displays the Remote Falcon show viewer with interactive song requests/voting.
  * Version: 1.5.0
  * Author: Lights on Falcon
  */
@@ -11,402 +11,220 @@ if (!defined('ABSPATH')) {
 }
 
 class RF_Viewer_Plugin {
-    private $option_key = 'rf_viewer_settings';
+    private static $instance = null;
+    private $api_base = 'https://remotefalcon.com/remote-falcon-external-api';
 
-    public function __construct() {
-        add_action('admin_menu', [$this, 'add_settings_page']);
-        add_action('admin_init', [$this, 'register_settings']);
-        add_action('rest_api_init', [$this, 'register_routes']);
-        add_shortcode('rf_viewer', [$this, 'shortcode_viewer']);
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    private function __construct() {
+        add_action('init', [$this, 'register_shortcode']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('rest_api_init', [$this, 'register_rest_routes']);
     }
 
-    /* -------------------
-     * SETTINGS
-     * ------------------- */
-
-    public function add_settings_page() {
-        add_options_page(
-            'Remote Falcon Viewer',
-            'Remote Falcon Viewer',
-            'manage_options',
-            'rf-viewer',
-            [$this, 'settings_page_html']
-        );
+    public function register_shortcode() {
+        add_shortcode('rf_viewer', [$this, 'shortcode_viewer']);
     }
 
-    public function register_settings() {
-        register_setting($this->option_key, $this->option_key, [
-            'sanitize_callback' => function($input) {
-                $out = [];
-                $out['api_base']      = isset($input['api_base']) ? esc_url_raw($input['api_base']) : '';
-                $out['jwt']           = isset($input['jwt']) ? sanitize_text_field($input['jwt']) : '';
-                $out['cache_seconds'] = isset($input['cache_seconds']) ? intval($input['cache_seconds']) : 15;
-
-                // request/vote endpoint paths (relative to api_base)
-                $out['request_path']  = isset($input['request_path']) ? sanitize_text_field($input['request_path']) : '';
-                $out['vote_path']     = isset($input['vote_path']) ? sanitize_text_field($input['vote_path']) : '';
-
-                return $out;
-            }
-        ]);
-    }
-
-    public function settings_page_html() {
-        if (!current_user_can('manage_options')) return;
-
-        $opts = $this->get_options();
-        ?>
-        <div class="wrap">
-            <h1>Remote Falcon Viewer (Native)</h1>
-            <p>This plugin connects your WordPress site to your Remote Falcon show via the External API.</p>
-
-            <form method="post" action="options.php">
-                <?php settings_fields($this->option_key); ?>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><label for="rf_api_base">Remote Falcon API Base URL</label></th>
-                        <td>
-                            <input type="url"
-                                   id="rf_api_base"
-                                   name="<?php echo esc_attr($this->option_key); ?>[api_base]"
-                                   value="<?php echo esc_attr($opts['api_base']); ?>"
-                                   class="regular-text"
-                                   placeholder="https://getlitproductions.co/remote-falcon-external-api"
-                                   required>
-                            <p class="description">
-                                For your Cloudflare reverse-proxy this should be something like:<br>
-                                <code>https://getlitproductions.co/remote-falcon-external-api</code>
-                            </p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="rf_jwt">JWT (Bearer Token)</label></th>
-                        <td>
-                            <input type="password"
-                                   id="rf_jwt"
-                                   name="<?php echo esc_attr($this->option_key); ?>[jwt]"
-                                   value="<?php echo esc_attr($opts['jwt']); ?>"
-                                   class="regular-text"
-                                   required>
-                            <p class="description">
-                                The long Bearer token you generated from your Remote Falcon apiAccessToken + apiAccessSecret (the one that worked with <code>/showDetails</code>).
-                            </p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="rf_cache">Cache (seconds)</label></th>
-                        <td>
-                            <input type="number"
-                                   id="rf_cache"
-                                   name="<?php echo esc_attr($this->option_key); ?>[cache_seconds]"
-                                   value="<?php echo esc_attr($opts['cache_seconds']); ?>"
-                                   min="0" class="small-text">
-                            <p class="description">10–20 seconds is fine for <code>showDetails</code>.</p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="rf_request_path">Request endpoint path</label></th>
-                        <td>
-                            <input type="text"
-                                   id="rf_request_path"
-                                   name="<?php echo esc_attr($this->option_key); ?>[request_path]"
-                                   value="<?php echo esc_attr($opts['request_path']); ?>"
-                                   class="regular-text"
-                                   placeholder="/addSequenceToQueue">
-                            <p class="description">
-                                From the Remote Falcon OpenAPI spec, this is the path for adding a sequence to the
-                                Jukebox queue. Default:<br>
-                                <code>/addSequenceToQueue</code>
-                            </p>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <th scope="row"><label for="rf_vote_path">Vote endpoint path</label></th>
-                        <td>
-                            <input type="text"
-                                   id="rf_vote_path"
-                                   name="<?php echo esc_attr($this->option_key); ?>[vote_path]"
-                                   value="<?php echo esc_attr($opts['vote_path']); ?>"
-                                   class="regular-text"
-                                   placeholder="/voteForSequence">
-                            <p class="description">
-                                From the OpenAPI spec, this is the path for voting on a sequence. Default:<br>
-                                <code>/voteForSequence</code>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button(); ?>
-            </form>
-        </div>
-        <?php
-    }
-
-    private function get_options() {
-        $defaults = [
-            'api_base'      => '',
-            'jwt'           => '',
-            'cache_seconds' => 15,
-            'request_path'  => '/addSequenceToQueue',
-            'vote_path'     => '/voteForSequence',
-        ];
-        $opts = get_option($this->option_key, []);
-        return wp_parse_args($opts, $defaults);
-    }
-
-    private function rf_base() {
-        $opts = $this->get_options();
-        return rtrim($opts['api_base'], '/');
-    }
-
-    private function rf_headers() {
-        $opts = $this->get_options();
-        if (empty($opts['api_base']) || empty($opts['jwt'])) {
-            return new WP_Error('rf_not_configured', 'Remote Falcon API is not configured.');
-        }
-        return [
-            'Accept'        => 'application/json',
-            'Authorization' => 'Bearer ' . $opts['jwt'],
-        ];
-    }
-
-    private function cache_ttl() {
-        $opts = $this->get_options();
-        return isset($opts['cache_seconds']) ? max(0, intval($opts['cache_seconds'])) : 15;
-    }
-
-    private function rf_request_url() {
-        $opts = $this->get_options();
-        if (empty($opts['request_path'])) {
-            return new WP_Error('rf_no_request_path', 'Request endpoint path is not configured.');
-        }
-        $path = '/' . ltrim($opts['request_path'], '/');
-        return $this->rf_base() . $path;
-    }
-
-    private function rf_vote_url() {
-        $opts = $this->get_options();
-        if (empty($opts['vote_path'])) {
-            return new WP_Error('rf_no_vote_path', 'Vote endpoint path is not configured.');
-        }
-        $path = '/' . ltrim($opts['vote_path'], '/');
-        return $this->rf_base() . $path;
-    }
-
-    /* -------------------
-     * REST PROXY ROUTES
-     * ------------------- */
-
-    public function register_routes() {
-        // GET show details (preferences, sequences, queue, votes, etc.)
-        register_rest_route('rf/v1', '/showDetails', [
-            'methods'             => 'GET',
-            'callback'            => [$this, 'proxy_show_details'],
+    public function register_rest_routes() {
+        // Show details endpoint
+        register_rest_route('rf-viewer/v1', '/showDetails', [
+            'methods' => 'GET',
+            'callback' => [$this, 'rest_show_details'],
             'permission_callback' => '__return_true',
         ]);
 
-        // POST: request (JUKEBOX mode)
-        register_rest_route('rf/v1', '/request', [
-            'methods'             => 'POST',
-            'callback'            => [$this, 'proxy_request_sequence'],
+        // Request (jukebox) endpoint
+        register_rest_route('rf-viewer/v1', '/addSequenceToQueue', [
+            'methods' => 'POST',
+            'callback' => [$this, 'rest_add_to_queue'],
             'permission_callback' => '__return_true',
         ]);
 
-        // POST: vote (VOTING mode)
-        register_rest_route('rf/v1', '/vote', [
-            'methods'             => 'POST',
-            'callback'            => [$this, 'proxy_vote_sequence'],
+        // Vote endpoint
+        register_rest_route('rf-viewer/v1', '/voteForSequence', [
+            'methods' => 'POST',
+            'callback' => [$this, 'rest_vote'],
             'permission_callback' => '__return_true',
         ]);
     }
 
-    public function proxy_show_details(WP_REST_Request $req) {
-        $headers = $this->rf_headers();
-        if (is_wp_error($headers)) return $headers;
+    private function make_rf_request($endpoint, $method = 'GET', $body = null) {
+        $access_token = get_option('rf_viewer_access_token', '');
+        $secret_key = get_option('rf_viewer_secret_key', '');
 
-        $cache_key = 'rf_show_details_cache';
-        $ttl       = $this->cache_ttl();
-
-        if ($ttl > 0) {
-            $cached = get_transient($cache_key);
-            if ($cached !== false) {
-                return rest_ensure_response($cached);
-            }
+        if (empty($access_token) || empty($secret_key)) {
+            return new WP_Error('missing_credentials', 'Remote Falcon credentials not configured', ['status' => 500]);
         }
 
-        $resp = wp_remote_get($this->rf_base() . '/showDetails', [
-            'headers' => $headers,
-            'timeout' => 10,
-        ]);
+        $header = json_encode(['typ' => 'JWT', 'alg' => 'HS256']);
+        $payload = json_encode(['accessToken' => $access_token]);
 
-        if (is_wp_error($resp)) return $resp;
+        $base64_header = rtrim(strtr(base64_encode($header), '+/', '-_'), '=');
+        $base64_payload = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
 
-        $body = wp_remote_retrieve_body($resp);
-        $data = json_decode($body, true);
+        $signature = hash_hmac('sha256', $base64_header . '.' . $base64_payload, $secret_key, true);
+        $base64_signature = rtrim(strtr(base64_encode($signature), '+/', '-_'), '=');
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return new WP_Error('rf_bad_json', 'Remote Falcon returned invalid JSON.');
-        }
+        $jwt = $base64_header . '.' . $base64_payload . '.' . $base64_signature;
 
-        if ($ttl > 0) {
-            set_transient($cache_key, $data, $ttl);
-        }
-
-        return rest_ensure_response($data);
-    }
-
-    /**
-     * Proxy JUKEBOX request -> Remote Falcon /addSequenceToQueue
-     * Expects JSON from frontend: { "sequence": "InternalSequenceName" }
-     */
-    public function proxy_request_sequence(WP_REST_Request $req) {
-        $headers = $this->rf_headers();
-        if (is_wp_error($headers)) return $headers;
-
-        $url = $this->rf_request_url();
-        if (is_wp_error($url)) return $url;
-
-        $params  = $req->get_json_params();
-
-        // Prefer "sequence" (correct), but accept "sequenceName" just in case
-        $sequence = '';
-        if (isset($params['sequence'])) {
-            $sequence = sanitize_text_field($params['sequence']);
-        } elseif (isset($params['sequenceName'])) {
-            $sequence = sanitize_text_field($params['sequenceName']);
-        }
-
-        if (empty($sequence)) {
-            return new WP_Error('rf_missing_sequence', 'sequence is required.');
-        }
-
-        // Match OpenAPI schema: requestSequence
-        $body = [
-            'sequence' => $sequence,
-            // viewerLatitude / viewerLongitude would go here if you ever add GPS checks
-        ];
-
-        $resp = wp_remote_post($url, [
-            'headers' => array_merge($headers, [
+        $args = [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $jwt,
                 'Content-Type' => 'application/json',
-            ]),
-            'body'    => wp_json_encode($body),
-            'timeout' => 10,
-        ]);
-
-        if (is_wp_error($resp)) return $resp;
-
-        $code = wp_remote_retrieve_response_code($resp);
-        $raw  = wp_remote_retrieve_body($resp);
-        $data = json_decode($raw, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $data = ['raw' => $raw];
-        }
-
-        return rest_ensure_response([
-            'status' => $code,
-            'data'   => $data,
-        ]);
-    }
-
-    /**
-     * Proxy VOTING request -> Remote Falcon /voteForSequence
-     * Expects JSON from frontend: { "sequence": "InternalSequenceName" }
-     */
-    public function proxy_vote_sequence(WP_REST_Request $req) {
-        $headers = $this->rf_headers();
-        if (is_wp_error($headers)) return $headers;
-
-        $url = $this->rf_vote_url();
-        if (is_wp_error($url)) return $url;
-
-        $params  = $req->get_json_params();
-
-        $sequence = '';
-        if (isset($params['sequence'])) {
-            $sequence = sanitize_text_field($params['sequence']);
-        } elseif (isset($params['sequenceName'])) {
-            $sequence = sanitize_text_field($params['sequenceName']);
-        }
-
-        if (empty($sequence)) {
-            return new WP_Error('rf_missing_sequence', 'sequence is required.');
-        }
-
-        $body = [
-            'sequence' => $sequence,
+            ],
+            'timeout' => 15,
         ];
 
-        $resp = wp_remote_post($url, [
-            'headers' => array_merge($headers, [
-                'Content-Type' => 'application/json',
-            ]),
-            'body'    => wp_json_encode($body),
-            'timeout' => 10,
-        ]);
-
-        if (is_wp_error($resp)) return $resp;
-
-        $code = wp_remote_retrieve_response_code($resp);
-        $raw  = wp_remote_retrieve_body($resp);
-        $data = json_decode($raw, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $data = ['raw' => $raw];
+        if ($method === 'POST' && $body) {
+            $args['body'] = json_encode($body);
         }
 
-        return rest_ensure_response([
-            'status' => $code,
-            'data'   => $data,
-        ]);
+        $url = $this->api_base . $endpoint;
+
+        if ($method === 'GET') {
+            $response = wp_remote_get($url, $args);
+        } else {
+            $args['method'] = $method;
+            $response = wp_remote_post($url, $args);
+        }
+
+        if (is_wp_error($response)) {
+            return $response;
+        }
+
+        $status_code = wp_remote_retrieve_response_code($response);
+        $body = wp_remote_retrieve_body($response);
+
+        if ($status_code >= 400) {
+            return new WP_Error('rf_api_error', 'Remote Falcon API error', ['status' => $status_code, 'body' => $body]);
+        }
+
+        return json_decode($body, true);
     }
 
-    /* -------------------
-     * FRONTEND
-     * ------------------- */
+    public function rest_show_details(WP_REST_Request $request) {
+        $data = $this->make_rf_request('/showDetails');
+
+        if (is_wp_error($data)) {
+            return new WP_REST_Response(['error' => $data->get_error_message()], 500);
+        }
+
+        return new WP_REST_Response($data, 200);
+    }
+
+    public function rest_add_to_queue(WP_REST_Request $request) {
+        $sequence_name = $request->get_param('sequenceName');
+
+        if (empty($sequence_name)) {
+            return new WP_REST_Response(['error' => 'Missing sequenceName'], 400);
+        }
+
+        $data = $this->make_rf_request('/addSequenceToQueue', 'POST', [
+            'sequenceName' => $sequence_name,
+        ]);
+
+        if (is_wp_error($data)) {
+            $error_data = $data->get_error_data();
+            $status = isset($error_data['status']) ? $error_data['status'] : 500;
+            return new WP_REST_Response(['error' => $data->get_error_message()], $status);
+        }
+
+        return new WP_REST_Response($data, 200);
+    }
+
+    public function rest_vote(WP_REST_Request $request) {
+        $sequence_name = $request->get_param('sequenceName');
+
+        if (empty($sequence_name)) {
+            return new WP_REST_Response(['error' => 'Missing sequenceName'], 400);
+        }
+
+        $data = $this->make_rf_request('/voteForSequence', 'POST', [
+            'sequenceName' => $sequence_name,
+        ]);
+
+        if (is_wp_error($data)) {
+            $error_data = $data->get_error_data();
+            $status = isset($error_data['status']) ? $error_data['status'] : 500;
+            return new WP_REST_Response(['error' => $data->get_error_message()], $status);
+        }
+
+        return new WP_REST_Response($data, 200);
+    }
 
     public function enqueue_assets() {
-        if (!is_singular()) return;
+        if (!is_singular()) {
+            return;
+        }
+
         global $post;
-        if (!$post || strpos($post->post_content, '[rf_viewer]') === false) return;
+        if (!has_shortcode($post->post_content, 'rf_viewer')) {
+            return;
+        }
 
         wp_enqueue_script(
             'rf-viewer-js',
             plugin_dir_url(__FILE__) . 'rf-viewer.js',
             [],
-            '1.2.0',
+            '1.5.0',
             true
         );
-        wp_localize_script('rf-viewer-js', 'RFViewer', [
-            'base' => esc_url_raw(rest_url('rf/v1')),
+
+        wp_localize_script('rf-viewer-js', 'rfViewerData', [
+            'apiBase' => rest_url('rf-viewer/v1'),
+            'nonce' => wp_create_nonce('wp_rest'),
         ]);
 
         wp_enqueue_style(
             'rf-viewer-css',
             plugin_dir_url(__FILE__) . 'rf-viewer.css',
             [],
-            '1.2.0'
+            '1.5.0'
         );
     }
 
+    /**
+     * V1.5: Unified Hero Template
+     * 
+     * Structure:
+     * - Hero container with title
+     * - State banner (populated by JS based on show state)
+     * - CTA section (tap to request / vote)
+     * - Now Playing / Next Up status
+     * - My Status (personalized queue position)
+     * - Controls row (Need sound, Glow, Surprise)
+     * - Song grid + extras panel
+     */
     public function shortcode_viewer($atts, $content = '') {
         ob_start(); ?>
         <div id="rf-viewer" class="rf-viewer">
-            <!-- HERO: Tonight at Lights on Falcon -->
-            <div class="rf-tonight rf-hero">
-                <h1 class="rf-tonight-title">Tonight at Lights on Falcon</h1>
-                <div id="lof-tonight-body" class="rf-tonight-body"></div>
-            </div>
-
-            <!-- Status + controls + how-it-works -->
-            <div class="rf-status-panel">
-                <div class="rf-now">
+            <!-- V1.5: UNIFIED HERO SECTION -->
+            <div class="rf-hero" id="rf-hero">
+                <h1 class="rf-hero-title">Tonight at Lights on Falcon</h1>
+                
+                <!-- State Banner: Shows current show state (offseason, intermission, showtime, etc.) -->
+                <div class="rf-hero-banner" id="rf-hero-banner">
+                    <div class="rf-hero-banner-title" id="rf-hero-banner-title"></div>
+                    <div class="rf-hero-banner-body" id="rf-hero-banner-body"></div>
+                </div>
+                
+                <!-- Smart Time Message: Shows when off-hours ("Show starts at 5 PM!") -->
+                <div class="rf-hero-time" id="rf-hero-time"></div>
+                
+                <!-- CTA: Main call to action ("Tap a song to request it") -->
+                <div class="rf-hero-cta" id="rf-hero-cta">
+                    <div class="rf-hero-cta-title" id="rf-hero-cta-title"></div>
+                    <div class="rf-hero-cta-body" id="rf-hero-cta-body"></div>
+                </div>
+                
+                <!-- Now Playing Status -->
+                <div class="rf-now" id="rf-now">
                     <div class="rf-label">Now Playing</div>
                     <div class="rf-now-title" id="rf-now-title">Loading…</div>
                     <div class="rf-now-artist" id="rf-now-artist"></div>
@@ -417,27 +235,21 @@ class RF_Viewer_Plugin {
                         <div class="rf-now-progress-label"></div>
                     </div>
                 </div>
-                <div class="rf-next">
+                
+                <!-- Next Up -->
+                <div class="rf-next" id="rf-next">
                     <div class="rf-label">Next Up</div>
                     <div class="rf-next-title" id="rf-next-title">—</div>
                 </div>
-                <div class="rf-mode">
-                    <div class="rf-label">Mode</div>
-                    <div class="rf-mode-value" id="rf-mode-value">—</div>
-                </div>
+                
+                <!-- My Status: Personalized queue position + estimated wait -->
+                <div class="rf-hero-mystatus" id="rf-hero-mystatus"></div>
+                
+                <!-- Controls Row: Need sound, Glow, Surprise me -->
+                <div class="rf-controls-row" id="rf-controls-row"></div>
             </div>
 
-            <div class="rf-controls-row" id="rf-controls-row"></div>
-
-            <div class="rf-viewer-header">
-                <div class="rf-viewer-headline">How tonight works</div>
-                <div class="rf-viewer-subcopy">
-                    • Tap a song to add it to the queue.<br>
-                    • Requests play in the order they are received.<br>
-                    • Your pick will glow when it’s playing.
-                </div>
-            </div>
-
+            <!-- Main Content Area -->
             <div class="rf-main-layout">
                 <div class="rf-main-left">
                     <div class="rf-grid" id="rf-grid"></div>
@@ -445,17 +257,16 @@ class RF_Viewer_Plugin {
                 <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
 
-            <!-- FOOTER: Send a Glow lives here only -->
+            <!-- Footer: Send a Glow -->
             <div class="rf-footer">
                 <div id="rf-footer-glow"></div>
             </div>
 
-            <!-- GLOBAL STREAM FOOTER (persistent container; iframe added by JS on demand) -->
+            <!-- Audio Stream Footer (persistent container) -->
             <div
                 id="lof-stream-footer"
                 class="rf-stream-footer"
                 data-src="https://player.pulsemesh.io/d/G073">
-                <!-- JS will inject the iframe + label when a stream button is clicked -->
             </div>
         </div>
         <?php
