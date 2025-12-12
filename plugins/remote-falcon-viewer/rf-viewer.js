@@ -146,6 +146,27 @@ let currentQueueCounts = {};
 let lastCountedNowKey = null;
 let lastExtraSignature = null;
 
+// V1.5: Current computed show state
+let currentShowState = 'offhours';
+
+// V1.5: Category ordering - categories not in this list appear alphabetically at the end
+const CATEGORY_ORDER = [
+  'New Tonight',
+  'New This Week', 
+  'Traditional',
+  'Disney',
+  'Modern Pop',
+  'Rock & Alternative',
+  'Country',
+  'Classic Rock',
+  'Kids & Family',
+  'Instrumental',
+  'Novelty'
+];
+
+// V1.5: Track active category filter (mobile tabs)
+let activeCategoryFilter = null;
+
 // V1.5: Track user interactions for adaptive polling
 function trackUserActivity() {
   lastInteractionTime = Date.now();
@@ -1406,49 +1427,63 @@ function updateBanner(phase, enabled) {
   /* -------------------------
    * Controls row under status
    * ------------------------- */
-  function renderControlsRow(mode, enabled) {
+  // V1.5: Updated to use show state machine for button gating
+  function renderControlsRow(mode, enabled, showState) {
     const row = document.getElementById('rf-controls-row');
     if (!row) return;
 
     // Clear and rebuild each time to avoid duplicate listeners
     row.innerHTML = '';
 
-    const makeBtn = (label) => {
+    // Get button states from show state machine
+    const buttonStates = getButtonStates(showState || 'offhours');
+
+    const makeBtn = (label, isEnabled) => {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'rf-ctl-link';
+      if (!isEnabled) {
+        b.classList.add('rf-ctl-link--disabled');
+        b.disabled = true;
+      }
       b.textContent = label;
       return b;
     };
 
     // Need sound? → scroll to the speaker card / extras panel
-    const btnSound = makeBtn('Need sound?');
-    btnSound.addEventListener('click', () => {
-      const target =
-        document.querySelector('.rf-speaker-card') ||
-        document.getElementById('rf-extra-panel');
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
+    // V1.5: Disabled during intermission per show state
+    const btnSound = makeBtn('Need sound?', buttonStates.speaker);
+    if (buttonStates.speaker) {
+      btnSound.addEventListener('click', () => {
+        const target =
+          document.querySelector('.rf-speaker-card') ||
+          document.getElementById('rf-extra-panel');
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
     row.appendChild(btnSound);
 
     // Send a Glow → scroll to footer Glow section
-    const btnGlow = makeBtn('Send a Glow 💛');
-    btnGlow.addEventListener('click', () => {
-      const target =
-        document.getElementById('rf-footer-glow') ||
-        document.querySelector('.rf-glow-card') ||
-        document.querySelector('.rf-tonight');
-      if (target && typeof target.scrollIntoView === 'function') {
-        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
+    // V1.5: Always enabled (glows work in all states)
+    const btnGlow = makeBtn('Send a Glow 💛', buttonStates.glow);
+    if (buttonStates.glow) {
+      btnGlow.addEventListener('click', () => {
+        const target =
+          document.getElementById('rf-footer-glow') ||
+          document.querySelector('.rf-glow-card') ||
+          document.querySelector('.rf-tonight');
+        if (target && typeof target.scrollIntoView === 'function') {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    }
     row.appendChild(btnGlow);
 
-    // Surprise me → always show the button so the row feels consistent.
-    const btnSurprise = makeBtn('Surprise me ✨');
-    if (enabled) {
+    // Surprise me → V1.5: Uses show state for enable/disable
+    const btnSurprise = makeBtn('Surprise me ✨', buttonStates.surprise);
+    if (buttonStates.surprise) {
       btnSurprise.addEventListener('click', () => {
         handleSurpriseMe();
         const target = document.querySelector('.rf-card--surprise');
@@ -1456,13 +1491,214 @@ function updateBanner(phase, enabled) {
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       });
-      row.classList.remove('rf-controls-row--disabled');
-    } else {
-      // When viewer control is paused, keep the button visible but disabled
-      btnSurprise.disabled = true;
-      row.classList.add('rf-controls-row--disabled');
     }
     row.appendChild(btnSurprise);
+
+    // Update row class based on overall control state
+    if (enabled && (buttonStates.pickSong || buttonStates.surprise)) {
+      row.classList.remove('rf-controls-row--disabled');
+    } else {
+      row.classList.add('rf-controls-row--disabled');
+    }
+  }
+
+  /* -------------------------
+   * V1.5: Category Helpers
+   * ------------------------- */
+
+  /**
+   * Group sequences by category, respecting CATEGORY_ORDER
+   * @param {Array} sequences - Visible sequences
+   * @returns {Array} Array of { category: string, sequences: Array }
+   */
+  function groupSequencesByCategory(sequences) {
+    if (!Array.isArray(sequences) || sequences.length === 0) {
+      return [{ category: null, sequences: [] }];
+    }
+
+    // Build a map of category -> sequences
+    const categoryMap = new Map();
+    const uncategorized = [];
+
+    sequences.forEach(seq => {
+      const cat = seq.category || null;
+      if (cat) {
+        if (!categoryMap.has(cat)) {
+          categoryMap.set(cat, []);
+        }
+        categoryMap.get(cat).push(seq);
+      } else {
+        uncategorized.push(seq);
+      }
+    });
+
+    // If no categories exist, return all sequences without grouping
+    if (categoryMap.size === 0) {
+      return [{ category: null, sequences: sequences }];
+    }
+
+    // Sort categories according to CATEGORY_ORDER
+    const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => {
+      const aIndex = CATEGORY_ORDER.indexOf(a);
+      const bIndex = CATEGORY_ORDER.indexOf(b);
+      
+      // If both are in the order list, sort by position
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      }
+      // If only a is in the list, a comes first
+      if (aIndex !== -1) return -1;
+      // If only b is in the list, b comes first
+      if (bIndex !== -1) return 1;
+      // Neither in list, sort alphabetically
+      return a.localeCompare(b);
+    });
+
+    // Build result array
+    const result = sortedCategories.map(cat => ({
+      category: cat,
+      sequences: categoryMap.get(cat)
+    }));
+
+    // Add uncategorized at the end if any exist
+    if (uncategorized.length > 0) {
+      result.push({ category: null, sequences: uncategorized });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get unique categories from sequences
+   * @param {Array} sequences - Visible sequences
+   * @returns {Array} Sorted array of category names (null excluded)
+   */
+  function getUniqueCategories(sequences) {
+    const categories = new Set();
+    sequences.forEach(seq => {
+      if (seq.category) {
+        categories.add(seq.category);
+      }
+    });
+
+    return Array.from(categories).sort((a, b) => {
+      const aIndex = CATEGORY_ORDER.indexOf(a);
+      const bIndex = CATEGORY_ORDER.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }
+
+  /**
+   * Render category tabs for mobile
+   * @param {Array} categories - Sorted category names
+   * @param {Element} container - Container to render into
+   */
+  function renderCategoryTabs(categories, container) {
+    if (!container) return;
+    
+    // Remove existing tabs
+    const existingTabs = container.querySelector('.rf-category-tabs');
+    if (existingTabs) {
+      existingTabs.remove();
+    }
+
+    // Don't render if no categories or only one
+    if (!categories || categories.length <= 1) {
+      activeCategoryFilter = null;
+      return;
+    }
+
+    const tabsWrapper = document.createElement('div');
+    tabsWrapper.className = 'rf-category-tabs';
+
+    // "All" tab
+    const allTab = document.createElement('button');
+    allTab.type = 'button';
+    allTab.className = 'rf-category-tab' + (activeCategoryFilter === null ? ' rf-category-tab--active' : '');
+    allTab.textContent = 'All';
+    allTab.addEventListener('click', () => {
+      activeCategoryFilter = null;
+      updateCategoryTabStates(tabsWrapper);
+      filterGridByCategory(null);
+    });
+    tabsWrapper.appendChild(allTab);
+
+    // Category tabs
+    categories.forEach(cat => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'rf-category-tab' + (activeCategoryFilter === cat ? ' rf-category-tab--active' : '');
+      tab.textContent = cat;
+      tab.dataset.category = cat;
+      tab.addEventListener('click', () => {
+        activeCategoryFilter = cat;
+        updateCategoryTabStates(tabsWrapper);
+        filterGridByCategory(cat);
+      });
+      tabsWrapper.appendChild(tab);
+    });
+
+    // Insert tabs before the grid
+    container.insertBefore(tabsWrapper, container.firstChild);
+  }
+
+  /**
+   * Update active state on category tabs
+   */
+  function updateCategoryTabStates(tabsWrapper) {
+    if (!tabsWrapper) return;
+    const tabs = tabsWrapper.querySelectorAll('.rf-category-tab');
+    tabs.forEach(tab => {
+      const isAll = !tab.dataset.category;
+      const isActive = isAll 
+        ? activeCategoryFilter === null 
+        : tab.dataset.category === activeCategoryFilter;
+      tab.classList.toggle('rf-category-tab--active', isActive);
+    });
+  }
+
+  /**
+   * Filter grid cards by category (mobile tabs)
+   */
+  function filterGridByCategory(category) {
+    const grid = document.getElementById('rf-grid');
+    if (!grid) return;
+
+    const cards = grid.querySelectorAll('.rf-card');
+    cards.forEach(card => {
+      const cardCategory = card.dataset.category || null;
+      if (category === null) {
+        // Show all
+        card.style.display = '';
+      } else if (cardCategory === category) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    // Also show/hide category headers
+    const headers = grid.querySelectorAll('.rf-category-header');
+    headers.forEach(header => {
+      const headerCategory = header.dataset.category;
+      if (category === null) {
+        header.style.display = '';
+      } else if (headerCategory === category) {
+        header.style.display = '';
+      } else {
+        header.style.display = 'none';
+      }
+    });
+  }
+
+  /**
+   * Check if we should show mobile tabs vs desktop headers
+   */
+  function isMobileView() {
+    return window.innerWidth < 700;
   }
 
   /* -------------------------
@@ -1616,10 +1852,29 @@ function updateBanner(phase, enabled) {
     const phase = isIntermission ? 'intermission' : (isPlayingReal ? 'showtime' : 'idle');
     lastPhase = phase;
 
+    // V1.5: Compute comprehensive show state for UI controls
+    // Derive FPP status from what we know about current playback
+    const derivedFppStatus = (hasRawNow || isIntermission) ? 'playing' : 'idle';
+    currentShowState = computeShowState({
+      viewerControlEnabled: currentControlEnabled,
+      playingNow: playingNowRaw,
+      fppStatus: derivedFppStatus
+    });
+
+    // V1.5: Add show state class to viewer root for CSS targeting
+    if (viewerRoot) {
+      // Remove old state classes
+      viewerRoot.classList.remove(
+        'rf-state-preshow', 'rf-state-showtime', 'rf-state-intermission',
+        'rf-state-paused', 'rf-state-offhours', 'rf-state-offline'
+      );
+      viewerRoot.classList.add('rf-state-' + currentShowState);
+    }
+
     updateHeaderCopy(currentMode, currentControlEnabled, prefs, queueLength, phase);
     updateBanner(phase, currentControlEnabled);
     updateMyStatusLine(nowSeq, rawRequests, nowKey);
-    renderControlsRow(currentMode, currentControlEnabled);
+    renderControlsRow(currentMode, currentControlEnabled, currentShowState);
 
     if (!gridEl) return;
     gridEl.innerHTML = '';
@@ -1634,9 +1889,54 @@ function updateBanner(phase, enabled) {
 
     currentVisibleSequences = visibleSequences;
 
+    // V1.5: Get unique categories for tabs/headers
+    const categories = getUniqueCategories(visibleSequences);
+    const hasCategories = categories.length > 1;
+    const mobile = isMobileView();
+
+    // V1.5: Render category tabs for mobile (above grid)
+    if (hasCategories && mobile) {
+      const gridParent = gridEl.parentElement;
+      if (gridParent) {
+        renderCategoryTabs(categories, gridParent);
+      }
+    } else {
+      // Remove tabs if not needed
+      const gridParent = gridEl.parentElement;
+      if (gridParent) {
+        const existingTabs = gridParent.querySelector('.rf-category-tabs');
+        if (existingTabs) existingTabs.remove();
+      }
+      activeCategoryFilter = null;
+    }
+
+    // V1.5: Track which category we last rendered (for headers)
+    let lastRenderedCategory = null;
+
     visibleSequences.forEach((seq) => {
+      // V1.5: Desktop category headers - insert before first card of each category
+      if (hasCategories && !mobile && seq.category && seq.category !== lastRenderedCategory) {
+        const header = document.createElement('div');
+        header.className = 'rf-category-header';
+        header.dataset.category = seq.category;
+        
+        // Count songs in this category
+        const categoryCount = visibleSequences.filter(s => s.category === seq.category).length;
+        header.innerHTML = `
+          <span class="rf-category-header-text">${escapeHtml(seq.category)}</span>
+          <span class="rf-category-header-count">${categoryCount} songs</span>
+        `;
+        gridEl.appendChild(header);
+        lastRenderedCategory = seq.category;
+      }
+
       const card = document.createElement('div');
       card.className = 'rf-card';
+
+      // V1.5: Add category data attribute for filtering
+      if (seq.category) {
+        card.dataset.category = seq.category;
+      }
 
       const isNow  = nowKey  && (seq.name === nowKey  || seq.displayName === nowKey);
       const isNext = nextKey && (seq.name === nextKey || seq.displayName === nextKey);
@@ -1737,6 +2037,11 @@ function updateBanner(phase, enabled) {
 
       gridEl.appendChild(card);
     });
+
+    // V1.5: Apply category filter if active (mobile tabs)
+    if (hasCategories && mobile && activeCategoryFilter) {
+      filterGridByCategory(activeCategoryFilter);
+    }
 
     // V1.5: Surprise-Me card (render once per details refresh)
     addSurpriseCard();
