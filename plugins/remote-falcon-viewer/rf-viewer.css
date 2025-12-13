@@ -2369,10 +2369,33 @@
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
 }
 
+.rf-category-tabs-wrapper {
+  position: relative;
+}
+
+/* Fade gradient to indicate more content to scroll */
+.rf-category-tabs-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--lof-night) 80%);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Hide fade when scrolled to end */
+.rf-category-tabs-wrapper.scrolled-end::after {
+  opacity: 0;
+}
+
 .rf-category-tabs {
   display: flex;
   gap: 8px;
-  padding: 8px 0 12px;
+  padding: 8px 40px 12px 0; /* Extra right padding for fade area */
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;

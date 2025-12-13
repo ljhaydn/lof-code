@@ -90,12 +90,30 @@ function lof_viewer_trigger_hit( WP_REST_Request $request ) {
 /**
  * GET /wp-json/lof-viewer/v1/trigger-counts
  *
- * Returns: { "success": true, "counts": { "button": 12, "mailbox": 5 } }
+ * Returns: { "success": true, "counts": { "button": 12, "mailbox": 5, "glow": 10, "speaker": 3, "surprise": 2 } }
  */
 function lof_viewer_get_trigger_counts( WP_REST_Request $request ) {
     $counts = get_option( 'lof_viewer_trigger_counts', array() );
     if ( ! is_array( $counts ) ) {
         $counts = array();
+    }
+
+    // V1.5: Merge in glow count from lof-extras
+    $glow_stats = get_option( 'lof_viewer_extras_glow_stats', array( 'total' => 0 ) );
+    if ( is_array( $glow_stats ) && isset( $glow_stats['total'] ) ) {
+        $counts['glow'] = (int) $glow_stats['total'];
+    }
+
+    // V1.5: Merge in speaker press count from lof-speaker.php
+    $speaker_count = get_option( 'lof_speaker_press_count', 0 );
+    if ( $speaker_count > 0 ) {
+        $counts['speaker'] = (int) $speaker_count;
+    }
+
+    // V1.5: Merge in surprise count (tracked via option during surprise-me calls)
+    $surprise_count = get_option( 'lof_viewer_surprise_count', 0 );
+    if ( $surprise_count > 0 ) {
+        $counts['surprise'] = (int) $surprise_count;
     }
 
     return new WP_REST_Response(
@@ -326,6 +344,10 @@ function lof_viewer_surprise_me( WP_REST_Request $request ) {
             500
         );
     }
+
+    // V1.5: Increment surprise counter for Show Activity stats
+    $surprise_count = (int) get_option( 'lof_viewer_surprise_count', 0 );
+    update_option( 'lof_viewer_surprise_count', $surprise_count + 1 );
 
     return new WP_REST_Response(
         array(

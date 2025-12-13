@@ -14,7 +14,6 @@ class LOF_Viewer_Extras {
 
     const OPTION_SETTINGS       = 'lof_viewer_extras_settings';
     const OPTION_GLOW_STATS     = 'lof_viewer_extras_glow_stats';
-    const OPTION_GLOW_LOG       = 'lof_viewer_extras_glow_log';
     const OPTION_SPEAKER_STATE  = 'lof_viewer_extras_speaker_state';
 
     public function __construct() {
@@ -38,7 +37,7 @@ class LOF_Viewer_Extras {
 
             // Glow
             'enable_glow'         => true,
-            'glow_button_label'   => 'Send a Glow ✨',
+            'glow_button_label'   => 'Send a Glow âœ¨',
             'glow_toast'          => 'You sent a little extra joy to someone.',
             'glow_counter_text'   => 'Tonight, neighbors have shared {count} Glows.',
 
@@ -47,19 +46,19 @@ class LOF_Viewer_Extras {
 "Kids are laughing near the sidewalk.
 Someone just took a photo under the arches.
 A stranger held the ladder for a neighbor.
-You’re part of tonight’s glow.",
+Youâ€™re part of tonightâ€™s glow.",
 
-            // Kindness / “acts of light” prompts
+            // Kindness / â€œacts of lightâ€ prompts
             'kindness_prompts'    =>
-"Wave at a neighbor you don’t know yet.
-Compliment someone’s favorite decoration.
+"Wave at a neighbor you donâ€™t know yet.
+Compliment someoneâ€™s favorite decoration.
 Let a kid pick the next song.
 Offer to hold a ladder or a mug of cocoa.
 Thank someone for bringing their family to the block.",
 
             // Speaker
             'enable_speaker'           => true,
-            'speaker_button_label'     => 'Turn on speakers 🔊',
+            'speaker_button_label'     => 'Turn on speakers ðŸ”Š',
             'speaker_success'          => 'Speaker on for about 5 minutes. Enjoy the music.',
             'speaker_error'            => 'Speaker command did not reach the controller.',
             'speaker_fpp_base'         => 'http://10.9.7.102',
@@ -69,8 +68,8 @@ Thank someone for bringing their family to the block.",
 
             // Fog
             'enable_fog'          => false,
-            'fog_button_label'    => 'Puff smoke 🚂💨',
-            'fog_success'         => 'Fog incoming—watch the train.',
+            'fog_button_label'    => 'Puff smoke ðŸš‚ðŸ’¨',
+            'fog_success'         => 'Fog incomingâ€”watch the train.',
             'fog_error'           => 'Fog command did not go through.',
             'fog_fpp_base'        => 'http://10.9.7.102',
             'fog_script'          => 'FogMachineScript.sh',
@@ -78,16 +77,16 @@ Thank someone for bringing their family to the block.",
             // Tonight panel copy (all editable)
             'tonight_heading'     => 'Tonight at Lights on Falcon',
             'copy_off'            =>
-'Viewer control is currently resting. The show is still running — look up and enjoy.
-When viewer control turns on, you’ll be able to pick songs from this page.',
+'Viewer control is currently resting. The show is still running â€” look up and enjoy.
+When viewer control turns on, youâ€™ll be able to pick songs from this page.',
 
             'copy_jukebox'        =>
 'You\'re in Jukebox Mode. Pick a song, we\'ll add it to the queue.
 More neighbors = more fun. Your song might trigger someone else to dance.',
 
             'copy_voting'         =>
-'You\'re in Voting Mode. Tap your favorite — the crowd decides what plays next.
-If your song wins, take full credit. If it loses, blame the neighbors. 😉',
+'You\'re in Voting Mode. Tap your favorite â€” the crowd decides what plays next.
+If your song wins, take full credit. If it loses, blame the neighbors. ðŸ˜‰',
 
             'copy_other'          =>
 'The show is live. Viewer controls might change during the night as we shift modes.',
@@ -98,17 +97,17 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
 'No queue at the moment. Your pick hits fast.',
 
             'copy_footer'         =>
-'Share the glow, not the exact address. 😉',
+'Share the glow, not the exact address. ðŸ˜‰',
 
             // Showtime vs drop-by copy
             'copy_showtime_lead'      =>
-'You’re here during a scheduled show hour — nice timing.',
+'Youâ€™re here during a scheduled show hour â€” nice timing.',
             'copy_adhoc_lead'         =>
-'You’re here between big shows. The lights are in “drop-by” mode.',
+'Youâ€™re here between big shows. The lights are in â€œdrop-byâ€ mode.',
             'copy_showtime_countdown' =>
 'Next full show starts in about {minutes} minutes.',
             'copy_showtime_now'       =>
-'A full show is running right now — look up and catch it live.',
+'A full show is running right now â€” look up and catch it live.',
             'copy_adhoc_hint'         =>
 'You can still queue songs anytime. Think of it as bonus rounds between shows.',
         ];
@@ -249,12 +248,12 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                 <option value="christmas" <?php selected( $s['season'], 'christmas' ); ?>>Christmas</option>
                                 <option value="offseason" <?php selected( $s['season'], 'offseason' ); ?>>Off-season</option>
                             </select>
-                            <p class="description">Tone only; doesn’t change schedules.</p>
+                            <p class="description">Tone only; doesnâ€™t change schedules.</p>
                         </td>
                     </tr>
                 </table>
 
-                <h2>Scheduled Shows (for countdown vs “drop-by”)</h2>
+                <h2>Scheduled Shows (for countdown vs â€œdrop-byâ€)</h2>
                 <table class="form-table">
                     <tr>
                         <th scope="row">Show Start Hour</th>
@@ -265,7 +264,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                    class="small-text"
                                    name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[show_start_hour]"
                                    value="<?php echo esc_attr( $s['show_start_hour'] ); ?>">
-                            <span class="description">0–23, local time. Example: 17 = 5pm.</span>
+                            <span class="description">0â€“23, local time. Example: 17 = 5pm.</span>
                         </td>
                     </tr>
                     <tr>
@@ -277,7 +276,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                    class="small-text"
                                    name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[show_end_hour]"
                                    value="<?php echo esc_attr( $s['show_end_hour'] ); ?>">
-                            <span class="description">0–23, local time. Example: 22 = 10pm. Countdown assumes shows on the hour between these times.</span>
+                            <span class="description">0â€“23, local time. Example: 22 = 10pm. Countdown assumes shows on the hour between these times.</span>
                         </td>
                     </tr>
                 </table>
@@ -339,7 +338,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                       name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[kindness_prompts]"><?php
                                 echo esc_textarea( $s['kindness_prompts'] );
                             ?></textarea>
-                            <p class="description">These become tiny “acts of light” missions in the Tonight panel.</p>
+                            <p class="description">These become tiny â€œacts of lightâ€ missions in the Tonight panel.</p>
                         </td>
                     </tr>
                 </table>
@@ -403,7 +402,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                    value="<?php echo esc_attr( $s['speaker_direct_url'] ); ?>">
                             <p class="description">
                                 If set, this full URL will be called with a simple GET whenever someone taps the speaker
-                                control. Use the exact URL that already works for your “Need sound?” card.
+                                control. Use the exact URL that already works for your â€œNeed sound?â€ card.
                             </p>
                         </td>
                     </tr>
@@ -426,7 +425,7 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
                                    class="small-text"
                                    name="<?php echo esc_attr( self::OPTION_SETTINGS ); ?>[speaker_duration_seconds]"
                                    value="<?php echo esc_attr( $s['speaker_duration_seconds'] ); ?>">
-                            <span class="description">How long we treat the speaker as “on” after a press. Used for UX and to ignore extra taps.</span>
+                            <span class="description">How long we treat the speaker as â€œonâ€ after a press. Used for UX and to ignore extra taps.</span>
                         </td>
                     </tr>
                 </table>
@@ -644,30 +643,10 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
             return;
         }
 
-        $settings = $this->get_settings();
-        $today    = current_time( 'Y-m-d' );
-
-        $glow_stats = get_option(
-            self::OPTION_GLOW_STATS,
-            [
-                'date'  => $today,
-                'total' => 0,
-            ]
-        );
-
+        $settings   = $this->get_settings();
+        $glow_stats = get_option( self::OPTION_GLOW_STATS, [ 'total' => 0 ] );
         if ( ! is_array( $glow_stats ) ) {
-            $glow_stats = [
-                'date'  => $today,
-                'total' => 0,
-            ];
-        }
-
-        // If stats are from a previous day, reset for tonight
-        if ( empty( $glow_stats['date'] ) || $glow_stats['date'] !== $today ) {
-            $glow_stats = [
-                'date'  => $today,
-                'total' => 0,
-            ];
+            $glow_stats = [ 'total' => 0 ];
         }
 
         // CSS (if you have lof-viewer-extras.css present)
@@ -784,60 +763,14 @@ If your song wins, take full credit. If it loses, blame the neighbors. 😉',
 
     public function rest_glow( \WP_REST_Request $request ) {
         $settings = $this->get_settings();
-        $today    = current_time( 'Y-m-d' );
-
-        // --- Update nightly stats (existing behavior) ---
-        $stats = get_option(
-            self::OPTION_GLOW_STATS,
-            [
-                'date'  => $today,
-                'total' => 0,
-            ]
-        );
+        $stats    = get_option( self::OPTION_GLOW_STATS, [ 'total' => 0 ] );
 
         if ( ! is_array( $stats ) ) {
-            $stats = [
-                'date'  => $today,
-                'total' => 0,
-            ];
-        }
-
-        // If stored stats are from a previous night, reset
-        if ( empty( $stats['date'] ) || $stats['date'] !== $today ) {
-            $stats = [
-                'date'  => $today,
-                'total' => 0,
-            ];
+            $stats = [ 'total' => 0 ];
         }
 
         $stats['total'] = isset( $stats['total'] ) ? (int) $stats['total'] + 1 : 1;
-        $stats['date']  = $today;
-
         update_option( self::OPTION_GLOW_STATS, $stats );
-
-        // --- Persist basic Glow submission to a log option ---
-        $data    = $request->get_json_params();
-        $message = isset( $data['message'] ) ? sanitize_text_field( (string) $data['message'] ) : '';
-        $name    = isset( $data['name'] ) ? sanitize_text_field( (string) $data['name'] ) : '';
-
-        $log = get_option( self::OPTION_GLOW_LOG, [] );
-        if ( ! is_array( $log ) ) {
-            $log = [];
-        }
-
-        $log[] = [
-            'timestamp' => current_time( 'mysql' ),
-            'date'      => $today,
-            'message'   => $message,
-            'name'      => $name,
-        ];
-
-        // Soft cap to avoid unbounded growth: keep the most recent 2000 entries.
-        if ( count( $log ) > 2000 ) {
-            $log = array_slice( $log, -2000 );
-        }
-
-        update_option( self::OPTION_GLOW_LOG, $log );
 
         return new \WP_REST_Response(
             [

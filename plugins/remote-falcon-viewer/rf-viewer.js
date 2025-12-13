@@ -628,8 +628,8 @@ function showGeoMessage(distance, city, extra) {
   if (distance !== null && distance < 5) {
     // Local visitor – automatically grant full access
     noticeClass = 'rf-geo-notice--local';
-    const cityText = city ? ` You're in ${city}!` : '';
-    message = lofCopy('geo_local_message', `Welcome neighbor!${cityText} 🎄`);
+    // V1.5 Bundle B: Don't show city name - Cloudflare city is too broad (metro area)
+    message = lofCopy('geo_local_message', 'Welcome neighbor! 🎄');
 
     userConfirmedLocal = true;
     try {
@@ -736,17 +736,15 @@ function updateHeroGeo(distance, city) {
     return;
   }
   
-  // If user already confirmed, show welcome
+  // If user already confirmed, show welcome (no city - too inaccurate)
   if (userConfirmedLocal) {
-    const cityText = city ? ' You\'re in ' + city + '!' : '';
-    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor!' + escapeHtml(cityText) + ' 🎄</span>';
+    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor! 🎄</span>';
     return;
   }
   
   if (distance !== null && distance < 5) {
-    // Local visitor – automatically grant full access
-    const cityText = city ? ' You\'re in ' + city + '!' : '';
-    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor!' + escapeHtml(cityText) + ' 🎄</span>';
+    // Local visitor – automatically grant full access (no city - too inaccurate)
+    heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor! 🎄</span>';
     userConfirmedLocal = true;
     try {
       localStorage.setItem('lofUserConfirmedLocal', 'true');
@@ -1740,8 +1738,18 @@ function updateSmartTimeMessage(showState) {
     title.textContent = lofCopy('category_section_title', 'Tonight\'s Songs');
     sectionWrapper.appendChild(title);
 
+    // V1.5 Bundle B: Add scroll wrapper for fade indicator
+    const scrollWrapper = document.createElement('div');
+    scrollWrapper.className = 'rf-category-tabs-wrapper';
+
     const tabsWrapper = document.createElement('div');
     tabsWrapper.className = 'rf-category-tabs';
+
+    // Handle scroll to toggle fade indicator
+    tabsWrapper.addEventListener('scroll', () => {
+      const isAtEnd = tabsWrapper.scrollLeft + tabsWrapper.clientWidth >= tabsWrapper.scrollWidth - 10;
+      scrollWrapper.classList.toggle('scrolled-end', isAtEnd);
+    });
 
     // "All" tab
     const allTab = document.createElement('button');
@@ -1770,7 +1778,8 @@ function updateSmartTimeMessage(showState) {
       tabsWrapper.appendChild(tab);
     });
 
-    sectionWrapper.appendChild(tabsWrapper);
+    scrollWrapper.appendChild(tabsWrapper);
+    sectionWrapper.appendChild(scrollWrapper);
 
     // Insert section before the grid
     container.insertBefore(sectionWrapper, container.firstChild);
@@ -1900,26 +1909,30 @@ function updateSmartTimeMessage(showState) {
     // NEXT UP
     let nextSeq = null;
 
-    // 1) Trust RF's explicit next sequence object when present
-    if (playingNextSequence) {
-      nextSeq = playingNextSequence;
-    }
-
-    // 2) Fall back to matching playingNext / playingNextFromSchedule against the sequence list
-    if (!nextSeq) {
-      const nextRawCombined = playingNextRaw || playingNextFromSchedule || '';
-      if (nextRawCombined) {
-        nextSeq =
-          sequences.find(
-            (s) =>
-              s.name === nextRawCombined || s.displayName === nextRawCombined
-          ) || null;
-      }
-    }
-
-    // 3) Finally, fall back to the first queued request if we still don't have a next sequence
-    if (!nextSeq && rawRequests.length > 0 && rawRequests[0].sequence) {
+    // V1.5 FIX: If there are queued requests, ALWAYS show the first one as "Next Up"
+    // This takes priority over RF's playingNext which might say "Intermission"
+    if (rawRequests.length > 0 && rawRequests[0].sequence) {
       nextSeq = rawRequests[0].sequence;
+    }
+
+    // Only fall back to RF's playingNext if there's nothing in the queue
+    if (!nextSeq) {
+      // 1) Trust RF's explicit next sequence object when present
+      if (playingNextSequence) {
+        nextSeq = playingNextSequence;
+      }
+
+      // 2) Fall back to matching playingNext / playingNextFromSchedule against the sequence list
+      if (!nextSeq) {
+        const nextRawCombined = playingNextRaw || playingNextFromSchedule || '';
+        if (nextRawCombined) {
+          nextSeq =
+            sequences.find(
+              (s) =>
+                s.name === nextRawCombined || s.displayName === nextRawCombined
+            ) || null;
+        }
+      }
     }
 
     const nowDisplay = nowSeq
@@ -2931,7 +2944,7 @@ function renderDeviceStatsCard(extra, queueLength) {
         <textarea class="rf-glow-message" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>
         <input class="rf-glow-name" type="text" placeholder="${escapeHtml(namePlaceholder)}" />
         <div class="rf-glow-footer">
-          <span class="rf-glow-charcount">0 / 280</span>
+          <span class="rf-glow-charcount">0 / 500</span>
           <button class="rf-glow-btn">${escapeHtml(btnLabel)}</button>
         </div>
       </div>
@@ -2945,7 +2958,7 @@ function renderDeviceStatsCard(extra, queueLength) {
     const countEl     = card.querySelector('.rf-glow-charcount');
 
     const minLen = 5;
-    const maxLen = 280;
+    const maxLen = 500;
     const glowCooldownMs = 60 * 1000; // 60s between glows from a single device
 
     if (messageEl && countEl) {
