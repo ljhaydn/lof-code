@@ -767,6 +767,35 @@ function updateHeroGeo(distance, city) {
    * ------------------------- */
 
   async function fetchShowDetails() {
+    // V1.5 FIX: Use unified endpoint as PRIMARY source (includes RF + FPP + derived state)
+    // This fixes the race condition where viewerState was null during render
+    try {
+      const res = await fetch('/wp-json/lof/v1/viewer-state', {
+        method: 'GET',
+        credentials: 'same-origin'
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        viewerState = data; // Store BEFORE rendering - fixes race condition
+        console.log('[LOF] Unified state loaded:', viewerState?.state?.mode, 
+                    'lockout:', viewerState?.state?.isLockout,
+                    'requests.allowed:', viewerState?.requests?.allowed);
+        renderShowDetails(data);
+        return;
+      } else {
+        console.warn('[LOF] Unified endpoint returned:', res.status, '- falling back to RF');
+      }
+    } catch (err) {
+      console.warn('[LOF] Unified endpoint failed:', err.message, '- falling back to RF');
+    }
+    
+    // Fallback to direct RF endpoint if unified fails
+    await fetchShowDetailsFallback();
+  }
+  
+  // V1.5: Fallback to direct RF endpoint
+  async function fetchShowDetailsFallback() {
     if (!base) return;
 
     try {
@@ -777,34 +806,10 @@ function updateHeroGeo(distance, city) {
       }
 
       const data = await res.json();
-      
-      // V1.5: Also fetch unified viewer state for enhanced features
-      // This is non-blocking - if it fails, we still render with RF data
-      fetchUnifiedState();
-      
+      viewerState = null; // No enhanced state in fallback mode
       renderShowDetails(data);
     } catch (err) {
       console.error('[RF] showDetails fetch error:', err);
-    }
-  }
-  
-  // V1.5: Fetch unified state endpoint (RF + FPP combined with derived state)
-  async function fetchUnifiedState() {
-    try {
-      const res = await fetch('/wp-json/lof/v1/viewer-state');
-      if (res.ok) {
-        viewerState = await res.json();
-        console.log('[LOF] Unified state loaded:', viewerState?.state?.mode, 
-                    'queue:', viewerState?.queue?.length || 0,
-                    'lockout:', viewerState?.state?.isLockout);
-      } else {
-        console.warn('[LOF] Unified state endpoint returned:', res.status);
-        viewerState = null;
-      }
-    } catch (err) {
-      // Silent fail - unified state is optional enhancement
-      console.warn('[LOF] Unified state fetch error:', err.message);
-      viewerState = null;
     }
   }
 
@@ -1896,7 +1901,14 @@ function updateSmartTimeMessage(showState) {
     }
 
     currentMode           = prefs.viewerControlMode || 'UNKNOWN';
-    currentControlEnabled = !!prefs.viewerControlEnabled;
+    
+    // V1.5 FIX: Use unified state's requests.allowed which accounts for lockout
+    // Falls back to RF's viewerControlEnabled if unified state unavailable
+    if (viewerState && viewerState.requests) {
+      currentControlEnabled = !!viewerState.requests.allowed;
+    } else {
+      currentControlEnabled = !!prefs.viewerControlEnabled;
+    }
 
     if (typeof currentMode === 'string') {
       currentMode = currentMode.toUpperCase();
@@ -2024,6 +2036,14 @@ function updateSmartTimeMessage(showState) {
     // V1.5: Enhanced display using unified state (if available)
     if (viewerState && viewerState.state) {
       const state = viewerState.state;
+      const nextShow = state.nextResetTime || state.nextShowTime || 'soon';
+      
+      // Test mode indicator
+      if (state.isTestMode && viewerRoot) {
+        viewerRoot.classList.add('rf-test-mode');
+      } else if (viewerRoot) {
+        viewerRoot.classList.remove('rf-test-mode');
+      }
       
       // Ensure we have a subtitle element for "Up Next"
       let nextSubtitleEl = document.getElementById('rf-next-subtitle');
@@ -2034,33 +2054,47 @@ function updateSmartTimeMessage(showState) {
         nextTitleEl.parentNode.insertBefore(nextSubtitleEl, nextTitleEl.nextSibling);
       }
       
-      // Enhanced "Up Next" display based on state
+      // Enhanced "Up Next" display based on state - BRAND VOICE
       if (nextTitleEl) {
         let nextSubtitle = '';
         
         if (state.isAfterHours) {
-          // After hours - show next day's start time
-          nextTitleEl.textContent = 'See you at 5pm tomorrow! 🌙';
+          // After hours - warm, inviting
+          const showTime = state.nextShowTime || '5pm';
+          if (showTime.includes('tomorrow')) {
+            nextTitleEl.textContent = 'The lights are resting 🌙';
+            nextSubtitle = 'See you at ' + showTime.replace(' tomorrow', '') + ' tomorrow!';
+          } else {
+            nextTitleEl.textContent = 'Show starts at ' + showTime + ' ☕';
+            nextSubtitle = 'Grab a cocoa and come back!';
+          }
+        } else if (state.isPreshow) {
+          // Pre-show - anticipation
+          const showTime = state.nextShowTime || '5pm';
+          nextTitleEl.textContent = 'Show starts at ' + showTime + ' 🎄';
+          nextSubtitle = 'Request your favorites when we\'re live';
+        } else if (state.mode === 'time_lockout') {
+          // Time-based lockout - playful urgency
+          nextTitleEl.textContent = 'Hold that thought — ' + nextShow + ' show\'s about to begin 🎄';
           nextSubtitle = '';
-        } else if (state.isLockout) {
-          // Near hourly reset - show countdown
-          nextTitleEl.textContent = '🎄 ' + state.nextShowTime + ' show starting soon';
-          nextSubtitle = 'Requests paused until the new hour';
+        } else if (state.mode === 'queue_lockout') {
+          // Queue-based lockout - whimsical
+          nextTitleEl.textContent = 'This hour\'s dance card is full ✨';
+          nextSubtitle = 'Catch the ' + nextShow + ' show 🧝';
+        } else if (state.isReset || state.mode === 'resetting') {
+          nextTitleEl.textContent = '🎄 Show starting now!';
+          nextSubtitle = '';
         } else if (viewerState.nextUp && viewerState.nextUp.displayName && hasAnyQueue) {
           // Queue has items - show next requested song
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'Requested by a guest';
-        } else if (!isPlayingReal && !isIntermission) {
-          // Pre-show / idle state
-          nextTitleEl.textContent = 'Show starts at 5pm 🎄';
-          nextSubtitle = 'Request your favorites when we\'re live';
         } else if (state.isIntermission && !hasAnyQueue) {
           // Intermission with empty queue
-          nextTitleEl.textContent = '🎶 Your call — request a song below';
-          nextSubtitle = 'Music resumes when you pick one!';
+          nextTitleEl.textContent = '🎶 Your call — pick a song or catch the show';
+          nextSubtitle = '';
         } else if (state.isShowPlaylist && !hasAnyQueue) {
           // Show playlist (random inserts) with no queue
-          nextTitleEl.textContent = '🎲 DJ Falcon is picking...';
+          nextTitleEl.textContent = '🎲 DJ Falcon\'s picking next...';
           nextSubtitle = 'Or request your own below';
         }
         // If none of the above, keep the existing nextDisplay value
@@ -2645,18 +2679,29 @@ function renderQueue(extra, data) {
     const state = viewerState.state;
     if (state.timeUntilResetSeconds && state.timeUntilResetSeconds < 900) {
       const resetMin = Math.ceil(state.timeUntilResetSeconds / 60);
+      const nextShow = state.nextResetTime || state.nextShowTime || 'soon';
       const warningDiv = document.createElement('div');
       warningDiv.className = 'rf-queue-warning';
       
       if (state.isLockout) {
-        warningDiv.innerHTML = `
-          <span class="rf-queue-warning-icon">⏸️</span>
-          <span>Requests paused — ${state.nextShowTime} show starting soon</span>
-        `;
+        if (state.lockoutReason === 'queue') {
+          // Queue-based lockout - brand voice
+          warningDiv.innerHTML = `
+            <span class="rf-queue-warning-icon">✨</span>
+            <span>This hour's dance card is full — catch the ${nextShow} show 🧝</span>
+          `;
+        } else {
+          // Time-based lockout - brand voice
+          warningDiv.innerHTML = `
+            <span class="rf-queue-warning-icon">🎄</span>
+            <span>Hold that thought — ${nextShow} show's about to begin!</span>
+          `;
+        }
       } else {
+        // Warning but not locked out yet
         warningDiv.innerHTML = `
-          <span class="rf-queue-warning-icon">🔄</span>
-          <span>Queue resets at ${state.nextShowTime} (${resetMin} min) — request now!</span>
+          <span class="rf-queue-warning-icon">⏱️</span>
+          <span>Queue resets at ${nextShow} (${resetMin} min) — request now!</span>
         `;
       }
       wrapper.appendChild(warningDiv);
@@ -3788,7 +3833,13 @@ function addSurpriseCard() {
    * ------------------------- */
 
   function getButtonLabel(mode, controlEnabled) {
-    if (!controlEnabled) return 'Viewer control disabled';
+    if (!controlEnabled) {
+      // V1.5: Check if it's a lockout for better button text
+      if (viewerState && viewerState.state && viewerState.state.isLockout) {
+        return 'Show starting soon ✨';
+      }
+      return 'Requests paused';
+    }
     if (mode === 'JUKEBOX') return 'Request this song';
     if (mode === 'VOTING')  return 'Vote for this song';
     return 'Request';
@@ -3804,21 +3855,36 @@ function addSurpriseCard() {
     if (!base) return;
   // Hard guard: if viewer control is disabled, do not send any actions.
     if (!currentControlEnabled) {
-      const msg = lofCopy(
-        'viewer_action_disabled',
-        'Viewer control is currently paused. You can still enjoy the show!'
-      );
-      showToast(msg, 'error');
+      // V1.5: Check if it's a lockout situation for better messaging
+      if (viewerState && viewerState.state && viewerState.state.isLockout) {
+        const nextShow = viewerState.state.nextResetTime || viewerState.state.nextShowTime || 'soon';
+        if (viewerState.state.lockoutReason === 'queue') {
+          showToast(`This hour's dance card is full ✨ Catch the ${nextShow} show!`, 'error');
+        } else {
+          showToast(`Hold that thought — ${nextShow} show's about to begin 🎄`, 'error');
+        }
+      } else {
+        const msg = lofCopy(
+          'viewer_action_disabled',
+          'Requests are paused right now — enjoy the show! ✨'
+        );
+        showToast(msg, 'error');
+      }
       return;
     }
     
     // V1.5: Smart blocking using unified state
     if (viewerState && viewerState.state) {
       const state = viewerState.state;
+      const nextShow = state.nextResetTime || state.nextShowTime || 'soon';
       
       // Hard lockout - no requests allowed within 5 min of reset
       if (state.isLockout) {
-        showToast(`🎄 Requests paused — ${state.nextShowTime} show starting soon!`, 'error');
+        if (state.lockoutReason === 'queue') {
+          showToast(`This hour's dance card is full ✨ Catch the ${nextShow} show!`, 'error');
+        } else {
+          showToast(`Hold that thought — ${nextShow} show's about to begin 🎄`, 'error');
+        }
         return;
       }
       
@@ -3831,7 +3897,7 @@ function addSurpriseCard() {
         
         if (totalTime > state.timeUntilResetSeconds) {
           const resetMin = Math.ceil(state.timeUntilResetSeconds / 60);
-          showToast(`⏱️ This song won't finish before the ${state.nextShowTime} reset (${resetMin} min). Try a shorter one!`, 'error');
+          showToast(`This one's a bit long for ${resetMin} min left ⏱️ Try a shorter tune!`, 'error');
           return;
         }
       }

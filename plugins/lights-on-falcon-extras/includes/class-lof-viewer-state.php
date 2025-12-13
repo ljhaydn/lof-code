@@ -1,14 +1,19 @@
 <?php
 /**
- * LOF Viewer State - Unified Endpoint
+ * LOF Viewer State - Unified Endpoint (V1.5 Corrected)
  * 
- * Combines Remote Falcon + FPP data into a single response
- * with derived state for smart UI rendering.
+ * Combines Remote Falcon + FPP Status + FPP Schedule into a single response
+ * with properly derived state for smart UI rendering.
+ * 
+ * Data Sources:
+ * - /api/fppd/status   (real-time): Current playlist, song, time remaining
+ * - /api/fppd/schedule (config):    Upcoming resets, show times, intermission windows
+ * - RF API             (real-time): Queue, viewer control, sequences
  * 
  * Endpoint: GET /wp-json/lof/v1/viewer-state
  * 
  * @package Lights_On_Falcon
- * @version 1.0.0
+ * @version 1.5.0
  */
 
 if (!defined('ABSPATH')) {
@@ -20,14 +25,20 @@ class LOF_Viewer_State {
     /** @var string FPP base URL */
     private static $fpp_host = 'http://10.9.7.102';
 
-    /** @var int Cache TTL for FPP calls (seconds) */
-    private static $fpp_cache_ttl = 3;
+    /** @var int Cache TTL for FPP status calls (seconds) */
+    private static $fpp_status_cache_ttl = 3;
 
-    /** @var int Lockout threshold in seconds (5 minutes) */
+    /** @var int Cache TTL for FPP schedule calls (seconds) - longer since it's config */
+    private static $fpp_schedule_cache_ttl = 60;
+
+    /** @var int Lockout threshold in seconds (5 minutes before reset) */
     private static $lockout_seconds = 300;
 
-    /** @var int Warning threshold in seconds (15 minutes) */
+    /** @var int Warning threshold in seconds (15 minutes before reset) */
     private static $warning_seconds = 900;
+
+    /** @var int Default song duration estimate for queue lockout calc */
+    private static $default_song_duration = 180;
 
     /**
      * Initialize the class
@@ -51,81 +62,105 @@ class LOF_Viewer_State {
      * Main endpoint handler
      */
     public static function get_viewer_state(\WP_REST_Request $request) {
-        // Fetch RF data via existing proxy
-        $rf_data = self::fetch_rf_data();
+        $now = time();
         
-        // Fetch FPP status
-        $fpp_data = self::fetch_fpp_status();
+        // Fetch all data sources
+        $rf_data = self::fetch_rf_data();
+        $fpp_status = self::fetch_fpp_status();
+        $fpp_schedule = self::fetch_fpp_schedule();
 
         // Extract RF fields
         $prefs = isset($rf_data['preferences']) ? $rf_data['preferences'] : [];
         $sequences = isset($rf_data['sequences']) && is_array($rf_data['sequences']) ? $rf_data['sequences'] : [];
         $requests = isset($rf_data['requests']) && is_array($rf_data['requests']) ? $rf_data['requests'] : [];
         $rf_playing_now = isset($rf_data['playingNow']) ? $rf_data['playingNow'] : '';
+        $rf_playing_next = isset($rf_data['playingNext']) ? $rf_data['playingNext'] : '';
         $viewer_control_enabled = !empty($prefs['viewerControlEnabled']);
 
-        // Extract FPP fields
-        $fpp_sequence = isset($fpp_data['current_sequence']) ? $fpp_data['current_sequence'] : '';
-        $fpp_song = isset($fpp_data['current_song']) ? $fpp_data['current_song'] : '';
-        $fpp_seconds_remaining = isset($fpp_data['seconds_remaining']) ? intval($fpp_data['seconds_remaining']) : 0;
-        $fpp_status_name = isset($fpp_data['status_name']) ? $fpp_data['status_name'] : 'idle';
+        // Extract FPP Status fields (real-time)
+        $fpp_online = isset($fpp_status['fppd']) && $fpp_status['fppd'] === 'running';
+        $fpp_sequence = isset($fpp_status['current_sequence']) ? $fpp_status['current_sequence'] : '';
+        $fpp_seconds_remaining = isset($fpp_status['seconds_remaining']) ? intval($fpp_status['seconds_remaining']) : 0;
+        $fpp_status_name = isset($fpp_status['status_name']) ? $fpp_status['status_name'] : 'idle';
         
-        // Scheduler data
-        $scheduler = isset($fpp_data['scheduler']) ? $fpp_data['scheduler'] : [];
+        // Scheduler data from status (real-time)
+        $scheduler = isset($fpp_status['scheduler']) ? $fpp_status['scheduler'] : [];
         $scheduler_status = isset($scheduler['status']) ? $scheduler['status'] : 'idle';
-        $current_playlist = isset($scheduler['currentPlaylist']) ? $scheduler['currentPlaylist'] : [];
-        $next_playlist = isset($scheduler['nextPlaylist']) ? $scheduler['nextPlaylist'] : [];
+        $current_playlist_data = isset($scheduler['currentPlaylist']) ? $scheduler['currentPlaylist'] : [];
         
+        // Get current playlist name (prefer scheduler, fallback to current_playlist)
         $playlist_name = '';
-        if (isset($current_playlist['playlistName'])) {
-            $playlist_name = $current_playlist['playlistName'];
-        } elseif (isset($fpp_data['current_playlist']['playlist'])) {
-            $playlist_name = $fpp_data['current_playlist']['playlist'];
+        if (isset($current_playlist_data['playlistName'])) {
+            $playlist_name = $current_playlist_data['playlistName'];
+        } elseif (isset($fpp_status['current_playlist']['playlist'])) {
+            $playlist_name = $fpp_status['current_playlist']['playlist'];
         }
 
-        // Derive playlist type
-        $is_show_playlist = stripos($playlist_name, 'show') !== false && stripos($playlist_name, 'reset') === false;
-        $is_intermission = stripos($playlist_name, 'intermission') !== false;
-        $is_reset_playlist = stripos($playlist_name, 'reset') !== false;
+        // Parse schedule to find upcoming events
+        $schedule_info = self::parse_schedule($fpp_schedule, $now);
 
-        // Calculate time until next hour reset
-        $now = time();
-        $current_minute = (int) date('i', $now);
-        $current_second = (int) date('s', $now);
-        $seconds_until_reset = (60 - $current_minute - 1) * 60 + (60 - $current_second);
-        if ($seconds_until_reset > 3600) {
-            $seconds_until_reset = 3600; // Cap at 1 hour
+        // Derive playlist type from name (case-insensitive substring match)
+        $playlist_lower = strtolower($playlist_name);
+        $is_reset_playlist = strpos($playlist_lower, 'reset') !== false;
+        $is_show_playlist = strpos($playlist_lower, 'show') !== false && !$is_reset_playlist;
+        $is_intermission = strpos($playlist_lower, 'intermission') !== false;
+
+        // Determine if we're in show hours (based on intermission schedule window)
+        $is_show_hours = $schedule_info['isShowHours'];
+        
+        // Is testing mode? (scheduler not driving, someone manually started playlist)
+        $is_test_mode = $scheduler_status === 'manual';
+
+        // Calculate time until next reset
+        $time_until_reset = $schedule_info['timeUntilResetSeconds'];
+        
+        // Lockout logic
+        $is_time_lockout = $is_show_hours && $time_until_reset !== null && $time_until_reset <= self::$lockout_seconds;
+        $is_time_warning = $is_show_hours && $time_until_reset !== null && $time_until_reset <= self::$warning_seconds && !$is_time_lockout;
+        
+        // Queue-based lockout: would a new song finish before reset?
+        $queue_duration = self::calculate_queue_duration($requests);
+        $is_queue_lockout = false;
+        
+        if ($is_show_hours && $time_until_reset !== null && !$is_time_lockout) {
+            $total_with_new_song = $fpp_seconds_remaining + $queue_duration + self::$default_song_duration + 60; // 60s buffer
+            if ($total_with_new_song > $time_until_reset) {
+                $is_queue_lockout = true;
+            }
         }
 
-        // Determine next show time
-        $next_hour = (int) date('g', $now);
-        $next_hour = $next_hour >= 12 ? $next_hour - 11 : $next_hour + 1;
-        $next_ampm = date('A', $now);
-        if ($current_minute >= 55) {
-            // About to flip to next hour
+        // Combined lockout
+        $is_lockout = $is_time_lockout || $is_queue_lockout;
+        $lockout_reason = null;
+        if ($is_time_lockout) {
+            $lockout_reason = 'time';
+        } elseif ($is_queue_lockout) {
+            $lockout_reason = 'queue';
         }
-        $next_show_time = date('g:00 A', strtotime('+1 hour', strtotime(date('Y-m-d H:00:00', $now))));
 
-        // Lockout and warning states
-        $is_lockout = $seconds_until_reset <= self::$lockout_seconds;
-        $is_warning = $seconds_until_reset <= self::$warning_seconds && !$is_lockout;
-        $is_after_hours = !$viewer_control_enabled;
-
-        // Determine mode
-        $mode = 'unknown';
-        if ($is_after_hours) {
-            $mode = 'after_hours';
-        } elseif ($is_lockout) {
-            $mode = 'lockout';
-        } elseif ($is_reset_playlist) {
-            $mode = 'resetting';
-        } elseif ($is_show_playlist) {
-            $mode = count($requests) > 0 ? 'show_queue' : 'show_random';
-        } elseif ($is_intermission) {
-            $mode = count($requests) > 0 ? 'intermission_queue' : 'intermission_empty';
-        } else {
-            $mode = count($requests) > 0 ? 'show_queue' : 'show_random';
+        // Determine after hours (not in show hours and nothing playing OR viewer control disabled)
+        $is_playing = $fpp_status_name === 'playing' && !empty($fpp_sequence);
+        $is_after_hours = !$is_show_hours && !$is_playing && !$is_test_mode;
+        
+        // Override: if viewer control is disabled by RF, treat as after hours (unless testing)
+        if (!$viewer_control_enabled && !$is_test_mode) {
+            $is_after_hours = true;
         }
+
+        // Determine pre-show state
+        $is_preshow = !$is_show_hours && !$is_after_hours && !$is_playing && $schedule_info['nextShowStartTime'] !== null;
+
+        // Determine the show state mode
+        $mode = self::determine_mode(
+            $is_after_hours,
+            $is_preshow,
+            $is_reset_playlist,
+            $is_show_playlist,
+            $is_intermission,
+            $is_lockout,
+            $lockout_reason,
+            count($requests)
+        );
 
         // Find current sequence details
         $now_seq = self::find_sequence($sequences, $fpp_sequence, $rf_playing_now);
@@ -136,11 +171,11 @@ class LOF_Viewer_State {
         // Build now playing info
         $now_info = [
             'sequence'         => $fpp_sequence,
-            'displayName'      => $now_seq ? ($now_seq['displayName'] ?: $now_seq['name']) : $rf_playing_now,
+            'displayName'      => $now_seq ? ($now_seq['displayName'] ?: $now_seq['name']) : ($rf_playing_now ?: ''),
             'artist'           => $now_seq ? (isset($now_seq['artist']) ? $now_seq['artist'] : '') : '',
             'secondsRemaining' => $fpp_seconds_remaining,
             'isRequest'        => $is_now_request,
-            'isPlaying'        => $fpp_status_name === 'playing' && !empty($fpp_sequence),
+            'isPlaying'        => $is_playing,
         ];
 
         // Build queue with wait times
@@ -149,7 +184,7 @@ class LOF_Viewer_State {
         
         foreach ($requests as $idx => $req) {
             $seq = isset($req['sequence']) && is_array($req['sequence']) ? $req['sequence'] : [];
-            $duration = isset($seq['duration']) ? intval($seq['duration']) : 180; // Default 3 min
+            $duration = isset($seq['duration']) ? intval($seq['duration']) : self::$default_song_duration;
             
             $queue[] = [
                 'sequence'       => isset($seq['name']) ? $seq['name'] : '',
@@ -175,50 +210,298 @@ class LOF_Viewer_State {
                 'isRequest'   => true,
                 'source'      => 'queue',
             ];
+        } elseif (!empty($rf_playing_next)) {
+            // RF has a playingNext that's not from queue
+            $next_seq = self::find_sequence($sequences, $rf_playing_next, $rf_playing_next);
+            $next_up = [
+                'sequence'    => $rf_playing_next,
+                'displayName' => $next_seq ? ($next_seq['displayName'] ?: $next_seq['name']) : $rf_playing_next,
+                'artist'      => $next_seq ? (isset($next_seq['artist']) ? $next_seq['artist'] : '') : '',
+                'waitSeconds' => $fpp_seconds_remaining,
+                'isRequest'   => false,
+                'source'      => 'playlist',
+            ];
         }
 
         // Determine if requests are allowed
-        $requests_allowed = $viewer_control_enabled && !$is_lockout;
+        $requests_allowed = $viewer_control_enabled && !$is_lockout && !$is_after_hours && !$is_preshow && !$is_reset_playlist;
+        
+        // In test mode, allow requests if RF says OK
+        if ($is_test_mode && $viewer_control_enabled && !$is_lockout) {
+            $requests_allowed = true;
+        }
+        
         $request_block_reason = null;
         
-        if (!$viewer_control_enabled) {
+        if ($is_after_hours && !$is_test_mode) {
             $request_block_reason = 'after_hours';
-        } elseif ($is_lockout) {
-            $request_block_reason = 'lockout';
+        } elseif ($is_preshow) {
+            $request_block_reason = 'preshow';
+        } elseif ($is_reset_playlist) {
+            $request_block_reason = 'resetting';
+        } elseif (!$viewer_control_enabled) {
+            $request_block_reason = 'viewer_control_off';
+        } elseif ($is_time_lockout) {
+            $request_block_reason = 'time_lockout';
+        } elseif ($is_queue_lockout) {
+            $request_block_reason = 'queue_lockout';
         }
+
+        // Format next show time for display
+        $next_show_display = self::format_next_show_time($schedule_info, $now);
 
         // Build response
         $response = [
             'now' => $now_info,
             'nextUp' => $next_up,
             'queue' => $queue,
+            'queueDurationSeconds' => $queue_duration,
             'state' => [
                 'mode'                   => $mode,
                 'playlistName'           => $playlist_name,
                 'isShowPlaylist'         => $is_show_playlist,
                 'isIntermission'         => $is_intermission,
+                'isReset'                => $is_reset_playlist,
+                'isShowHours'            => $is_show_hours,
+                'isTestMode'             => $is_test_mode,
                 'isLockout'              => $is_lockout,
-                'isWarning'              => $is_warning,
+                'lockoutReason'          => $lockout_reason,
+                'isWarning'              => $is_time_warning,
                 'isAfterHours'           => $is_after_hours,
+                'isPreshow'              => $is_preshow,
                 'viewerControlEnabled'   => $viewer_control_enabled,
-                'timeUntilResetSeconds'  => $seconds_until_reset,
-                'nextShowTime'           => $next_show_time,
+                'timeUntilResetSeconds'  => $time_until_reset,
+                'nextResetTime'          => $schedule_info['nextResetTimeDisplay'],
+                'nextShowTime'           => $next_show_display,
+                'showEndsAt'             => $schedule_info['showEndsAtDisplay'],
                 'fppStatus'              => $fpp_status_name,
+                'fppOnline'              => $fpp_online,
                 'schedulerStatus'        => $scheduler_status,
             ],
             'requests' => [
                 'allowed' => $requests_allowed,
                 'reason'  => $request_block_reason,
             ],
-            // Pass through sequences for song grid
+            // Pass through for backward compatibility
             'sequences'   => $sequences,
             'preferences' => $prefs,
-            // Keep raw data for backward compatibility
             'playingNow'  => $rf_playing_now,
+            'playingNext' => $rf_playing_next,
             'votes'       => isset($rf_data['votes']) ? $rf_data['votes'] : [],
         ];
 
         return rest_ensure_response($response);
+    }
+
+    /**
+     * Parse FPP schedule to extract upcoming events
+     * 
+     * Looks for:
+     * - Intermission playlists to determine show hours window
+     * - Reset playlists to calculate lockout timing
+     * - Show playlists for "next show" messaging
+     * 
+     * @param array $fpp_schedule Raw schedule data from /api/fppd/schedule
+     * @param int $now Current Unix timestamp
+     * @return array Parsed schedule info
+     */
+    private static function parse_schedule($fpp_schedule, $now) {
+        $result = [
+            'isShowHours'           => false,
+            'timeUntilResetSeconds' => null,
+            'nextResetTime'         => null,
+            'nextResetTimeDisplay'  => null,
+            'nextShowStartTime'     => null,
+            'nextShowStartDisplay'  => null,
+            'showEndsAt'            => null,
+            'showEndsAtDisplay'     => null,
+            'currentIntermission'   => null,
+        ];
+
+        // Check for schedule items (the projected upcoming events)
+        $items = [];
+        if (isset($fpp_schedule['schedule']['items']) && is_array($fpp_schedule['schedule']['items'])) {
+            $items = $fpp_schedule['schedule']['items'];
+        }
+
+        if (empty($items)) {
+            // Fallback: use time-of-day heuristic
+            return self::fallback_schedule_detection($now);
+        }
+
+        $next_reset = null;
+        $next_intermission_start = null;
+        $current_intermission_end = null;
+
+        foreach ($items as $item) {
+            $start_time = isset($item['startTime']) ? intval($item['startTime']) : 0;
+            $end_time = isset($item['endTime']) ? intval($item['endTime']) : 0;
+            
+            // Get playlist/command name from args[0] or playlist field
+            $name = '';
+            if (isset($item['args']) && is_array($item['args']) && count($item['args']) > 0) {
+                $name = $item['args'][0];
+            } elseif (isset($item['playlist'])) {
+                $name = $item['playlist'];
+            }
+            
+            $name_lower = strtolower($name);
+
+            // Check if we're currently within an intermission window (defines show hours)
+            if (strpos($name_lower, 'intermission') !== false) {
+                if ($start_time <= $now && $end_time > $now) {
+                    $result['isShowHours'] = true;
+                    $result['currentIntermission'] = $item;
+                    $current_intermission_end = $end_time;
+                    $result['showEndsAt'] = $end_time;
+                    $result['showEndsAtDisplay'] = self::format_time_display($end_time);
+                }
+                
+                // Track next intermission start for pre-show messaging
+                if ($start_time > $now && $next_intermission_start === null) {
+                    $next_intermission_start = $start_time;
+                    $result['nextShowStartTime'] = $start_time;
+                    $result['nextShowStartDisplay'] = self::format_time_display($start_time);
+                }
+            }
+
+            // Find next reset (first one after now)
+            if (strpos($name_lower, 'reset') !== false && $start_time > $now) {
+                if ($next_reset === null || $start_time < $next_reset) {
+                    $next_reset = $start_time;
+                    $result['nextResetTime'] = $start_time;
+                    $result['nextResetTimeDisplay'] = self::format_time_display($start_time);
+                }
+            }
+        }
+
+        // Calculate time until reset
+        if ($next_reset !== null) {
+            $result['timeUntilResetSeconds'] = $next_reset - $now;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Fallback schedule detection using time-of-day heuristics
+     * Used when FPP schedule is unavailable
+     */
+    private static function fallback_schedule_detection($now) {
+        $hour = (int) date('G', $now);
+        $minute = (int) date('i', $now);
+        $day_of_week = (int) date('w', $now); // 0 = Sunday, 6 = Saturday
+        
+        $is_weekend = in_array($day_of_week, [0, 5, 6]); // Fri, Sat, Sun
+        $show_start = 17; // 5 PM
+        $show_end = $is_weekend ? 24 : 23; // Midnight on weekends, 11 PM otherwise
+
+        $is_show_hours = $hour >= $show_start && $hour < $show_end;
+
+        // Estimate next reset at the top of next hour
+        $seconds_until_next_hour = (60 - $minute) * 60 - (int) date('s', $now);
+        
+        // Next show time
+        $next_show_timestamp = null;
+        if ($hour < $show_start) {
+            // Today at 5 PM
+            $next_show_timestamp = strtotime(date('Y-m-d', $now) . ' 17:00:00');
+        } else {
+            // Tomorrow at 5 PM
+            $next_show_timestamp = strtotime(date('Y-m-d', $now + 86400) . ' 17:00:00');
+        }
+
+        return [
+            'isShowHours'           => $is_show_hours,
+            'timeUntilResetSeconds' => $is_show_hours ? $seconds_until_next_hour : null,
+            'nextResetTime'         => $is_show_hours ? $now + $seconds_until_next_hour : null,
+            'nextResetTimeDisplay'  => $is_show_hours ? date('g:i A', $now + $seconds_until_next_hour) : null,
+            'nextShowStartTime'     => $next_show_timestamp,
+            'nextShowStartDisplay'  => date('g:i A', $next_show_timestamp),
+            'showEndsAt'            => null,
+            'showEndsAtDisplay'     => null,
+            'currentIntermission'   => null,
+            '_fallback'             => true,
+        ];
+    }
+
+    /**
+     * Format timestamp for display
+     */
+    private static function format_time_display($timestamp) {
+        if (!$timestamp) return null;
+        return date('g:i A', $timestamp);
+    }
+
+    /**
+     * Format next show time with today/tomorrow logic
+     */
+    private static function format_next_show_time($schedule_info, $now) {
+        if (empty($schedule_info['nextShowStartTime'])) {
+            return '5pm';
+        }
+
+        $next_time = $schedule_info['nextShowStartTime'];
+        $next_date = date('Y-m-d', $next_time);
+        $today = date('Y-m-d', $now);
+        $tomorrow = date('Y-m-d', $now + 86400);
+
+        $time_str = date('g A', $next_time); // e.g., "5 PM"
+
+        if ($next_date === $today) {
+            return $time_str;
+        } elseif ($next_date === $tomorrow) {
+            return $time_str . ' tomorrow';
+        } else {
+            return date('l', $next_time) . ' at ' . $time_str; // e.g., "Saturday at 5 PM"
+        }
+    }
+
+    /**
+     * Calculate total duration of queued songs
+     */
+    private static function calculate_queue_duration($requests) {
+        $total = 0;
+        foreach ($requests as $req) {
+            $seq = isset($req['sequence']) && is_array($req['sequence']) ? $req['sequence'] : [];
+            $duration = isset($seq['duration']) ? intval($seq['duration']) : self::$default_song_duration;
+            $total += $duration;
+        }
+        return $total;
+    }
+
+    /**
+     * Determine the UI mode based on state
+     */
+    private static function determine_mode($is_after_hours, $is_preshow, $is_reset, $is_show, $is_intermission, $is_lockout, $lockout_reason, $queue_count) {
+        if ($is_after_hours) {
+            return 'after_hours';
+        }
+        
+        if ($is_preshow) {
+            return 'preshow';
+        }
+        
+        if ($is_reset) {
+            return 'resetting';
+        }
+
+        if ($is_lockout) {
+            if ($lockout_reason === 'queue') {
+                return 'queue_lockout';
+            }
+            return 'time_lockout';
+        }
+
+        if ($is_show) {
+            return $queue_count > 0 ? 'show_queue' : 'show_random';
+        }
+
+        if ($is_intermission) {
+            return $queue_count > 0 ? 'intermission_queue' : 'intermission_empty';
+        }
+
+        return 'unknown';
     }
 
     /**
@@ -272,10 +555,9 @@ class LOF_Viewer_State {
     }
 
     /**
-     * Fetch FPP status
+     * Fetch FPP status (real-time)
      */
     private static function fetch_fpp_status() {
-        // Check cache
         $cache_key = 'lof_fpp_status';
         $cached = get_transient($cache_key);
         if ($cached !== false) {
@@ -289,7 +571,7 @@ class LOF_Viewer_State {
         ]);
 
         if (is_wp_error($response)) {
-            error_log('[LOF Viewer State] FPP API error: ' . $response->get_error_message());
+            error_log('[LOF Viewer State] FPP Status API error: ' . $response->get_error_message());
             return [];
         }
 
@@ -297,11 +579,45 @@ class LOF_Viewer_State {
         $data = json_decode($body, true);
 
         if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
-            error_log('[LOF Viewer State] FPP API invalid JSON');
+            error_log('[LOF Viewer State] FPP Status API invalid JSON');
             return [];
         }
 
-        set_transient($cache_key, $data, self::$fpp_cache_ttl);
+        set_transient($cache_key, $data, self::$fpp_status_cache_ttl);
+
+        return $data;
+    }
+
+    /**
+     * Fetch FPP schedule (config - changes less frequently)
+     */
+    private static function fetch_fpp_schedule() {
+        $cache_key = 'lof_fpp_schedule';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $url = rtrim(self::$fpp_host, '/') . '/api/fppd/schedule';
+
+        $response = wp_remote_get($url, [
+            'timeout' => 5,
+        ]);
+
+        if (is_wp_error($response)) {
+            error_log('[LOF Viewer State] FPP Schedule API error: ' . $response->get_error_message());
+            return [];
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($data)) {
+            error_log('[LOF Viewer State] FPP Schedule API invalid JSON');
+            return [];
+        }
+
+        set_transient($cache_key, $data, self::$fpp_schedule_cache_ttl);
 
         return $data;
     }
@@ -340,47 +656,32 @@ class LOF_Viewer_State {
 
     /**
      * Determine if currently playing song was from a request
-     * 
-     * This is tricky - we check if RF's playingNow matches what we expect
-     * from a recently played request. RF removes items from requests[] once
-     * they start playing, so we can't directly check the array.
-     * 
-     * Heuristic: If RF playingNow matches FPP current_sequence AND
-     * the sequence is in our sequences list, it was likely a request
-     * if we're in show mode and queue was recently populated.
      */
     private static function is_sequence_in_recent_requests($fpp_sequence, $rf_playing_now, $requests, $rf_data) {
-        // If there are items still in queue, current song was likely a request
-        // (RF removes playing item from requests, but leaves the rest)
-        
-        // Simple heuristic: check if RF reports it as playingNow and it matches FPP
-        // This means RF knows about it (i.e., it was requested through RF)
+        // If RF reports it as playingNow and it matches FPP, and there's queue activity, likely a request
         if (!empty($rf_playing_now) && $rf_playing_now === $fpp_sequence) {
-            // Check if playingNext exists - if so, there's a queue concept active
             if (!empty($rf_data['playingNext']) || count($requests) > 0) {
                 return true;
             }
         }
 
-        // Conservative default: if we can't determine, assume it's from playlist
-        // This prevents false "Requested by a guest" labels
+        // Conservative default
         return false;
     }
 
     /**
      * Check if a specific song can play before reset
-     * 
-     * @param int $song_duration Duration of song in seconds
-     * @param int $current_wait Current queue wait time
-     * @param int $time_until_reset Seconds until next reset
-     * @return array ['allowed' => bool, 'reason' => string|null]
      */
     public static function can_song_play($song_duration, $current_wait, $time_until_reset) {
+        if ($time_until_reset === null) {
+            return ['allowed' => true, 'reason' => null];
+        }
+
         // Hard lockout
         if ($time_until_reset < self::$lockout_seconds) {
             return [
                 'allowed' => false,
-                'reason'  => 'lockout',
+                'reason'  => 'time_lockout',
             ];
         }
 
@@ -390,7 +691,7 @@ class LOF_Viewer_State {
         if ($total_time > $time_until_reset) {
             return [
                 'allowed' => false,
-                'reason'  => 'not_enough_time',
+                'reason'  => 'queue_lockout',
                 'details' => [
                     'needed'    => $total_time,
                     'available' => $time_until_reset,
