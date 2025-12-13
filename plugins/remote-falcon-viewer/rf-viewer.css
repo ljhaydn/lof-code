@@ -2658,3 +2658,17 @@
 .rf-now-source--playlist {
   color: rgba(255, 255, 255, 0.7);
 }
+
+/* V1.5: Up Next subtitle */
+.rf-next-subtitle {
+  font-size: 0.82rem;
+  opacity: 0.75;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* V1.5: Ensure queue wait times display properly */
+.rf-queue-item .rf-queue-wait {
+  flex-shrink: 0;
+  margin-left: auto;
+}

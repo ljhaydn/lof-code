@@ -794,12 +794,16 @@ function updateHeroGeo(distance, city) {
       const res = await fetch('/wp-json/lof/v1/viewer-state');
       if (res.ok) {
         viewerState = await res.json();
-        console.log('[LOF] Unified state loaded:', viewerState?.state?.mode);
+        console.log('[LOF] Unified state loaded:', viewerState?.state?.mode, 
+                    'queue:', viewerState?.queue?.length || 0,
+                    'lockout:', viewerState?.state?.isLockout);
       } else {
+        console.warn('[LOF] Unified state endpoint returned:', res.status);
         viewerState = null;
       }
     } catch (err) {
       // Silent fail - unified state is optional enhancement
+      console.warn('[LOF] Unified state fetch error:', err.message);
       viewerState = null;
     }
   }
@@ -1933,11 +1937,13 @@ function updateSmartTimeMessage(showState) {
 
     // NEXT UP
     let nextSeq = null;
+    let nextIsFromQueue = false;  // V1.5: Track if next is from RF queue (for badge display)
 
     // V1.5 FIX: If there are queued requests, ALWAYS show the first one as "Next Up"
     // This takes priority over RF's playingNext which might say "Intermission"
     if (rawRequests.length > 0 && rawRequests[0].sequence) {
       nextSeq = rawRequests[0].sequence;
+      nextIsFromQueue = true;  // This next song came from the queue
     }
 
     // Only fall back to RF's playingNext if there's nothing in the queue
@@ -2019,36 +2025,68 @@ function updateSmartTimeMessage(showState) {
     if (viewerState && viewerState.state) {
       const state = viewerState.state;
       
-      // Enhanced "Up Next" display based on state
-      if (nextTitleEl) {
-        if (state.isAfterHours) {
-          nextTitleEl.textContent = 'Tomorrow at 5pm';
-        } else if (state.isLockout) {
-          nextTitleEl.textContent = '🎄 ' + state.nextShowTime + ' show starting soon';
-        } else if (viewerState.nextUp && viewerState.nextUp.displayName) {
-          // Queue has items - show next requested song
-          nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
-        } else if (state.isIntermission && !hasAnyQueue) {
-          nextTitleEl.textContent = '🎶 Your call — request a song below';
-        } else if (state.isShowPlaylist && !hasAnyQueue) {
-          nextTitleEl.textContent = '🎲 DJ Falcon is picking...';
-        }
-        // Otherwise keep the existing nextDisplay value
+      // Ensure we have a subtitle element for "Up Next"
+      let nextSubtitleEl = document.getElementById('rf-next-subtitle');
+      if (!nextSubtitleEl && nextTitleEl && nextTitleEl.parentNode) {
+        nextSubtitleEl = document.createElement('div');
+        nextSubtitleEl.id = 'rf-next-subtitle';
+        nextSubtitleEl.className = 'rf-next-subtitle';
+        nextTitleEl.parentNode.insertBefore(nextSubtitleEl, nextTitleEl.nextSibling);
       }
       
-      // Enhanced "Now Playing" subtitle with time remaining and source
+      // Enhanced "Up Next" display based on state
+      if (nextTitleEl) {
+        let nextSubtitle = '';
+        
+        if (state.isAfterHours) {
+          // After hours - show next day's start time
+          nextTitleEl.textContent = 'See you at 5pm tomorrow! 🌙';
+          nextSubtitle = '';
+        } else if (state.isLockout) {
+          // Near hourly reset - show countdown
+          nextTitleEl.textContent = '🎄 ' + state.nextShowTime + ' show starting soon';
+          nextSubtitle = 'Requests paused until the new hour';
+        } else if (viewerState.nextUp && viewerState.nextUp.displayName && hasAnyQueue) {
+          // Queue has items - show next requested song
+          nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
+          nextSubtitle = 'Requested by a guest';
+        } else if (!isPlayingReal && !isIntermission) {
+          // Pre-show / idle state
+          nextTitleEl.textContent = 'Show starts at 5pm 🎄';
+          nextSubtitle = 'Request your favorites when we\'re live';
+        } else if (state.isIntermission && !hasAnyQueue) {
+          // Intermission with empty queue
+          nextTitleEl.textContent = '🎶 Your call — request a song below';
+          nextSubtitle = 'Music resumes when you pick one!';
+        } else if (state.isShowPlaylist && !hasAnyQueue) {
+          // Show playlist (random inserts) with no queue
+          nextTitleEl.textContent = '🎲 DJ Falcon is picking...';
+          nextSubtitle = 'Or request your own below';
+        }
+        // If none of the above, keep the existing nextDisplay value
+        
+        // Update subtitle element
+        if (nextSubtitleEl) {
+          nextSubtitleEl.textContent = nextSubtitle;
+          nextSubtitleEl.style.display = nextSubtitle ? 'block' : 'none';
+        }
+      }
+      
+      // Enhanced "Now Playing" subtitle - show source but NOT time (progress bar handles that)
       if (nowArtistEl && isPlayingReal && viewerState.now) {
         const nowInfo = viewerState.now;
-        const remaining = nowInfo.secondsRemaining || 0;
-        const remainStr = remaining > 0 ? formatTimeRemaining(remaining) : '';
         
         if (nowInfo.isRequest) {
-          nowArtistEl.textContent = 'Requested by a guest' + (remainStr ? ' • ' + remainStr + ' left' : '');
-        } else if (nowArtist) {
-          nowArtistEl.textContent = nowArtist + (remainStr ? ' • ' + remainStr + ' left' : '');
-        } else {
-          nowArtistEl.textContent = 'From tonight\'s playlist' + (remainStr ? ' • ' + remainStr + ' left' : '');
+          // Don't overwrite artist - just add source indicator if no artist
+          if (!nowArtist) {
+            nowArtistEl.textContent = 'Requested by a guest ✨';
+          }
+          // If there IS an artist, keep it (don't add time - progress bar shows that)
+        } else if (!nowArtist) {
+          // No artist and not a request - show playlist source
+          nowArtistEl.textContent = 'From tonight\'s playlist';
         }
+        // If there's an artist, just keep the original artist text
       }
     }
 
@@ -2208,7 +2246,8 @@ function updateSmartTimeMessage(showState) {
       }
 
       const isNow  = nowKey  && (seq.name === nowKey  || seq.displayName === nowKey);
-      const isNext = nextKey && (seq.name === nextKey || seq.displayName === nextKey);
+      // V1.5 FIX: Only show "Next up" badge if song is from RF queue, not FPP's playingNext
+      const isNext = nextIsFromQueue && nextKey && (seq.name === nextKey || seq.displayName === nextKey);
 
       if (isNow) {
         card.classList.add('rf-card--now-playing');
