@@ -1904,8 +1904,8 @@ function updateSmartTimeMessage(showState) {
     
     // V1.5 FIX: Use unified state's requests.allowed which accounts for lockout
     // Falls back to RF's viewerControlEnabled if unified state unavailable
-    if (viewerState && viewerState.requests) {
-      currentControlEnabled = !!viewerState.requests.allowed;
+    if (viewerState && viewerState.requestsAllowed) {
+      currentControlEnabled = !!viewerState.requestsAllowed.allowed;
     } else {
       currentControlEnabled = !!prefs.viewerControlEnabled;
     }

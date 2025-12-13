@@ -278,7 +278,7 @@ class LOF_Viewer_State {
                 'fppOnline'              => $fpp_online,
                 'schedulerStatus'        => $scheduler_status,
             ],
-            'requests' => [
+            'requestsAllowed' => [
                 'allowed' => $requests_allowed,
                 'reason'  => $request_block_reason,
             ],
@@ -337,6 +337,11 @@ class LOF_Viewer_State {
             $start_time = isset($item['startTime']) ? intval($item['startTime']) : 0;
             $end_time = isset($item['endTime']) ? intval($item['endTime']) : 0;
             
+            // CRITICAL: Use FPP's pre-formatted strings to avoid timezone issues
+            // FPP returns "Sat Dec 13 @ 05:00 PM" which is already in local time
+            $start_time_str = isset($item['startTimeStr']) ? $item['startTimeStr'] : '';
+            $end_time_str = isset($item['endTimeStr']) ? $item['endTimeStr'] : '';
+            
             // Get playlist/command name from args[0] or playlist field
             $name = '';
             if (isset($item['args']) && is_array($item['args']) && count($item['args']) > 0) {
@@ -347,21 +352,25 @@ class LOF_Viewer_State {
             
             $name_lower = strtolower($name);
 
-            // Check if we're currently within an intermission window (defines show hours)
-            if (strpos($name_lower, 'intermission') !== false) {
+            // Check for viewer control or intermission (defines show hours)
+            $is_show_window = strpos($name_lower, 'viewer control') !== false && strpos($name_lower, 'on') !== false;
+            $is_show_window = $is_show_window || strpos($name_lower, 'intermission') !== false;
+            
+            if ($is_show_window) {
                 if ($start_time <= $now && $end_time > $now) {
                     $result['isShowHours'] = true;
                     $result['currentIntermission'] = $item;
                     $current_intermission_end = $end_time;
                     $result['showEndsAt'] = $end_time;
-                    $result['showEndsAtDisplay'] = self::format_time_display($end_time);
+                    $result['showEndsAtDisplay'] = self::format_time_display($end_time_str);
                 }
                 
-                // Track next intermission start for pre-show messaging
+                // Track next show start for pre-show messaging
                 if ($start_time > $now && $next_intermission_start === null) {
                     $next_intermission_start = $start_time;
                     $result['nextShowStartTime'] = $start_time;
-                    $result['nextShowStartDisplay'] = self::format_time_display($start_time);
+                    $result['nextShowStartDisplay'] = self::format_time_display($start_time_str);
+                    $result['nextShowStartTimeStr'] = $start_time_str; // Keep for today/tomorrow logic
                 }
             }
 
@@ -370,7 +379,7 @@ class LOF_Viewer_State {
                 if ($next_reset === null || $start_time < $next_reset) {
                     $next_reset = $start_time;
                     $result['nextResetTime'] = $start_time;
-                    $result['nextResetTimeDisplay'] = self::format_time_display($start_time);
+                    $result['nextResetTimeDisplay'] = self::format_time_display($start_time_str);
                 }
             }
         }
@@ -426,35 +435,80 @@ class LOF_Viewer_State {
     }
 
     /**
-     * Format timestamp for display
+     * Extract time portion from FPP's startTimeStr/endTimeStr
+     * 
+     * FPP format: "Sat Dec 13 @ 05:00 PM" or "Sun @ 20:45:00"
+     * We extract just the time: "5:00 PM" or "8:45 PM"
+     * 
+     * @param string $fpp_time_str The startTimeStr/endTimeStr from FPP
+     * @return string|null Formatted time for display
      */
-    private static function format_time_display($timestamp) {
-        if (!$timestamp) return null;
-        return date('g:i A', $timestamp);
+    private static function format_time_display($fpp_time_str) {
+        if (empty($fpp_time_str)) return null;
+        
+        // Pattern 1: "Sat Dec 13 @ 05:00 PM" - has AM/PM
+        if (preg_match('/@\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i', $fpp_time_str, $matches)) {
+            return trim($matches[1]);
+        }
+        
+        // Pattern 2: "Sun @ 20:45:00" - 24-hour format
+        if (preg_match('/@\s*(\d{1,2}):(\d{2})(?::\d{2})?/', $fpp_time_str, $matches)) {
+            $hour = intval($matches[1]);
+            $minute = $matches[2];
+            
+            if ($hour == 0) return "12:{$minute} AM";
+            if ($hour < 12) return "{$hour}:{$minute} AM";
+            if ($hour == 12) return "12:{$minute} PM";
+            return ($hour - 12) . ":{$minute} PM";
+        }
+        
+        // Fallback: return as-is
+        return $fpp_time_str;
     }
 
     /**
      * Format next show time with today/tomorrow logic
+     * Uses FPP's startTimeStr to determine day (avoids timezone issues)
      */
     private static function format_next_show_time($schedule_info, $now) {
         if (empty($schedule_info['nextShowStartTime'])) {
             return '5pm';
         }
 
-        $next_time = $schedule_info['nextShowStartTime'];
-        $next_date = date('Y-m-d', $next_time);
-        $today = date('Y-m-d', $now);
-        $tomorrow = date('Y-m-d', $now + 86400);
-
-        $time_str = date('g A', $next_time); // e.g., "5 PM"
-
-        if ($next_date === $today) {
-            return $time_str;
-        } elseif ($next_date === $tomorrow) {
-            return $time_str . ' tomorrow';
-        } else {
-            return date('l', $next_time) . ' at ' . $time_str; // e.g., "Saturday at 5 PM"
+        // Get the formatted time from FPP's string
+        $time_str = isset($schedule_info['nextShowStartDisplay']) ? $schedule_info['nextShowStartDisplay'] : null;
+        if (!$time_str) {
+            return '5pm';
         }
+        
+        // Use FPP's full string to determine if today/tomorrow
+        $fpp_str = isset($schedule_info['nextShowStartTimeStr']) ? $schedule_info['nextShowStartTimeStr'] : '';
+        
+        if (!empty($fpp_str)) {
+            $today_day = strtolower(date('D', $now));      // e.g., "sat"
+            $tomorrow_day = strtolower(date('D', $now + 86400)); // e.g., "sun"
+            $fpp_lower = strtolower($fpp_str);
+            
+            // Check if FPP string contains today's day name
+            if (strpos($fpp_lower, $today_day) !== false) {
+                return $time_str;
+            }
+            
+            // Check if FPP string contains tomorrow's day name
+            if (strpos($fpp_lower, $tomorrow_day) !== false) {
+                return $time_str . ' tomorrow';
+            }
+            
+            // Extract day name from FPP string for other days
+            if (preg_match('/^(\w+)/', $fpp_str, $matches)) {
+                $days = ['Sun'=>'Sunday','Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday','Sat'=>'Saturday'];
+                $day = ucfirst(strtolower($matches[1]));
+                if (isset($days[$day])) $day = $days[$day];
+                return $day . ' at ' . $time_str;
+            }
+        }
+        
+        return $time_str;
     }
 
     /**
