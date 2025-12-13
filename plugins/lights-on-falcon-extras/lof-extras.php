@@ -15,7 +15,7 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-lof-settings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-api.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-speaker.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-glow.php';
-require_once plugin_dir_path(__FILE__) . 'includes/class-lof-viewer-trigger-api.php';
+require_once plugin_dir_path(__FILE__) . 'includes/class-lof-viewer-state.php';
 
 // Bootstrap
 add_action('plugins_loaded', function () {
@@ -23,4 +23,5 @@ add_action('plugins_loaded', function () {
     LOF_API::init();
     LOF_Speaker::init();
     LOF_Glow::init();
+    LOF_Viewer_State::init();
 });
