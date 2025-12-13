@@ -1421,15 +1421,19 @@ function updateSmartTimeMessage(showState) {
           let queueText = 'Your song "' + item.name + '" is currently #' + item.pos + ' in the queue';
           if (waitMin > 0) {
             queueText += ' (~' + waitMin + ' min wait)';
+          } else {
+            queueText += ' (up next!)';
           }
           queueText += '.';
           parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
         } else {
+          // V1.5 Bundle B: Consistent format for multiple songs
           const queueParts = queueMatches
             .sort((a, b) => a.pos - b.pos)
             .map(function(x) {
               const waitMin = Math.round(x.estimatedWait / 60);
-              return '"' + x.name + '" (#' + x.pos + (waitMin > 0 ? ', ~' + waitMin + 'm' : '') + ')';
+              const waitText = waitMin > 0 ? '~' + waitMin + ' min wait' : 'up next!';
+              return '"' + x.name + '" (#' + x.pos + ', ' + waitText + ')';
             });
           const queueText = 'Your picks are moving up: ' + queueParts.join(', ');
           parts.push(hasNowMatches ? queueText.replace(/^Your/, 'Plus your') : queueText);
@@ -3235,14 +3239,13 @@ function addSpeakerCard(extra) {
           : 0;
 
         if (on) {
-          // Speaker ON
+          // Speaker ON - use our clean status text, not API message
           const statusOnText = lofCopy(
             'speaker_status_on',
-            'Speakers are currently ON near the show.'
+            'Speakers are ON! 🔊'
           );
-          const baseText = msg || statusOnText;
-
-          statusText.textContent = baseText;
+          // V1.5 Bundle B: Always use our clean status text, ignore API message
+          statusText.textContent = statusOnText;
 
           // Update the button label when speakers are active
           if (btn) {
@@ -3317,13 +3320,13 @@ function addSpeakerCard(extra) {
             refreshSpeakerStatus();
           }, 20000); // re-sync every 20s while ON
         } else {
-          // Speaker OFF
+          // Speaker OFF - V1.5 Bundle B: Use our clean text, not API message
           const statusOffText = lofCopy(
             'speaker_status_off',
-            'Speakers are off by default. If you’re standing at the show, you can turn them on for a bit.'
+            'Speakers are currently OFF. Tap the button below to hear the music outside.'
           );
 
-          statusText.textContent = msg || statusOffText;
+          statusText.textContent = statusOffText;
           if (countdownEl) countdownEl.textContent = '';
           if (timerRow) timerRow.style.display = 'none';
 
