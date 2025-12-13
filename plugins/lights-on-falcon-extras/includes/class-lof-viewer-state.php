@@ -147,8 +147,9 @@ class LOF_Viewer_State {
             $is_after_hours = true;
         }
 
-        // Determine pre-show state
-        $is_preshow = !$is_show_hours && !$is_after_hours && !$is_playing && $schedule_info['nextShowStartTime'] !== null;
+        // Determine pre-show state (before lights open, but show is coming)
+        $has_upcoming_lights = $schedule_info['nextLightsOpenTime'] !== null || $schedule_info['nextShowStartTime'] !== null;
+        $is_preshow = !$is_show_hours && !$is_after_hours && !$is_playing && $has_upcoming_lights;
 
         // Determine the show state mode
         $mode = self::determine_mode(
@@ -247,8 +248,11 @@ class LOF_Viewer_State {
             $request_block_reason = 'queue_lockout';
         }
 
-        // Format next show time for display
+        // Format next show time for display (first reset, e.g., 6 PM)
         $next_show_display = self::format_next_show_time($schedule_info, $now);
+        
+        // Format next lights open time for display (viewer control on, e.g., 5 PM)
+        $next_lights_display = self::format_next_lights_time($schedule_info, $now);
 
         // Build response
         $response = [
@@ -272,7 +276,8 @@ class LOF_Viewer_State {
                 'viewerControlEnabled'   => $viewer_control_enabled,
                 'timeUntilResetSeconds'  => $time_until_reset,
                 'nextResetTime'          => $schedule_info['nextResetTimeDisplay'],
-                'nextShowTime'           => $next_show_display,
+                'nextLightsOpenTime'     => $next_lights_display,   // When requests open (5 PM)
+                'nextShowTime'           => $next_show_display,     // When first show/reset runs (6 PM)
                 'showEndsAt'             => $schedule_info['showEndsAtDisplay'],
                 'fppStatus'              => $fpp_status_name,
                 'fppOnline'              => $fpp_online,
@@ -285,6 +290,7 @@ class LOF_Viewer_State {
             // Pass through for backward compatibility
             'sequences'   => $sequences,
             'preferences' => $prefs,
+            'requests'    => $requests,  // RF's raw queue array - JS needs this for renderQueue()
             'playingNow'  => $rf_playing_now,
             'playingNext' => $rf_playing_next,
             'votes'       => isset($rf_data['votes']) ? $rf_data['votes'] : [],
@@ -307,15 +313,19 @@ class LOF_Viewer_State {
      */
     private static function parse_schedule($fpp_schedule, $now) {
         $result = [
-            'isShowHours'           => false,
-            'timeUntilResetSeconds' => null,
-            'nextResetTime'         => null,
-            'nextResetTimeDisplay'  => null,
-            'nextShowStartTime'     => null,
-            'nextShowStartDisplay'  => null,
-            'showEndsAt'            => null,
-            'showEndsAtDisplay'     => null,
-            'currentIntermission'   => null,
+            'isShowHours'             => false,
+            'timeUntilResetSeconds'   => null,
+            'nextResetTime'           => null,
+            'nextResetTimeDisplay'    => null,
+            'nextLightsOpenTime'      => null,      // When viewer control turns on (5 PM)
+            'nextLightsOpenDisplay'   => null,
+            'nextLightsOpenTimeStr'   => null,
+            'nextShowStartTime'       => null,      // When first reset/show runs (6 PM)
+            'nextShowStartDisplay'    => null,
+            'nextShowStartTimeStr'    => null,
+            'showEndsAt'              => null,
+            'showEndsAtDisplay'       => null,
+            'currentIntermission'     => null,
         ];
 
         // Check for schedule items (the projected upcoming events)
@@ -330,7 +340,7 @@ class LOF_Viewer_State {
         }
 
         $next_reset = null;
-        $next_intermission_start = null;
+        $next_lights_open = null;
         $current_intermission_end = null;
 
         foreach ($items as $item) {
@@ -352,9 +362,14 @@ class LOF_Viewer_State {
             
             $name_lower = strtolower($name);
 
-            // Check for viewer control or intermission (defines show hours)
-            $is_show_window = strpos($name_lower, 'viewer control') !== false && strpos($name_lower, 'on') !== false;
-            $is_show_window = $is_show_window || strpos($name_lower, 'intermission') !== false;
+            // Viewer Control On = when lights & requests open (5 PM)
+            $is_viewer_control_on = strpos($name_lower, 'viewer control') !== false && strpos($name_lower, 'on') !== false;
+            
+            // Intermission = show hours window
+            $is_intermission = strpos($name_lower, 'intermission') !== false;
+            
+            // Either defines "show hours" for the UI
+            $is_show_window = $is_viewer_control_on || $is_intermission;
             
             if ($is_show_window) {
                 if ($start_time <= $now && $end_time > $now) {
@@ -365,21 +380,27 @@ class LOF_Viewer_State {
                     $result['showEndsAtDisplay'] = self::format_time_display($end_time_str);
                 }
                 
-                // Track next show start for pre-show messaging
-                if ($start_time > $now && $next_intermission_start === null) {
-                    $next_intermission_start = $start_time;
-                    $result['nextShowStartTime'] = $start_time;
-                    $result['nextShowStartDisplay'] = self::format_time_display($start_time_str);
-                    $result['nextShowStartTimeStr'] = $start_time_str; // Keep for today/tomorrow logic
+                // Track next lights open time (Viewer Control On)
+                if ($is_viewer_control_on && $start_time > $now && $next_lights_open === null) {
+                    $next_lights_open = $start_time;
+                    $result['nextLightsOpenTime'] = $start_time;
+                    $result['nextLightsOpenDisplay'] = self::format_time_display($start_time_str);
+                    $result['nextLightsOpenTimeStr'] = $start_time_str;
                 }
             }
 
-            // Find next reset (first one after now)
+            // Find next reset (first one after now) - THIS is when the "show" actually starts
             if (strpos($name_lower, 'reset') !== false && $start_time > $now) {
                 if ($next_reset === null || $start_time < $next_reset) {
                     $next_reset = $start_time;
                     $result['nextResetTime'] = $start_time;
                     $result['nextResetTimeDisplay'] = self::format_time_display($start_time_str);
+                    // First reset = show start time
+                    if ($result['nextShowStartTime'] === null) {
+                        $result['nextShowStartTime'] = $start_time;
+                        $result['nextShowStartDisplay'] = self::format_time_display($start_time_str);
+                        $result['nextShowStartTimeStr'] = $start_time_str;
+                    }
                 }
             }
         }
@@ -402,35 +423,46 @@ class LOF_Viewer_State {
         $day_of_week = (int) date('w', $now); // 0 = Sunday, 6 = Saturday
         
         $is_weekend = in_array($day_of_week, [0, 5, 6]); // Fri, Sat, Sun
-        $show_start = 17; // 5 PM
+        $lights_open = 17; // 5 PM - when lights & requests open
+        $show_start = 18;  // 6 PM - when first reset/show runs
         $show_end = $is_weekend ? 24 : 23; // Midnight on weekends, 11 PM otherwise
 
-        $is_show_hours = $hour >= $show_start && $hour < $show_end;
+        $is_show_hours = $hour >= $lights_open && $hour < $show_end;
 
         // Estimate next reset at the top of next hour
         $seconds_until_next_hour = (60 - $minute) * 60 - (int) date('s', $now);
         
-        // Next show time
+        // Next lights open time (5 PM)
+        $next_lights_timestamp = null;
+        if ($hour < $lights_open) {
+            $next_lights_timestamp = strtotime(date('Y-m-d', $now) . ' 17:00:00');
+        } else {
+            $next_lights_timestamp = strtotime(date('Y-m-d', $now + 86400) . ' 17:00:00');
+        }
+        
+        // Next show time (6 PM - first reset)
         $next_show_timestamp = null;
         if ($hour < $show_start) {
-            // Today at 5 PM
-            $next_show_timestamp = strtotime(date('Y-m-d', $now) . ' 17:00:00');
+            $next_show_timestamp = strtotime(date('Y-m-d', $now) . ' 18:00:00');
         } else {
-            // Tomorrow at 5 PM
-            $next_show_timestamp = strtotime(date('Y-m-d', $now + 86400) . ' 17:00:00');
+            $next_show_timestamp = strtotime(date('Y-m-d', $now + 86400) . ' 18:00:00');
         }
 
         return [
-            'isShowHours'           => $is_show_hours,
-            'timeUntilResetSeconds' => $is_show_hours ? $seconds_until_next_hour : null,
-            'nextResetTime'         => $is_show_hours ? $now + $seconds_until_next_hour : null,
-            'nextResetTimeDisplay'  => $is_show_hours ? date('g:i A', $now + $seconds_until_next_hour) : null,
-            'nextShowStartTime'     => $next_show_timestamp,
-            'nextShowStartDisplay'  => date('g:i A', $next_show_timestamp),
-            'showEndsAt'            => null,
-            'showEndsAtDisplay'     => null,
-            'currentIntermission'   => null,
-            '_fallback'             => true,
+            'isShowHours'             => $is_show_hours,
+            'timeUntilResetSeconds'   => $is_show_hours ? $seconds_until_next_hour : null,
+            'nextResetTime'           => $is_show_hours ? $now + $seconds_until_next_hour : null,
+            'nextResetTimeDisplay'    => $is_show_hours ? date('g:i A', $now + $seconds_until_next_hour) : null,
+            'nextLightsOpenTime'      => $next_lights_timestamp,
+            'nextLightsOpenDisplay'   => date('g A', $next_lights_timestamp),
+            'nextLightsOpenTimeStr'   => null,
+            'nextShowStartTime'       => $next_show_timestamp,
+            'nextShowStartDisplay'    => date('g A', $next_show_timestamp),
+            'nextShowStartTimeStr'    => null,
+            'showEndsAt'              => null,
+            'showEndsAtDisplay'       => null,
+            'currentIntermission'     => null,
+            '_fallback'               => true,
         ];
     }
 
@@ -483,6 +515,51 @@ class LOF_Viewer_State {
         
         // Use FPP's full string to determine if today/tomorrow
         $fpp_str = isset($schedule_info['nextShowStartTimeStr']) ? $schedule_info['nextShowStartTimeStr'] : '';
+        
+        if (!empty($fpp_str)) {
+            $today_day = strtolower(date('D', $now));      // e.g., "sat"
+            $tomorrow_day = strtolower(date('D', $now + 86400)); // e.g., "sun"
+            $fpp_lower = strtolower($fpp_str);
+            
+            // Check if FPP string contains today's day name
+            if (strpos($fpp_lower, $today_day) !== false) {
+                return $time_str;
+            }
+            
+            // Check if FPP string contains tomorrow's day name
+            if (strpos($fpp_lower, $tomorrow_day) !== false) {
+                return $time_str . ' tomorrow';
+            }
+            
+            // Extract day name from FPP string for other days
+            if (preg_match('/^(\w+)/', $fpp_str, $matches)) {
+                $days = ['Sun'=>'Sunday','Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday','Sat'=>'Saturday'];
+                $day = ucfirst(strtolower($matches[1]));
+                if (isset($days[$day])) $day = $days[$day];
+                return $day . ' at ' . $time_str;
+            }
+        }
+        
+        return $time_str;
+    }
+
+    /**
+     * Format next lights open time with today/tomorrow logic
+     * Uses FPP's startTimeStr to determine day (avoids timezone issues)
+     */
+    private static function format_next_lights_time($schedule_info, $now) {
+        if (empty($schedule_info['nextLightsOpenTime'])) {
+            return null;
+        }
+
+        // Get the formatted time from FPP's string
+        $time_str = isset($schedule_info['nextLightsOpenDisplay']) ? $schedule_info['nextLightsOpenDisplay'] : null;
+        if (!$time_str) {
+            return null;
+        }
+        
+        // Use FPP's full string to determine if today/tomorrow
+        $fpp_str = isset($schedule_info['nextLightsOpenTimeStr']) ? $schedule_info['nextLightsOpenTimeStr'] : '';
         
         if (!empty($fpp_str)) {
             $today_day = strtolower(date('D', $now));      // e.g., "sat"
