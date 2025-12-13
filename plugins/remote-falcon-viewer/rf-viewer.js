@@ -189,30 +189,16 @@
   }
 
   /* -------------------------
-   * Fetch viewer state via unified WP endpoint
-   * Falls back to old showDetails if unified fails
+   * Fetch viewer state from RF API
    * ------------------------- */
 
-  // Store enhanced state data from unified endpoint
+  // Store enhanced state data (for future use when unified endpoint is ready)
   let viewerState = null;
 
   async function fetchShowDetails() {
     if (!base) return;
 
-    try {
-      // Try unified endpoint first (includes FPP data + derived state)
-      const stateRes = await fetch('/wp-json/lof/v1/viewer-state');
-      if (stateRes.ok) {
-        const stateData = await stateRes.json();
-        viewerState = stateData;
-        renderShowDetails(stateData);
-        return;
-      }
-    } catch (err) {
-      console.warn('[RF] Unified viewer-state failed, falling back:', err);
-    }
-
-    // Fallback to original RF-only endpoint
+    // Use the standard RF showDetails endpoint
     try {
       const res = await fetch(base + '/showDetails');
       if (!res.ok) {
@@ -221,7 +207,7 @@
       }
 
       const data = await res.json();
-      viewerState = null; // No enhanced state available
+      viewerState = null; // No enhanced state available yet
       renderShowDetails(data);
     } catch (err) {
       console.error('[RF] showDetails fetch error:', err);
