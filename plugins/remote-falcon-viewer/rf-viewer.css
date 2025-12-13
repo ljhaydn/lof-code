@@ -1,380 +1,1283 @@
-/* Root viewer container */
-.rf-viewer {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 12px 0 24px;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #FFFEFE;
+/* ================================================================
+ * LIGHTS ON FALCON VIEWER V1.5 - HYBRID
+ * Design: "Mobile Magic + Desktop Theater"
+ * 
+ * Mobile (95%): Ornaments in your hand - Clean, magical, responsive
+ * Desktop (5%): Full hanging tree - FOMO-inducing theater
+ * 
+ * Wes Anderson × Kate Spade × Christmas Magic
+ * ================================================================ */
+
+/* ----------------------------------------------------------------
+ * TYPOGRAPHY - Dramatic & Memorable
+ * ---------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+/* ----------------------------------------------------------------
+ * DESIGN TOKENS
+ * ---------------------------------------------------------------- */
+
+:root {
+  /* Colors */
+  --lof-pink: #E91E63;
+  --lof-forest: #0F3A2C;
+  --lof-gold: #FFD700;
+  --lof-cream: #FFF8E7;
+  --lof-white: #FFFFFF;
+  
+  --lof-burgundy: #8B0A1A;
+  --lof-mint: #D4F1E8;
+  --lof-copper: #B87333;
+  --lof-pine: #1A4D3A;
+  
+  /* Text */
+  --lof-text-main: #FFFFFF;
+  --lof-text-dark: #2C1810;
+  --lof-text-muted: #C5E5D8;
+  --lof-text-dim: #8FA89E;
+  
+  /* Typography */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-ui: 'DM Sans', -apple-system, system-ui, sans-serif;
+  
+  /* Spacing */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Effects */
+  --glow-pink: 0 0 30px rgba(233, 30, 99, 0.6);
+  --glow-gold: 0 0 25px rgba(255, 215, 0, 0.5);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-float: 0 12px 36px rgba(0, 0, 0, 0.8);
 }
 
-/* Header area */
-.rf-viewer-header {
-  margin-bottom: 14px;
+/* ----------------------------------------------------------------
+ * ROOT CONTAINER - NO BACKGROUND CHUNK
+ * ---------------------------------------------------------------- */
+
+#rf-viewer.rf-viewer {
+  background: none; /* NO container background! */
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+  font-family: var(--font-ui);
+  color: var(--lof-text-main);
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Atmospheric glow behind content (subtle) */
+#rf-viewer.rf-viewer::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(233, 30, 99, 0.06) 0%,
+    rgba(255, 215, 0, 0.03) 40%,
+    transparent 70%
+  );
+  filter: blur(80px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: -1;
+  animation: atmospheric-pulse 8s ease-in-out infinite;
+}
+
+@keyframes atmospheric-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+/* ================================================================
+ * V1.5: EPIC HERO SECTION - Award-Winning First Impression
+ * ================================================================ */
+
+/* V1.5: Unified Hero Shell - wraps banner + header + status panel */
+#lof-hero-shell.lof-hero-shell {
+  position: relative;
+  margin: 0 auto 32px;
+  padding: 20px 22px 22px;
+  max-width: 980px;
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(ellipse at top, rgba(255, 248, 231, 0.08), transparent 60%),
+    radial-gradient(ellipse at bottom right, rgba(212, 241, 232, 0.06), transparent 55%),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    var(--glow-gold),
+    var(--shadow-float);
+  backdrop-filter: blur(10px);
+}
+
+/* Inside the hero shell, treat banner, header, and status as sections
+   of one card instead of separate floating blocks */
+#lof-hero-shell.lof-hero-shell .rf-viewer-banner,
+#lof-hero-shell.lof-hero-shell .rf-viewer-header,
+#lof-hero-shell.lof-hero-shell .rf-status-panel {
+  margin: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* Banner sits at the top of the hero with softer styling */
+#lof-hero-shell.lof-hero-shell .rf-viewer-banner {
+  padding: 14px 18px 10px;
+  border-width: 0;
+  background: transparent;
   text-align: center;
 }
 
-.rf-viewer-headline {
-  font-size: 1.15rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+#lof-hero-shell.lof-hero-shell #rf-banner-title {
+  font-size: 1rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
-.rf-viewer-subcopy {
-  margin-top: 4px;
-  font-size: 0.85rem;
-  opacity: 0.85;
+#lof-hero-shell.lof-hero-shell #rf-banner-body {
+  font-size: 0.9rem;
 }
 
-/* Optional controls row (for Surprise Me etc.) */
-.rf-viewer-controls {
-  margin-top: 8px;
+/* Header becomes the central hero copy */
+#lof-hero-shell.lof-hero-shell .rf-viewer-header {
+  margin: 6px 0 10px;
+}
+
+/* Status panel acts as the hero footer */
+#lof-hero-shell.lof-hero-shell .rf-status-panel {
+  margin-top: 10px;
+}
+
+/* Disable the sweeping shimmer inside the hero to keep it calm */
+#lof-hero-shell.lof-hero-shell .rf-status-panel::after {
+  display: none;
+}
+
+/* Remove pill styling from Now/Next columns inside hero */
+#lof-hero-shell.lof-hero-shell .rf-now,
+#lof-hero-shell.lof-hero-shell .rf-next {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+}
+
+.rf-hero-section {
+  margin-bottom: 32px;
   display: flex;
-  justify-content: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 24px;
 }
 
-/* Status panel (Now / Next / Mode) */
+/* V1.5: Banner Messages (Off-Season, Controls Paused) */
+.rf-viewer-banner {
+  padding: 20px 28px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(145deg, rgba(233, 30, 99, 0.15), rgba(139, 10, 26, 0.2));
+  border: 2px solid var(--lof-pink);
+  backdrop-filter: blur(10px);
+  text-align: center;
+  box-shadow: 
+    0 0 30px rgba(233, 30, 99, 0.3),
+    var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+}
+
+.rf-viewer-banner::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 215, 0, 0.1) 0%,
+    transparent 70%
+  );
+  animation: banner-glow-pulse 4s ease-in-out infinite;
+}
+
+@keyframes banner-glow-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.rf-viewer-banner.rf-banner--offseason {
+  background: linear-gradient(145deg, rgba(139, 10, 26, 0.25), rgba(15, 58, 44, 0.3));
+  border-color: var(--lof-burgundy);
+}
+
+.rf-viewer-banner.rf-banner--controls_paused {
+  background: linear-gradient(145deg, rgba(255, 215, 0, 0.12), rgba(184, 115, 51, 0.15));
+  border-color: var(--lof-copper);
+}
+
+#rf-banner-title {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-style: italic;
+  margin-bottom: 10px;
+  color: var(--lof-white);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+#rf-banner-body {
+  position: relative;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--lof-text-muted);
+  max-width: 600px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+/* V1.5: Hero CTA - Dramatic Headline + Subtext */
+.rf-hero-cta {
+  text-align: center;
+  padding: 16px 20px;
+}
+
+#rf-hero-headline {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 900;
+  font-style: italic;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  margin-bottom: 16px;
+  color: var(--lof-white);
+  text-shadow: 
+    4px 4px 0 rgba(233, 30, 99, 0.4),
+    0 0 40px rgba(255, 215, 0, 0.3);
+  position: relative;
+}
+
+#rf-hero-headline::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--lof-gold),
+    transparent
+  );
+  border-radius: 2px;
+}
+
+#rf-hero-subcopy {
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: var(--lof-text-muted);
+  max-width: 650px;
+  margin: 0 auto;
+  font-weight: 500;
+}
+
+/* Mobile: Scale down hero typography */
+@media (max-width: 699px) {
+  #rf-hero-headline {
+    font-size: 1.9rem;
+    text-shadow: 
+      3px 3px 0 rgba(233, 30, 99, 0.4),
+      0 0 30px rgba(255, 215, 0, 0.3);
+  }
+  
+  #rf-hero-subcopy {
+    font-size: 1rem;
+  }
+  
+  .rf-viewer-banner {
+    padding: 18px 24px;
+  }
+  
+  #rf-banner-title {
+    font-size: 1.3rem;
+  }
+  
+  #rf-banner-body {
+    font-size: 0.95rem;
+  }
+  
+  .rf-hero-section {
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * STATUS PANEL - Solid, Clear, Bold
+ * ---------------------------------------------------------------- */
+
 .rf-status-panel {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 24px 28px;
+  
+  /* Hot pink top stripe */
+  border-top: 6px solid var(--lof-pink);
+  border-bottom: none;
+  
+  /* Solid forest green (no gradient confusion) */
+  background: linear-gradient(145deg, var(--lof-forest), var(--lof-pine));
+  
+  border-radius: var(--radius-lg);
+  
+  box-shadow:
+    var(--glow-pink),
+    var(--shadow-float);
+  
+  position: relative;
+  
+  /* V1.5: Glow overflow containment - prevent horizontal scroll */
+  overflow: hidden;
+  contain: layout style paint;
+}
+
+/* Shimmer overlay that sweeps across */
+.rf-status-panel::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 215, 0, 0.15),
+    transparent
+  );
+  animation: panel-shimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+}
+
+@keyframes panel-shimmer {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
 }
 
 .rf-label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.75;
+  letter-spacing: 0.15em;
+  color: var(--lof-gold);
+  font-weight: 700;
+  margin-bottom: 8px;
 }
 
-/* NOW PLAYING status card â€“ lime forward */
+/* NOW PLAYING section */
 .rf-now {
-  border-radius: 10px;
-  padding: 10px 12px;
-  background:
-    radial-gradient(circle at top left, rgba(231, 254, 0, 0.35), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(231, 254, 0, 0.18), transparent 55%),
-    linear-gradient(135deg, #030305, #18181C);
-  border: 1px solid #E7FE00;
-  box-shadow:
-    0 0 24px #E7FE00,
-    0 10px 22px rgba(0, 0, 0, 0.8);
-}
-
-/* Dim / intermission / idle state for Now Playing */
-.rf-now.rf-now--dim {
-  background:
-    radial-gradient(circle at top left, rgba(231, 254, 0, 0.08), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(231, 254, 0, 0.05), transparent 55%),
-    linear-gradient(135deg, #050507, #111116);
-  border-color: rgba(231, 254, 0, 0.4);
-  box-shadow:
-    0 0 10px rgba(231, 254, 0, 0.25),
-    0 6px 14px rgba(0, 0, 0, 0.7);
-  opacity: 0.9;
-}
-
-/* NEXT + MODE status cards â€“ keep the purple/gold style */
-.rf-next,
-.rf-mode {
-  border-radius: 10px;
-  padding: 10px 12px;
-  background:
-    radial-gradient(circle at top left, rgba(188, 33, 225, 0.25), transparent 55%),
-    radial-gradient(circle at bottom right, rgba(222, 208, 46, 0.18), transparent 55%),
-    linear-gradient(135deg, #030305, #141418);
-  border: 1px solid rgba(197, 76, 181, 0.9);
-  box-shadow:
-    0 0 14px rgba(188, 33, 225, 0.55),
-    0 10px 22px rgba(0, 0, 0, 0.7);
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
 }
 
 .rf-now-title {
-  font-weight: 600;
-  margin-top: 6px;
-  font-size: 1.05rem;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.4rem;
+  line-height: 1.2;
+  margin-bottom: 6px;
+  color: var(--lof-white);
+  text-shadow: 2px 2px 0 rgba(233, 30, 99, 0.3);
 }
 
 .rf-now-artist {
-  font-size: 0.82rem;
-  opacity: 0.85;
-  margin-top: 2px;
+  font-size: 0.95rem;
+  color: var(--lof-text-muted);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.rf-now.rf-now--dim .rf-now-title {
+  color: var(--lof-text-muted);
+  text-shadow: none;
+}
+
+/* NOW PLAYING progress bar - CHUNKY */
+.rf-now-progress {
+  margin-top: 12px;
+}
+
+.rf-now-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 18px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.rf-now-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0%;
+  border-radius: 999px;
+  
+  background: linear-gradient(
+    90deg,
+    var(--lof-pink),
+    var(--lof-burgundy) 30%,
+    var(--lof-gold)
+  );
+  
+  transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  box-shadow:
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2),
+    inset 0 2px 0 rgba(255, 255, 255, 0.3);
+}
+
+.rf-now-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: lof-shimmer 2.5s ease-in-out infinite;
+}
+
+@keyframes lof-shimmer {
+  0% { left: -100%; }
+  50% { left: 100%; }
+  100% { left: 100%; }
+}
+
+.rf-now-progress-label {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--lof-text-dim);
+  font-weight: 600;
+}
+
+/* NEXT + MODE */
+.rf-next,
+.rf-mode {
+  padding: 0;
+  border: none;
+  background: none;
 }
 
 .rf-next-title,
 .rf-mode-value {
-  margin-top: 6px;
-  font-weight: 500;
-  font-size: 0.95rem;
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--lof-white);
 }
 
-/* Hide mode card from viewers */
 .rf-mode {
   display: none;
 }
 
-/* Layout: main content + extra panel (queue / leaderboard) */
-.rf-main-layout {
-  display: flex;
-  gap: 16px;
+/* ----------------------------------------------------------------
+ * VIEWER HEADER
+ * ---------------------------------------------------------------- */
+
+.rf-viewer-header {
+  margin: 20px 0 18px;
+  text-align: center;
 }
 
-.rf-main-left,
-.rf-main-right {
-  min-width: 0;
+.rf-viewer-headline {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--lof-white);
+  margin-bottom: 12px;
+  text-shadow: 3px 3px 0 rgba(233, 30, 99, 0.4);
+}
+
+.rf-viewer-subcopy {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--lof-text-muted);
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* ----------------------------------------------------------------
+ * CONTROLS ROW
+ * ---------------------------------------------------------------- */
+
+.rf-controls-row {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.rf-ctl-link {
+  border-radius: 999px;
+  border: 2px solid var(--lof-pink);
+  background: var(--lof-forest);
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--lof-white);
+  cursor: pointer;
+  
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+}
+
+.rf-ctl-link:hover {
+  background: var(--lof-pink);
+  border-color: var(--lof-gold);
+  transform: translateY(-3px);
+  box-shadow:
+    var(--glow-pink),
+    0 6px 18px rgba(0, 0, 0, 0.4);
+}
+
+.rf-ctl-link:active {
+  transform: translateY(-1px);
+}
+
+.rf-ctl-link:focus-visible {
+  outline: 3px solid var(--lof-gold);
+  outline-offset: 3px;
+}
+
+.rf-controls-row--disabled .rf-ctl-link {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.rf-controls-row--disabled .rf-ctl-link:hover {
+  transform: none;
+  background: var(--lof-forest);
+  border-color: var(--lof-pink);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+}
+
+/* ----------------------------------------------------------------
+ * MAIN LAYOUT
+ * ---------------------------------------------------------------- */
+
+.rf-main-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
 }
 
 .rf-main-left {
   flex: 2.3;
+  min-width: 0;
 }
 
 .rf-main-right {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 320px;
 }
 
-/* On mobile: stack, and show extra panel BEFORE the grid */
 @media (max-width: 900px) {
   .rf-main-layout {
     flex-direction: column;
   }
-
+  
   .rf-main-right {
     order: 1;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
-
+  
   .rf-main-left {
     order: 2;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  
+  /* Ensure extra panel cards don't overflow on mobile */
+  .rf-extra-panel,
+  .rf-card--device-stats,
+  .rf-card--speaker,
+  .rf-card--geo {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
   }
 }
 
-/* Sequence grid: make rows consistent height */
+/* ----------------------------------------------------------------
+ * SEQUENCE GRID
+ * ---------------------------------------------------------------- */
+
 .rf-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  grid-auto-rows: 1fr; /* all cards in a row share same height */
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 18px;
+  position: relative;
 }
 
-/* Individual song cards */
+@media (max-width: 700px) {
+  .rf-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 460px;
+    margin: 0 auto;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * CARDS - Glowing Ornaments (Mobile + Desktop Base)
+ * ---------------------------------------------------------------- */
+
 .rf-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%; /* fill the grid row height */
-  border-radius: 12px;
-  padding: 10px 12px 12px;  /* base padding for cards without badges */
-  background:
-    radial-gradient(circle at top left, rgba(188, 33, 225, 0.35), transparent 60%),
-    radial-gradient(circle at bottom right, rgba(214, 163, 92, 0.25), transparent 60%),
-    linear-gradient(145deg, #030305, #18181C);
-  border: 1px solid rgba(214, 163, 92, 0.9);
+  justify-content: space-between;
+  padding: 18px 20px 20px;
+  border-radius: var(--radius-md);
+  
+  background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  
+  border: 2px solid rgba(255, 248, 231, 0.2);
+  
+  /* Ornament glow - cards are lit objects in darkness */
   box-shadow:
-    0 0 18px rgba(197, 76, 181, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.8);
-  overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  
   cursor: pointer;
+  overflow: visible;
+  
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease,
+    border-color 0.3s ease;
 }
 
-/* Extra top padding only for cards that have a badge (Now/Next) */
-.rf-card--with-badge {
-  padding-top: 30px; /* adjust to taste; 28â€“32px usually looks great */
+/* Alternating patterns (subtle texture) */
+.rf-card:nth-child(6n+1),
+.rf-card:nth-child(6n+4) {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255, 255, 255, 0.015) 10px,
+      rgba(255, 255, 255, 0.015) 11px
+    ),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
 }
 
-.rf-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at top, rgba(231, 254, 0, 0.12), transparent 70%);
-  opacity: 1;
-  pointer-events: none;
+.rf-card:nth-child(6n+2),
+.rf-card:nth-child(6n+5) {
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  background-size: 20px 20px, 100% 100%;
 }
 
+/* MOBILE: Clean hover (glow intensifies) */
 .rf-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-6px) scale(1.02);
+  border-color: var(--lof-gold);
   box-shadow:
-    0 0 22px rgba(188, 33, 225, 0.75),
-    0 14px 26px rgba(0, 0, 0, 0.9);
+    var(--glow-gold),
+    0 0 45px rgba(255, 215, 0, 0.25),
+    var(--shadow-float);
 }
 
 .rf-card:active {
-  transform: scale(0.97);
+  transform: translateY(-3px) scale(1.01);
 }
 
-/* Center text content */
-.rf-card-title,
-.rf-card-artist,
-.rf-card-meta {
-  text-align: center;
-}
-
+/* Card content */
 .rf-card-title {
   position: relative;
-  font-weight: 600;
-  margin-bottom: 4px;
-  font-size: 0.98rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.3;
+  margin-bottom: 6px;
+  color: var(--lof-white);
+  padding-top: 8px;
+  z-index: 1; /* V1.5: Above ornament strings */
 }
 
 .rf-card-artist {
   position: relative;
-  font-size: 0.82rem;
-  opacity: 0.85;
-  margin-bottom: 6px;
+  font-size: 0.92rem;
+  color: var(--lof-text-muted);
+  font-weight: 500;
+  font-style: italic;
+  margin-bottom: 10px;
+  z-index: 1; /* V1.5: Above ornament strings */
 }
 
 .rf-card-meta {
   position: relative;
   font-size: 0.8rem;
+  color: var(--lof-text-dim);
   display: flex;
-  justify-content: center;
   gap: 10px;
-  opacity: 0.85;
-  margin-bottom: 8px;
-}
-
-/* â€œNow playingâ€ / â€œNext upâ€ badges on cards */
-.rf-card-badge {
-  position: absolute;
-  top: 8px;
-  right: 10px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  margin-bottom: 12px;
   text-transform: uppercase;
-  z-index: 5;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  z-index: 1; /* V1.5: Above ornament strings */
 }
 
-
-/* ðŸ”‹ NEON LIME now-playing badge */
-.rf-card-badge--now {
-  background: #E7FE00;
-  color: #030305;
-  box-shadow: 0 0 18px #E7FE00;
-}
-
-/* Purple for next up */
-.rf-card-badge--next {
-  background: rgba(188, 33, 225, 0.95);
-  color: #FFFEFE;
-  box-shadow: 0 0 12px rgba(188, 33, 225, 0.9);
-}
-
-/* Now playing card glow â€“ force lime */
-.rf-card--now-playing {
-  box-shadow:
-    0 0 30px #E7FE00 !important;
-  border-color: #E7FE00 !important;
-}
-
-/* Next up glow */
-.rf-card--next {
-  box-shadow:
-    0 0 24px rgba(188, 33, 225, 0.95),
-    0 16px 30px rgba(0, 0, 0, 0.95);
-}
-
-/* Actions area (button anchored and centered) */
 .rf-card-actions {
   position: relative;
-  margin-top: auto;  /* push to bottom */
   display: flex;
-  justify-content: center;  /* center horizontally */
+  gap: 8px;
+  margin-top: auto;
 }
 
-/* Button */
+/* CTA Button */
 .rf-card-btn {
+  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-top: 4px;
-  background: linear-gradient(135deg, #BC21E1, #C54CB5);
-  border: 1px solid rgba(231, 254, 0, 0.7);
-  color: #FFFEFE;
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 0.78rem;
-  cursor: pointer;
-  transition:
-    background 0.2s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    border-color 0.15s ease;
+  padding: 12px 20px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  
+  background: linear-gradient(135deg, var(--lof-pink), var(--lof-burgundy));
+  border: 2px solid var(--lof-gold);
+  color: var(--lof-white);
+  
   box-shadow:
-    0 0 10px rgba(188, 33, 225, 0.8),
-    0 5px 14px rgba(0, 0, 0, 0.8);
-  max-width: 100%;
-  text-align: center;
-  white-space: normal;
-  line-height: 1.2;
+    0 0 20px rgba(233, 30, 99, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.3);
+  
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .rf-card-btn:hover {
-  background: linear-gradient(135deg, #C54CB5, #CD7789);
-  border-color: rgba(222, 208, 46, 0.9);
+  background: linear-gradient(135deg, #FF2970, #A00D1E);
+  border-color: var(--lof-white);
+  transform: translateY(-3px);
   box-shadow:
-    0 0 14px rgba(188, 33, 225, 0.95),
-    0 8px 18px rgba(0, 0, 0, 0.9);
+    var(--glow-pink),
+    0 8px 20px rgba(0, 0, 0, 0.4);
+  outline: none;
 }
 
 .rf-card-btn:active {
-  transform: scale(0.96);
+  transform: translateY(-1px);
 }
 
-/* Disabled state */
-.rf-card-btn[disabled] {
-  background: linear-gradient(135deg, #18181C, #141418);
-  border-color: rgba(107, 114, 128, 0.8);
+.rf-card-btn:focus-visible {
+  outline: 3px solid var(--lof-gold);
+  outline-offset: 3px;
+}
+
+.rf-card-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: linear-gradient(135deg, var(--lof-forest), var(--lof-pine));
+  color: var(--lof-text-dim);
+  border-color: rgba(255, 248, 231, 0.2);
   box-shadow: none;
-  opacity: 0.6;
+}
+
+/* ----------------------------------------------------------------
+ * NOW PLAYING - THE BEACON (Mobile) / CENTERPIECE (Desktop)
+ * ---------------------------------------------------------------- */
+
+/* MOBILE: Radiating beacon */
+.rf-card--now-playing {
+  /* Cream background for high contrast */
+  background: var(--lof-cream);
+  color: var(--lof-text-dark);
+  border-radius: var(--radius-md);
+  position: relative;
+  
+  /* Radiating beacon effect */
+  box-shadow:
+    0 0 50px rgba(233, 30, 99, 0.5),
+    0 0 80px rgba(255, 215, 0, 0.35),
+    var(--shadow-float);
+  
+  animation: mobile-beacon 3s ease-in-out infinite;
+  
+  z-index: 10;
+  transform: scale(1.05);
+}
+
+/* V1.5: Ensure base card styles never override the now-playing cream background */
+.rf-card.rf-card--now-playing {
+  background: var(--lof-cream) !important;
+  color: var(--lof-text-dark) !important;
+}
+
+/* Rounded animated candy cane frame */
+.rf-card--now-playing::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--lof-pink) 0,
+    var(--lof-pink) 10px,
+    var(--lof-white) 10px,
+    var(--lof-white) 20px
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: candy-cane-border 4s linear infinite;
+}
+
+@keyframes candy-cane-border {
+  from { background-position: 0 0; }
+  to { background-position: 40px 0; }
+}
+
+@keyframes mobile-beacon {
+  0%, 100% {
+    box-shadow:
+      0 0 50px rgba(233, 30, 99, 0.5),
+      0 0 80px rgba(255, 215, 0, 0.35),
+      var(--shadow-float);
+  }
+  50% {
+    box-shadow:
+      0 0 70px rgba(233, 30, 99, 0.7),
+      0 0 110px rgba(255, 215, 0, 0.5),
+      var(--shadow-float);
+  }
+}
+
+.rf-card--now-playing:hover {
+  transform: scale(1.05) translateY(-6px);
+  animation-play-state: paused;
+}
+
+.rf-card--now-playing .rf-card-title,
+.rf-card--now-playing .rf-card-artist,
+.rf-card--now-playing .rf-card-meta {
+  color: var(--lof-text-dark);
+}
+
+.rf-card--now-playing .rf-card-btn {
+  background: var(--lof-forest);
+  border-color: var(--lof-gold);
+  color: var(--lof-cream);
+}
+
+.rf-card--now-playing .rf-card-title {
+  font-size: 1.3rem;
+  text-shadow: 2px 2px 0 rgba(233, 30, 99, 0.15);
+}
+
+/* DESKTOP: Add hanging string + rotation */
+@media (min-width: 700px) {
+  .rf-card::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    left: 50%;
+    width: 2px;
+    height: 60px;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 215, 0, 0.8),
+      rgba(255, 215, 0, 0.3)
+    );
+    filter: drop-shadow(0 0 4px rgba(255, 215, 0, 0.6));
+    transform-origin: top center;
+    animation: gentle-sway 4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  @keyframes gentle-sway {
+    0%, 100% { transform: translateX(-50%) rotate(-1deg); }
+    50% { transform: translateX(-50%) rotate(1deg); }
+  }
+  
+  /* NOW PLAYING gets thicker gold ribbon */
+  .rf-card--now-playing::before {
+    width: 4px;
+    height: 70px;
+    top: -70px;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 215, 0, 1),
+      rgba(233, 30, 99, 0.6)
+    );
+    filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+  }
+  
+  /* Desktop: NOW PLAYING rotates slightly */
+  .rf-card--now-playing {
+    transform: scale(1.08) rotate(-0.5deg);
+    animation: desktop-centerpiece 3s ease-in-out infinite;
+  }
+  
+  @keyframes desktop-centerpiece {
+    0%, 100% {
+      transform: scale(1.08) rotate(-0.5deg);
+      box-shadow:
+        0 0 60px rgba(233, 30, 99, 0.6),
+        0 0 100px rgba(255, 215, 0, 0.4),
+        var(--shadow-float);
+    }
+    50% {
+      transform: scale(1.08) rotate(0.5deg);
+      box-shadow:
+        0 0 80px rgba(233, 30, 99, 0.8),
+        0 0 130px rgba(255, 215, 0, 0.6),
+        var(--shadow-float);
+    }
+  }
+  
+  .rf-card--now-playing:hover {
+    transform: scale(1.08) rotate(-0.5deg) translateY(-8px);
+  }
+  
+  /* Desktop: Cards swing on hover */
+  .rf-card:hover {
+    animation: ornament-swing 0.8s ease-out;
+  }
+  
+  @keyframes ornament-swing {
+    0% { transform: translateY(-6px) scale(1.02) rotate(0deg); }
+    25% { transform: translateY(-6px) scale(1.02) rotate(3deg); }
+    50% { transform: translateY(-6px) scale(1.02) rotate(-2deg); }
+    75% { transform: translateY(-6px) scale(1.02) rotate(1deg); }
+    100% { transform: translateY(-6px) scale(1.02) rotate(0deg); }
+  }
+}
+
+/* ----------------------------------------------------------------
+ * OTHER CARD STATES
+ * ---------------------------------------------------------------- */
+
+/* NEXT UP */
+.rf-card--next {
+  border: 2px solid var(--lof-gold);
+  box-shadow:
+    var(--glow-gold),
+    0 0 35px rgba(255, 215, 0, 0.2),
+    var(--shadow-card);
+}
+
+.rf-card--next:hover {
+  box-shadow:
+    0 0 50px rgba(255, 215, 0, 0.5),
+    var(--shadow-float);
+}
+
+/* YOUR PICK */
+.rf-card--from-this-device {
+  border: 2px solid var(--lof-pink);
+  box-shadow:
+    0 0 30px rgba(233, 30, 99, 0.4),
+    var(--shadow-card);
+}
+
+.rf-card--from-this-device::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--lof-pink), var(--lof-gold), var(--lof-pink));
+}
+
+/* SURPRISE */
+.rf-card--surprise {
+  border: 2px solid var(--lof-mint);
+  background:
+    radial-gradient(circle at center, rgba(212, 241, 232, 0.06), transparent 60%),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  box-shadow:
+    0 0 25px rgba(212, 241, 232, 0.3),
+    var(--shadow-card);
+}
+
+/* V1.5: Spacing between Surprise card and footer Glow card */
+.rf-card--surprise {
+  margin-bottom: 18px;
+}
+
+.rf-glow-card {
+  margin-top: 18px;
+}
+
+/* UNAVAILABLE */
+.rf-card--unavailable {
+  opacity: 0.5;
+  filter: grayscale(0.6);
   cursor: not-allowed;
 }
 
-/* Extra panel for queue / leaderboard */
-.rf-extra-panel {
-  border-radius: 12px;
-  padding: 10px 12px 12px;
-  background:
-    radial-gradient(circle at top, rgba(188, 33, 225, 0.25), transparent 65%),
-    linear-gradient(150deg, #030305, #18181C);
-  border: 1px solid rgba(197, 76, 181, 0.9);
+.rf-card--unavailable:hover {
+  transform: none;
   box-shadow:
-    0 0 16px rgba(197, 76, 181, 0.6),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-  font-size: 0.85rem;
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12);
+}
+
+/* ----------------------------------------------------------------
+ * BADGES - FLOATING ABOVE (Fixed positioning)
+ * ---------------------------------------------------------------- */
+
+.rf-card-badge {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  z-index: 15;
+  
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  
+  animation: badge-float 3s ease-in-out infinite;
+}
+
+@keyframes badge-float {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+
+/* NOW PLAYING badge */
+.rf-card-badge--now {
+  background: var(--lof-gold);
+  color: var(--lof-text-dark);
+  border: 2px solid var(--lof-white);
+  box-shadow:
+    0 0 20px rgba(255, 215, 0, 0.8),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* NEXT UP badge */
+.rf-card-badge--next {
+  background: var(--lof-pink);
+  color: var(--lof-white);
+  border: 2px solid var(--lof-white);
+  box-shadow:
+    0 0 20px rgba(233, 30, 99, 0.7),
+    0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* ----------------------------------------------------------------
+ * "YOUR PICK" CHIP - Sparkle Party
+ * ---------------------------------------------------------------- */
+
+.rf-card-chip {
+  position: relative;
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: var(--lof-pink);
+  border: 2px solid var(--lof-gold);
+  color: var(--lof-white);
+  text-align: center;
+  
+  box-shadow:
+    var(--glow-pink),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  
+  animation: chip-pulse 2s ease-in-out infinite;
+}
+
+@keyframes chip-pulse {
+  0%, 100% {
+    box-shadow:
+      var(--glow-pink),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(233, 30, 99, 0.9),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.rf-card-chip::before,
+.rf-card-chip::after {
+  content: '✨';
+  position: absolute;
+  font-size: 1.2rem;
+  animation: sparkle-rotate 3s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 215, 0, 0.8));
+}
+
+.rf-card-chip::before {
+  top: -10px;
+  left: -10px;
+}
+
+.rf-card-chip::after {
+  bottom: -10px;
+  right: -10px;
+  animation-delay: 1.5s;
+}
+
+@keyframes sparkle-rotate {
+  0% { transform: rotate(0deg) scale(1); opacity: 0.8; }
+  50% { transform: rotate(180deg) scale(1.3); opacity: 1; }
+  100% { transform: rotate(360deg) scale(1); opacity: 0.8; }
+}
+
+/* ----------------------------------------------------------------
+ * TAP FEEDBACK - Mobile Magic Moment
+ * ---------------------------------------------------------------- */
+
+@media (max-width: 699px) {
+  /* When card is tapped, add this class via JS */
+  .rf-card.just-tapped {
+    animation: tap-burst 0.6s ease-out;
+  }
+  
+  @keyframes tap-burst {
+    0% {
+      transform: scale(1.05);
+      box-shadow:
+        0 0 60px rgba(233, 30, 99, 0.8),
+        0 0 100px rgba(255, 215, 0, 0.6),
+        var(--shadow-float);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+  
+  /* Confetti particles (added via JS) */
+  .confetti-particle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 100;
+    animation: confetti-fall 0.8s ease-out forwards;
+  }
+  
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(0) rotate(0deg) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100px) rotate(720deg) scale(0);
+      opacity: 0;
+    }
+  }
+}
+
+/* ----------------------------------------------------------------
+ * EXTRA PANEL
+ * ---------------------------------------------------------------- */
+
+.rf-extra-panel {
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  border: 2px solid rgba(255, 248, 231, 0.2);
+  box-shadow:
+    var(--shadow-card),
+    0 0 25px rgba(255, 215, 0, 0.1);
+  /* V1.5: Prevent card bounce during re-renders */
+  min-height: 400px;
+  transition: min-height 0.3s ease;
 }
 
 .rf-extra-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.rf-extra-sub {
-  font-size: 0.78rem;
-  opacity: 0.85;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--lof-white);
   margin-bottom: 8px;
 }
 
+.rf-extra-sub {
+  font-size: 0.85rem;
+  color: var(--lof-text-muted);
+  margin-bottom: 12px;
+}
+
+/* Queue/Leaderboard lists */
 .rf-queue-list,
 .rf-leaderboard-list {
   list-style: none;
-  margin: 0;
+  margin: 12px 0 0;
   padding: 0;
 }
 
 .rf-queue-item,
 .rf-leaderboard-item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: baseline;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  gap: 10px;
+  padding: 10px 0;
+  font-size: 0.9rem;
+  color: var(--lof-text-main);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .rf-queue-item:last-child,
@@ -382,373 +1285,1376 @@
   border-bottom: none;
 }
 
-.rf-queue-position,
+.rf-queue-number,
 .rf-leaderboard-rank {
-  font-size: 0.78rem;
-  opacity: 0.7;
-  margin-right: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--lof-gold);
+  min-width: 32px;
+  text-align: center;
 }
 
-.rf-queue-song,
-.rf-leaderboard-song {
-  flex: 1;
-  font-size: 0.82rem;
+.rf-queue-title,
+.rf-leaderboard-name {
+  font-weight: 600;
 }
 
-.rf-queue-artist {
+.rf-queue-votes,
+.rf-leaderboard-votes {
+  font-size: 0.8rem;
+  color: var(--lof-text-dim);
+}
+
+/* ================================================================
+ * V1.5: DEVICE STATS CARD - Ornament Styling
+ * ================================================================ */
+
+.rf-card--device-stats {
+  padding: 20px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  background: linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  border: 2px solid var(--lof-gold);
+  box-shadow: 
+    0 0 25px rgba(255, 215, 0, 0.25),
+    var(--shadow-card);
+  position: relative;
+  cursor: default !important; /* V1.5: Non-selectable */
+}
+
+.rf-card--device-stats:hover {
+  transform: none !important;
+  animation: none !important;
+  box-shadow: 
+    0 0 25px rgba(255, 215, 0, 0.25),
+    var(--shadow-card);
+}
+
+/* Corner stars for ornament effect */
+.rf-card--device-stats::before,
+.rf-card--device-stats::after {
+  content: '✦';
+  position: absolute;
+  font-size: 1.3rem;
+  color: var(--lof-gold);
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+.rf-card--device-stats::before {
+  top: 12px;
+  left: 14px;
+}
+
+.rf-card--device-stats::after {
+  top: 12px;
+  right: 14px;
+  animation-delay: 1s;
+}
+
+.rf-device-stats-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--lof-gold);
+  text-align: center;
+  margin-bottom: 16px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.rf-device-stats-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rf-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 8px 0;
+  font-size: 0.9rem;
+}
+
+.rf-stat-label {
+  color: var(--lof-text-muted);
+  font-weight: 500;
+}
+
+.rf-stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--lof-gold);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* V1.5 Bundle B: Song name stat values - smaller, allow wrap */
+.rf-stat-value--song {
+  font-size: 0.9rem;
+  font-weight: 600;
+  max-width: 50%;
+  text-align: right;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.rf-stats-row--popular {
+  padding: 6px 0;
+}
+
+.rf-stat-divider {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 215, 0, 0.3),
+    transparent
+  );
+  margin: 12px 0;
+}
+
+.rf-stat-section-label {
   font-size: 0.75rem;
-  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--lof-copper);
+  margin-bottom: 8px;
+  font-weight: 700;
+  text-align: center;
 }
 
-/* Queue wait time */
-.rf-queue-wait {
-  font-size: 0.72rem;
-  color: #E7FE00;
-  opacity: 0.9;
+.rf-stat-location {
+  font-size: 0.9rem;
+  color: var(--lof-mint);
+  margin-bottom: 12px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px;
+  background: rgba(212, 241, 232, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+/* ================================================================
+ * V1.5: GEO CHECK NOTICES
+ * ================================================================ */
+
+.rf-card--geo {
+  margin-bottom: 16px;
+  cursor: default;
+}
+
+.rf-geo-notice {
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.rf-geo-notice--local {
+  background: rgba(212, 241, 232, 0.12);
+  border: 2px solid var(--lof-mint);
+  color: var(--lof-mint);
+  box-shadow: 0 0 20px rgba(212, 241, 232, 0.2);
+}
+
+.rf-geo-notice--far {
+  background: rgba(233, 30, 99, 0.12);
+  border: 2px solid var(--lof-pink);
+  color: var(--lof-text-main);
+  box-shadow: 0 0 20px rgba(233, 30, 99, 0.2);
+}
+
+.rf-geo-notice--fallback {
+  background: rgba(255, 215, 0, 0.08);
+  border: 2px solid rgba(255, 215, 0, 0.3);
+  color: var(--lof-text-muted);
+  font-size: 0.85rem;
+}
+
+.rf-card--geo:hover {
+  transform: none;
+  animation: none;
+  box-shadow:
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12);
+}
+
+.rf-geo-message {
+  margin-bottom: 12px;
+}
+
+.rf-geo-confirm-btn {
+  background: var(--lof-pink);
+  color: var(--lof-white);
+  border: 2px solid var(--lof-gold);
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  margin-top: 8px;
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+}
+
+.rf-geo-confirm-btn:hover {
+  background: #D81B60;
+  transform: translateY(-2px);
+  box-shadow: var(--glow-pink);
+}
+
+/* ================================================================
+ * V1.5: NEED SOUND CARD - Non-Selectable
+ * ================================================================ */
+
+/* Speaker cards should behave like informational panels,
+   not like selectable song tiles, but controls inside must stay clickable. */
+.rf-card--speaker,
+.rf-card.rf-speaker-card {
+  cursor: default !important;           /* Card itself not clickable */
+  transition: none !important;          /* No hover animation */
+  pointer-events: auto;                 /* Allow inner controls to receive clicks */
+}
+
+.rf-card--speaker:hover,
+.rf-card--speaker:active,
+.rf-card.rf-speaker-card:hover,
+.rf-card.rf-speaker-card:active {
+  transform: none !important;           /* No lift / scale */
+  animation: none !important;
+  border-color: rgba(255, 248, 231, 0.2) !important; /* Keep neutral border */
+  box-shadow:
+    var(--shadow-card),
+    0 0 30px rgba(255, 215, 0, 0.12);  /* Same as base ornament glow */
+}
+
+/* Buttons inside remain fully interactive */
+.rf-card--speaker button,
+.rf-card.rf-speaker-card .rf-speaker-btn,
+.rf-card.rf-speaker-card .js-open-global-stream {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* ================================================================
+ * V1.5: STREAM FOOTER - Visibility Toggle
+ * ================================================================ */
+
+/* Base stream footer container; hidden until activated */
+.rf-stream-footer {
+  display: none; /* Hidden by default */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+  padding: 0;
+  margin: 0;
+  background: rgba(15, 58, 44, 0.9);
+  border-top: 2px solid rgba(255, 215, 0, 0.6);
+  box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.7);
+  z-index: 9999;
+  height: 64px;           /* Enough to show the embedded player controls */
+  max-height: 120px;
+  overflow: hidden;
+}
+
+/* When active, show the bar (override any theme/mobile rules) */
+.rf-stream-footer.active,
+#lof-stream-footer.rf-stream-footer--visible,
+#rf-stream-footer.rf-stream-footer--visible {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  height: 64px !important;
+  max-height: 120px !important;
+}
+
+@media (max-width: 800px) {
+  .rf-stream-footer.active,
+  #lof-stream-footer.rf-stream-footer--visible,
+  #rf-stream-footer.rf-stream-footer--visible {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 64px !important;
+    max-height: 120px !important;
+    z-index: 9999;
+  }
+}
+
+/* Optional helper text inside the footer, if used */
+.rf-stream-footer-text {
+  font-size: 0.85rem;
+  color: var(--lof-text-muted);
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Embedded PulseMesh iframe: fill the footer bar */
+.rf-stream-footer iframe,
+#lof-stream-footer .rf-audio-iframe,
+#rf-stream-footer .rf-audio-iframe {
+  position: relative;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  opacity: 1;
+  pointer-events: auto;
+  display: block;
+}
+
+/* ----------------------------------------------------------------
+ * TONIGHT SECTION - Ornamental Frame
+ * ---------------------------------------------------------------- */
+
+.rf-tonight {
+  margin-top: 40px;
+  padding: 32px 36px 36px;
+  border-radius: var(--radius-xl);
+  position: relative;
+  
+  border-top: 6px solid var(--lof-pink);
+  
+  background:
+    radial-gradient(ellipse at bottom, rgba(255, 215, 0, 0.1), transparent 60%),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  
+  border-left: 2px solid var(--lof-gold);
+  border-right: 2px solid var(--lof-gold);
+  border-bottom: 2px solid var(--lof-gold);
+  
+  box-shadow:
+    var(--glow-gold),
+    0 0 40px rgba(233, 30, 99, 0.2),
+    var(--shadow-float);
+}
+
+.rf-tonight.rf-hero {
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+/* Corner stars */
+.rf-tonight::before,
+.rf-tonight::after {
+  content: '✦';
+  position: absolute;
+  font-size: 1.5rem;
+  color: var(--lof-gold);
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+.rf-tonight::before {
+  top: 16px;
+  left: 20px;
+}
+
+.rf-tonight::after {
+  top: 16px;
+  right: 20px;
+  animation-delay: 1s;
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.rf-tonight-title {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-style: italic;
+  color: var(--lof-white);
+  margin: 0 0 20px;
+  text-align: center;
+  
+  text-shadow:
+    3px 3px 0 rgba(233, 30, 99, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.rf-tonight-body {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--lof-text-muted);
+  margin-bottom: 24px;
+  text-align: center;
+  max-width: 750px;
   margin-left: auto;
-  margin-right: 8px;
+  margin-right: auto;
+}
+
+.rf-tonight-body p {
+  margin: 12px 0;
+}
+
+.rf-tonight-body p:first-of-type {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.2rem;
+  color: var(--lof-white);
+  line-height: 1.6;
+}
+
+.rf-tonight-body p:last-of-type {
+  margin-top: 18px;
+  color: var(--lof-gold);
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.rf-tonight-body:empty {
+  margin-bottom: 0;
+}
+
+.rf-tonight .rf-glow-card {
+  margin-top: 0;
+  background: rgba(15, 58, 44, 0.5);
+}
+
+/* ================================================================
+ * V1.5: NEW UNIFIED HERO STRUCTURE
+ * ================================================================ */
+
+.rf-hero {
+  margin-top: 0;
+  margin-bottom: 24px;
+  padding: 32px 24px 24px;
+  border-radius: var(--radius-xl);
+  position: relative;
+  
+  border-top: 6px solid var(--lof-pink);
+  
+  background:
+    radial-gradient(ellipse at bottom, rgba(255, 215, 0, 0.1), transparent 60%),
+    linear-gradient(145deg, var(--lof-pine), var(--lof-forest));
+  
+  border-left: 2px solid var(--lof-gold);
+  border-right: 2px solid var(--lof-gold);
+  border-bottom: 2px solid var(--lof-gold);
+  
+  box-shadow:
+    var(--glow-gold),
+    0 0 40px rgba(233, 30, 99, 0.2),
+    var(--shadow-float);
+}
+
+/* Corner stars for hero */
+.rf-hero::before,
+.rf-hero::after {
+  content: '✦';
+  position: absolute;
+  font-size: 1.5rem;
+  color: var(--lof-gold);
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.8));
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+.rf-hero::before {
+  top: 16px;
+  left: 20px;
+}
+
+.rf-hero::after {
+  top: 16px;
+  right: 20px;
+  animation-delay: 1s;
+}
+
+.rf-hero-title {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  font-weight: 900;
+  font-style: italic;
+  color: var(--lof-white);
+  margin: 0 0 16px;
+  text-align: center;
+  
+  text-shadow:
+    3px 3px 0 rgba(233, 30, 99, 0.4),
+    0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+/* Hero Banner - State indicator */
+.rf-hero-banner {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px);
+  text-align: center;
+}
+
+.rf-hero-banner-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--lof-white);
+  margin-bottom: 4px;
+}
+
+.rf-hero-banner-body {
+  font-size: 0.9rem;
+  color: var(--lof-text-muted);
+  line-height: 1.4;
+}
+
+/* Banner state variants */
+.rf-hero-banner--showtime {
+  background: linear-gradient(135deg, rgba(233, 30, 99, 0.3), rgba(255, 107, 107, 0.2));
+  border: 1px solid rgba(233, 30, 99, 0.4);
+}
+
+.rf-hero-banner--showtime .rf-hero-banner-title {
+  color: var(--lof-pink);
+}
+
+.rf-hero-banner--intermission {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 193, 7, 0.15));
+  border: 1px solid rgba(255, 215, 0, 0.3);
+}
+
+.rf-hero-banner--intermission .rf-hero-banner-title {
+  color: var(--lof-gold);
+}
+
+.rf-hero-banner--preshow {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.2), rgba(233, 30, 99, 0.15));
+  border: 1px solid rgba(156, 39, 176, 0.3);
+}
+
+.rf-hero-banner--preshow .rf-hero-banner-title {
+  color: #ce93d8;
+}
+
+.rf-hero-banner--paused,
+.rf-hero-banner--offhours {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 248, 231, 0.15);
+}
+
+.rf-hero-banner--offseason {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.2), rgba(139, 195, 74, 0.15));
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+/* Smart time message */
+.rf-hero-time {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--lof-gold);
+  margin-bottom: 16px;
+  padding: 8px;
+}
+
+/* CTA Section */
+.rf-hero-cta {
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.rf-hero-cta-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--lof-white);
+  margin-bottom: 8px;
+}
+
+.rf-hero-cta-body {
+  font-size: 0.95rem;
+  color: var(--lof-text-muted);
+  line-height: 1.5;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Now Playing in hero */
+.rf-hero .rf-now,
+.rf-hero .rf-next {
+  background: rgba(0, 0, 0, 0.15);
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+
+.rf-hero .rf-now {
+  border-left: 4px solid var(--lof-pink);
+}
+
+.rf-hero .rf-next {
+  border-left: 4px solid var(--lof-gold);
+}
+
+/* My Status - personalized message */
+.rf-hero-mystatus {
+  text-align: center;
+  font-size: 1rem;
+  color: var(--lof-gold);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+/* Hero Audio Section */
+.rf-hero-audio {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.rf-hero-audio-title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--lof-white);
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.rf-hero-audio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rf-audio-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 248, 231, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 248, 231, 0.1);
+}
+
+.rf-audio-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.rf-audio-label {
+  font-weight: 600;
+  color: var(--lof-white);
+  font-size: 0.9rem;
+  min-width: 90px;
+}
+
+.rf-audio-detail {
+  color: var(--lof-gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rf-audio-btn {
+  background: linear-gradient(145deg, var(--lof-pink), var(--lof-burgundy));
+  color: var(--lof-white);
+  border: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rf-audio-btn:hover {
+  transform: scale(1.02);
+  box-shadow: var(--glow-pink);
+}
+
+.rf-audio-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Audio section hidden during intermission */
+.rf-state-intermission .rf-hero-audio,
+.rf-state-offhours .rf-hero-audio,
+.rf-state-offline .rf-hero-audio {
+  display: none;
+}
+
+/* Hero Geo Status Line */
+.rf-hero-geo {
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--lof-text-muted);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.rf-hero-geo:empty {
+  display: none;
+}
+
+.rf-hero-geo-local {
+  color: var(--lof-gold);
+}
+
+.rf-hero-geo-link {
+  color: var(--lof-pink);
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.rf-hero-geo-link:hover {
+  color: var(--lof-white);
+}
+
+/* "More Songs" uncategorized header */
+.rf-category-header--other {
+  border-bottom-style: dashed;
+}
+
+.rf-category-header--other .rf-category-header-text {
+  color: var(--lof-text-muted);
+}
+
+/* Mobile adjustments */
+@media (max-width: 700px) {
+  .rf-hero {
+    padding: 24px 16px 20px;
+    margin-bottom: 16px;
+  }
+  
+  .rf-hero-title {
+    font-size: 1.6rem;
+    margin-bottom: 12px;
+  }
+  
+  .rf-hero::before,
+  .rf-hero::after {
+    font-size: 1.2rem;
+    top: 12px;
+  }
+  
+  .rf-hero::before {
+    left: 12px;
+  }
+  
+  .rf-hero::after {
+    right: 12px;
+  }
+  
+  .rf-hero-banner {
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+  
+  .rf-hero-cta {
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .rf-hero-cta-title {
+    font-size: 1.1rem;
+  }
+  
+  .rf-hero-cta-body {
+    font-size: 0.9rem;
+  }
+  
+  .rf-hero-mystatus {
+    font-size: 0.9rem;
+    padding: 10px 12px;
+  }
+  
+  .rf-hero-audio {
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  
+  .rf-hero-audio-title {
+    font-size: 1rem;
+    margin-bottom: 10px;
+  }
+  
+  .rf-audio-option {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+  
+  .rf-audio-label {
+    font-size: 0.85rem;
+    min-width: 80px;
+  }
+  
+  .rf-audio-detail {
+    font-size: 0.85rem;
+  }
+  
+  .rf-hero-geo {
+    font-size: 0.85rem;
+    padding: 6px 10px;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * TOAST - FIXED (uses .show class)
+ * ---------------------------------------------------------------- */
+
+#rf-toast.rf-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 2rem;
+  transform: translateX(-50%) translateY(150%);
+  max-width: 90vw;
+  padding: 16px 28px;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 700;
+  
+  background: var(--lof-forest);
+  border: 3px solid var(--lof-gold);
+  color: var(--lof-white);
+  
+  box-shadow:
+    var(--glow-gold),
+    0 12px 36px rgba(0, 0, 0, 0.6);
+  
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#rf-toast.rf-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0%);
+  pointer-events: auto;
+}
+
+#rf-toast.rf-toast--success {
+  border-color: var(--lof-gold);
+}
+
+#rf-toast.rf-toast--error {
+  border-color: var(--lof-pink);
+  box-shadow:
+    0 0 30px rgba(233, 30, 99, 0.7),
+    0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+/* ----------------------------------------------------------------
+ * RESPONSIVE
+ * ---------------------------------------------------------------- */
+
+@media (max-width: 700px) {
+  #rf-viewer.rf-viewer {
+    padding: 16px 12px 32px;
+  }
+  
+  .rf-status-panel {
+    padding: 20px 24px;
+  }
+  
+  .rf-viewer-headline {
+    font-size: 1.6rem;
+  }
+  
+  .rf-viewer-subcopy {
+    font-size: 0.95rem;
+  }
+  
+  .rf-card {
+    padding: 16px 18px 18px;
+  }
+  
+  /* V1.5: Mobile text size improvements for readability */
+  .rf-card-title {
+    font-size: 1.15rem; /* Increased from 1.1rem */
+  }
+  
+  .rf-card-artist {
+    font-size: 0.95rem; /* Increased from 0.92rem */
+  }
+  
+  .rf-card-meta {
+    font-size: 0.85rem; /* Increased from 0.8rem */
+  }
+  
+  .rf-extra-title {
+    font-size: 1.05rem; /* Slightly increased */
+  }
+  
+  .rf-extra-sub {
+    font-size: 0.9rem; /* Increased from 0.85rem */
+  }
+  
+  .rf-label {
+    font-size: 0.75rem; /* Keep uppercase labels small but readable */
+  }
+  
+  .rf-card--now-playing {
+    transform: scale(1.03);
+  }
+  
+  .rf-card--now-playing:hover {
+    transform: scale(1.03) translateY(-6px);
+  }
+  
+  .rf-tonight {
+    padding: 28px 30px 32px;
+  }
+  
+  .rf-tonight-title {
+    font-size: 1.8rem;
+  }
+  
+  .rf-tonight-body {
+    font-size: 1rem;
+  }
+}
+
+/* ----------------------------------------------------------------
+ * ACCESSIBILITY
+ * ---------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* V1.5 fix: keep shimmer / banner effects from causing horizontal scroll */
+.rf-status-panel {
+  overflow: hidden;
+}
+
+/* V1.5: "Tonight from this device" stats + Mischief Meter card */
+
+.rf-stats-inner {
+  padding: 1rem 1.25rem;
+}
+
+.rf-stats-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.rf-stats-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  margin-bottom: 0.25rem;
+}
+
+.rf-stats-row--vibe {
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.rf-stats-mischief {
+  margin-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.75rem;
+}
+
+.rf-stats-mischief-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.rf-stats-row--mischief span:last-child {
+  font-variant-numeric: tabular-nums;
+}
+
+/* V1.5: Speaker / "Need sound?" contents */
+.rf-speaker-card .rf-audio-option {
+  cursor: default;
+  /* Override hero audio styling - make stacked, not row */
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 12px;
+  /* Remove any interactive styling */
+  pointer-events: none;
+}
+
+/* Only buttons inside are interactive */
+.rf-speaker-card .rf-audio-option button,
+.rf-speaker-card .rf-glow-btn,
+.rf-speaker-card .rf-speaker-btn {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* V1.5: Slightly larger text on mobile for queue, leaderboard, and Need Sound help text */
+@media (max-width: 700px) {
+  .rf-queue-item,
+  .rf-leaderboard-item {
+    font-size: 1rem;
+  }
+
+  .rf-speaker-body,
+  .rf-audio-help {
+    font-size: 0.95rem;
+  }
+}
+
+/* V1.5: Ensure "Need sound?" sections don't glow like song cards */
+.rf-card.rf-speaker-card .rf-audio-option,
+.rf-card.rf-speaker-card .rf-audio-option:hover,
+.rf-card.rf-speaker-card .rf-audio-option:focus,
+.rf-card.rf-speaker-card .rf-audio-option:active {
+  box-shadow: none !important;
+  transform: none !important;
+  border-color: rgba(255, 248, 231, 0.1) !important;
+  outline: none !important;
+}
+
+.rf-card.rf-speaker-card .rf-audio-option::before,
+.rf-card.rf-speaker-card .rf-audio-option::after {
+  animation: none !important;
+  display: none !important;
+}
+
+
+/* V1.5: Make the Up Next Queue card height track its content more closely */
+.rf-extra-panel--queue {
+  min-height: 0;
+}
+
+.rf-extra-panel--queue .rf-queue-list {
+  margin-top: 0.5rem;
+}
+
+/* ================================================================
+ * V1.5: CATEGORY TABS & HEADERS
+ * Mobile: Horizontal pill tabs (sticky)
+ * Desktop: Inline section headers
+ * ================================================================ */
+
+/* Category Tabs - Mobile */
+/* Category Section - wrapper for title + tabs */
+.rf-category-section {
+  margin-bottom: 16px;
+}
+
+.rf-category-title {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--lof-gold);
+  margin-bottom: 12px;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.rf-category-tabs-wrapper {
+  position: relative;
+}
+
+/* Fade gradient to indicate more content to scroll */
+.rf-category-tabs-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 40px;
+  background: linear-gradient(to right, transparent, var(--lof-night) 80%);
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Hide fade when scrolled to end */
+.rf-category-tabs-wrapper.scrolled-end::after {
+  opacity: 0;
+}
+
+.rf-category-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 8px 40px 12px 0; /* Extra right padding for fade area */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.rf-category-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.rf-category-tab {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 248, 231, 0.3);
+  background: rgba(26, 77, 58, 0.8);
+  color: var(--lof-text-muted);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
   white-space: nowrap;
 }
 
-/* Queue warning banner */
+.rf-category-tab:hover {
+  border-color: var(--lof-gold);
+  color: var(--lof-white);
+}
+
+.rf-category-tab--active {
+  background: linear-gradient(145deg, var(--lof-pink), var(--lof-burgundy));
+  border-color: var(--lof-pink);
+  color: var(--lof-white);
+  /* No box-shadow - keeps it clean without revealing container */
+}
+
+/* Category Headers - Desktop */
+.rf-category-header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 0 12px;
+  margin-top: 16px;
+  border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+}
+
+.rf-category-header:first-child {
+  margin-top: 0;
+  padding-top: 0;
+}
+
+.rf-category-header-text {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-style: italic;
+  color: var(--lof-gold);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.rf-category-header-count {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--lof-text-dim);
+}
+
+/* Hide category tabs on desktop */
+@media (min-width: 701px) {
+  .rf-category-tabs {
+    display: none;
+  }
+}
+
+/* Hide category headers on mobile */
+@media (max-width: 700px) {
+  .rf-category-header {
+    display: none;
+  }
+}
+
+/* ================================================================
+ * V1.5: DISABLED BUTTON STATES
+ * Per show state machine
+ * ================================================================ */
+
+.rf-ctl-link--disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.rf-ctl-link--disabled:hover {
+  transform: none;
+  background: var(--lof-forest);
+  border-color: var(--lof-pink);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.3);
+}
+
+/* V1.5: Speaker button disabled state */
+.rf-speaker-btn--disabled,
+.rf-speaker-btn--disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: var(--lof-forest);
+  border-color: rgba(255, 248, 231, 0.2);
+  color: var(--lof-text-dim);
+  box-shadow: none;
+  transform: none;
+}
+
+/* ================================================================
+ * V1.5: SHOW STATE CLASSES
+ * Applied to #rf-viewer for global state-based styling
+ * ================================================================ */
+
+/* Preshow state - anticipation */
+#rf-viewer.rf-state-preshow .rf-tonight-title::after {
+  content: ' ✨';
+}
+
+/* Showtime state - full energy */
+#rf-viewer.rf-state-showtime {
+  /* Cards get extra glow during showtime */
+}
+
+#rf-viewer.rf-state-showtime .rf-card--now-playing {
+  animation: showtime-pulse 2s ease-in-out infinite;
+}
+
+@keyframes showtime-pulse {
+  0%, 100% {
+    box-shadow: var(--shadow-card), 0 0 30px rgba(233, 30, 99, 0.4);
+  }
+  50% {
+    box-shadow: var(--shadow-card), 0 0 50px rgba(233, 30, 99, 0.6);
+  }
+}
+
+/* Intermission state - calmer */
+#rf-viewer.rf-state-intermission .rf-card--now-playing {
+  animation: none;
+  opacity: 0.7;
+}
+
+/* Paused state - dimmed but active */
+#rf-viewer.rf-state-paused .rf-grid {
+  opacity: 0.6;
+}
+
+#rf-viewer.rf-state-paused .rf-card-btn {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Off-hours state */
+#rf-viewer.rf-state-offhours .rf-grid,
+#rf-viewer.rf-state-offline .rf-grid {
+  opacity: 0.4;
+}
+
+#rf-viewer.rf-state-offhours .rf-card-btn,
+#rf-viewer.rf-state-offline .rf-card-btn {
+  display: none;
+}
+
+/* ================================================================
+ * END - HYBRID Mobile Magic + Desktop Theater V1.5.2
+ * Bold. Magical. No compromises.
+ * 
+ * V1.5 Enhancements:
+ * - Epic hero section with dramatic CTA
+ * - Banner messaging (off-season, controls paused)
+ * - Glow overflow containment
+ * - Mobile text sizing improvements
+ * - Device stats ornament card
+ * - Geo check notice styling
+ * - Need Sound card non-selectable
+ * - Stream footer visibility toggle
+ * - Card layout stabilization
+ * - Desktop ornament z-index fixes
+ *
+ * V1.5.2 Enhancements:
+ * - Category tabs (mobile) and headers (desktop)
+ * - Show state machine CSS classes
+ * - Button disable states per show state
+ * - Showtime pulse animation
+ * ================================================================ */
+/* =============================================
+   V1.5: Smart State Features
+   ============================================= */
+
+/* Queue reset warning banner */
 .rf-queue-warning {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin: 10px 0;
-  background: linear-gradient(135deg, rgba(231, 254, 0, 0.15), rgba(188, 33, 225, 0.1));
-  border: 1px solid rgba(231, 254, 0, 0.3);
-  border-radius: 10px;
-  font-size: 0.82rem;
-  color: #E7FE00;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  background: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: #ffc107;
 }
 
 .rf-queue-warning-icon {
   font-size: 1.1rem;
 }
 
-/* Lockout state warning */
+/* Lockout state - more urgent styling */
 .rf-queue-warning--lockout {
-  background: linear-gradient(135deg, rgba(255, 100, 100, 0.15), rgba(188, 33, 225, 0.1));
-  border-color: rgba(255, 150, 150, 0.4);
-  color: #ffcccc;
+  background: rgba(244, 67, 54, 0.15);
+  border-color: rgba(244, 67, 54, 0.3);
+  color: #f44336;
 }
 
-.rf-leaderboard-votes {
-  font-size: 0.8rem;
-  margin-left: 8px;
-  opacity: 0.85;
+/* Wait time display in queue items */
+.rf-queue-wait {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin-left: 0.5rem;
 }
 
-/* Toast Notification */
-.rf-toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%) translateY(10px);
-  background: rgba(3, 3, 5, 0.96);
-  color: #FFFEFE;
-  padding: 12px 18px;
-  border-radius: 999px;
-  box-shadow:
-    0 0 16px rgba(188, 33, 225, 0.75),
-    0 10px 24px rgba(0, 0, 0, 0.85);
-  font-size: 0.9rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease-in-out, transform 0.25s ease-in-out;
-  z-index: 99999;
-  border: 1px solid rgba(214, 163, 92, 0.7);
-}
-
-.rf-toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-/* Toast variants */
-.rf-toast--success {
-  background: #E7FE00;
-  color: #030305;
-  box-shadow:
-    0 0 18px rgba(231, 254, 0, 0.9),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-}
-
-.rf-toast--error {
-  background: rgba(205, 119, 137, 0.98);
-  color: #030305;
-  box-shadow:
-    0 0 18px rgba(205, 119, 137, 0.95),
-    0 10px 24px rgba(0, 0, 0, 0.9);
-}
-
-/* Just in case any old debug element exists */
-.rf-debug {
-  display: none !important;
-}
-
-/* ===========================
-   LOF viewer tweaks â€“ minimal
-   =========================== */
-
-/* 1) Make cards behave like equal-height tiles
-      and pin the button at the bottom */
-.rf-card {
+/* Enhanced queue item layout */
+.rf-queue-item {
   display: flex;
-  flex-direction: column;
-}
-
-/* Meta/content stays at the top; actions go to the bottom */
-.rf-card-actions {
-  margin-top: auto;
-  display: flex;
-  justify-content: center;
-}
-
-/* 2) Make the button feel better inside the card:
-      - center text
-      - allow wrapping (no cut-off text)
-      - narrower on desktop, full-width on mobile */
-.rf-card-btn {
-  text-align: center;
-  white-space: normal;
-  line-height: 1.2;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-/* Desktop: medium-width button, centered */
-@media (min-width: 768px) {
-  .rf-card-btn {
-    width: auto;          /* let content decide width */
-    max-width: 220px;
-    padding-left: 14px;   /* a bit more horizontal padding */
-    padding-right: 14px;
-  }
-}
-
-/* Mobile: go full width for easy tapping */
-@media (max-width: 767px) {
-  .rf-card-btn {
-    width: 100%;
-  }
-}
-
-/* Hide Next Up status card â€“ queue already shows this */
-.rf-next {
-  display: none;
-}
-/* Chip that shows on cards the viewer has requested */
-.rf-card-chip {
-  position: absolute;
-  left: 12px;
-  bottom: 10px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  background: rgba(133, 255, 179, 0.15);
-  border: 1px solid rgba(133, 255, 179, 0.7);
-  color: #c0ffe0;
-  backdrop-filter: blur(4px);
-}
-
-/* Extra top padding only if a badge exists, so it doesnâ€™t overlap the title */
-.rf-card--with-badge {
-  padding-top: 30px;
-}
-
-/* Small â€œmy requestâ€ status line under the header */
-.rf-viewer-my-status {
-  margin-top: 6px;
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.75);
-}
-
-/* Phase-based subtle background nudges */
-#rf-viewer.rf-phase-intermission {
-  background: radial-gradient(circle at top, rgba(120, 140, 255, 0.2), transparent 55%);
-}
-
-#rf-viewer.rf-phase-showtime {
-  background: radial-gradient(circle at top, rgba(255, 180, 90, 0.22), transparent 55%);
-}
-
-/* Stats block */
-.rf-stats {
-  margin-top: 14px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(214, 163, 92, 0.5);
-  background: radial-gradient(circle at top left, rgba(188, 33, 225, 0.15), transparent 60%);
-  font-size: 0.8rem;
-}
-
-.rf-stats-title {
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #f8f3ff;
-}
-
-.rf-stats-row {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 2px;
-}
-
-.rf-stats-row--vibe span:last-child {
-  font-weight: 600;
-}
-
-/* Speaker card */
-.rf-speaker-card {
-  margin-top: 14px;
-  padding: 10px 12px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(133, 255, 179, 0.6);
-  background: linear-gradient(135deg, rgba(5, 35, 20, 0.9), rgba(4, 10, 8, 0.95));
-  box-shadow: 0 0 10px rgba(133, 255, 179, 0.4);
-}
-
-.rf-speaker-btn {
-  margin-top: 6px;
-  width: 100%;
-  border-radius: 999px;
-  padding: 6px 10px;
-  border: none;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: linear-gradient(135deg, #7dffb0, #35d985);
-  color: #020306;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-}
-
-.rf-speaker-btn:disabled {
-  opacity: 0.6;
-  cursor: default;
-  box-shadow: none;
-}
-
-.rf-speaker-btn:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 0 14px rgba(133, 255, 179, 0.6);
-}
-.rf-glow-card {
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
-  border-radius: 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.rf-glow-modes {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  margin-bottom: 0.25rem;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
 }
 
-.rf-glow-mode {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: transparent;
-  font-size: 0.75rem;
-  padding: 0.25rem 0.7rem;
-  cursor: pointer;
-  opacity: 0.7;
+.rf-queue-item .rf-queue-song {
+  flex: 1;
+  min-width: 0;
 }
 
-.rf-glow-mode--active {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.12);
-}
-
-.rf-glow-body {
-  margin-top: 0.25rem;
-}
-
-.rf-glow-panel {
-  font-size: 0.8rem;
-}
-
-.rf-glow-help {
-  font-size: 0.8rem;
-  opacity: 0.9;
-}
-
-.rf-glow-input {
+.rf-queue-item .rf-queue-artist {
   width: 100%;
-  border-radius: 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.4);
-  color: #fff;
-  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  opacity: 0.7;
+  margin-left: 1.5rem;
+}
+
+/* "Requested by a guest" vs "From playlist" styling */
+.rf-now-source {
   font-size: 0.85rem;
-  resize: vertical;
-  box-sizing: border-box;
-}
-
-.rf-glow-input--text {
-  resize: none;
-}
-
-.rf-glow-input::placeholder {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.rf-glow-label {
-  display: block;
-  font-size: 0.75rem;
-  margin-bottom: 0.25rem;
   opacity: 0.85;
 }
 
-.rf-glow-actions {
-  display: flex;
-  justify-content: flex-end;
+.rf-now-source--guest {
+  color: #4caf50;
 }
 
-.rf-glow-btn {
-  border-radius: 999px;
-  border: none;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.rf-glow-footnote {
-  font-size: 0.7rem;
-  opacity: 0.7;
-}
-.rf-phase-banner {
-  margin-bottom: 1.25rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 0.9rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: linear-gradient(
-    135deg,
-    rgba(0, 255, 180, 0.18),
-    rgba(111, 66, 193, 0.32)
-  );
-  backdrop-filter: blur(10px);
-}
-
-.rf-phase-banner-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  margin-bottom: 0.25rem;
-}
-
-.rf-phase-banner-sub {
-  font-size: 0.8rem;
-  line-height: 1.4;
-  opacity: 0.9;
+.rf-now-source--playlist {
+  color: rgba(255, 255, 255, 0.7);
 }
