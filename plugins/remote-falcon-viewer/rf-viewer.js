@@ -2173,8 +2173,10 @@ function updateSmartTimeMessage(showState) {
       );
 
       let showRequestedChip = wasRequested;
-      // V1.5 FIX: Check against ALL session-requested names, not just the last one
-      if (!showRequestedChip && isNow && sessionRequestedNames.size > 0) {
+      
+      // V1.5 Bundle B FIX: Check session names for ALL cards, not just isNow
+      // This ensures the chip shows immediately after requesting, before RF confirms
+      if (!showRequestedChip && sessionRequestedNames.size > 0) {
         if (
           (keyName && sessionRequestedNames.has(keyName)) ||
           (labelName && sessionRequestedNames.has(labelName))
@@ -3092,6 +3094,16 @@ function addSpeakerCard(extra) {
   const speakerBlockedStates = ['intermission', 'offhours', 'offline'];
   const speakerDisabled = speakerBlockedStates.includes(currentShowState);
 
+  // V1.5 Bundle B: State-aware intro text
+  let introText;
+  if (currentShowState === 'intermission') {
+    introText = lofCopy('speaker_intro_intermission', 'Speakers available when the next song starts. You can also listen on your phone or in your car.');
+  } else if (currentShowState === 'offhours' || currentShowState === 'offline') {
+    introText = lofCopy('speaker_intro_offhours', 'The show is currently off. When it\'s running, you can hear the music outside, on your phone, or in your car.');
+  } else {
+    introText = lofCopy('speaker_intro', 'Choose how you want to hear the show — outside speakers, on your phone, or in your car.');
+  }
+
   const card = document.createElement('div');
   card.className = 'rf-card rf-speaker-card rf-card--speaker'; // V1.5: Add --speaker class
 
@@ -3100,12 +3112,7 @@ function addSpeakerCard(extra) {
       <div class="rf-speaker-header">
         <div class="rf-label">${escapeHtml(lofCopy('speaker_label', 'Need sound?'))}</div>
         <div class="rf-speaker-body">
-          ${escapeHtml(
-            lofCopy(
-              'speaker_intro',
-              'Choose how you want to hear the show — outside speakers, on your phone, or in your car.'
-            )
-          )}
+          ${escapeHtml(introText)}
         </div>
       </div>
 
@@ -3320,11 +3327,17 @@ function addSpeakerCard(extra) {
             refreshSpeakerStatus();
           }, 20000); // re-sync every 20s while ON
         } else {
-          // Speaker OFF - V1.5 Bundle B: Use our clean text, not API message
-          const statusOffText = lofCopy(
-            'speaker_status_off',
-            'Speakers are currently OFF. Tap the button below to hear the music outside.'
-          );
+          // Speaker OFF - V1.5 Bundle B: State-aware status text
+          let statusOffText;
+          if (speakerBlockedStates.includes(currentShowState)) {
+            if (currentShowState === 'intermission') {
+              statusOffText = lofCopy('speaker_status_off_intermission', 'Speakers available when the next song starts.');
+            } else {
+              statusOffText = lofCopy('speaker_status_off_offhours', 'Speakers available when the show is running.');
+            }
+          } else {
+            statusOffText = lofCopy('speaker_status_off', 'Speakers are currently OFF. Tap the button below to turn them on.');
+          }
 
           statusText.textContent = statusOffText;
           if (countdownEl) countdownEl.textContent = '';

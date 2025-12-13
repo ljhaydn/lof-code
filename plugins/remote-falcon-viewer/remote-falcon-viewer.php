@@ -104,7 +104,7 @@ class RF_Viewer_Plugin {
                                    name="<?php echo esc_attr($this->option_key); ?>[cache_seconds]"
                                    value="<?php echo esc_attr($opts['cache_seconds']); ?>"
                                    min="0" class="small-text">
-                            <p class="description">10–20 seconds is fine for <code>showDetails</code>.</p>
+                            <p class="description">10â€“20 seconds is fine for <code>showDetails</code>.</p>
                         </td>
                     </tr>
 
@@ -221,6 +221,13 @@ class RF_Viewer_Plugin {
         register_rest_route('rf/v1', '/vote', [
             'methods'             => 'POST',
             'callback'            => [$this, 'proxy_vote_sequence'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // V1.5: GET trigger counts for Show Activity stats
+        register_rest_route('lof-viewer/v1', '/trigger-counts', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'get_trigger_counts'],
             'permission_callback' => '__return_true',
         ]);
     }
@@ -367,6 +374,43 @@ class RF_Viewer_Plugin {
         ]);
     }
 
+    /**
+     * V1.5: Get trigger counts for Show Activity stats
+     * Returns counts for mailbox, glow, button, surprise, speaker, and popular songs
+     */
+    public function get_trigger_counts(WP_REST_Request $req) {
+        // Get glow stats from lof-extras
+        $glow_stats = get_option('lof_viewer_extras_glow_stats', ['total' => 0]);
+        $glow_count = is_array($glow_stats) && isset($glow_stats['total']) ? (int) $glow_stats['total'] : 0;
+
+        // Get speaker press count (stored by lof-speaker.php)
+        $speaker_count = (int) get_option('lof_speaker_press_count', 0);
+
+        // Get mailbox/button counts from FPP triggers (stored by FPP callback)
+        $fpp_triggers = get_option('lof_fpp_trigger_counts', []);
+        $mailbox_count = isset($fpp_triggers['mailbox']) ? (int) $fpp_triggers['mailbox'] : 0;
+        $button_count = isset($fpp_triggers['button']) ? (int) $fpp_triggers['button'] : 0;
+        $surprise_count = isset($fpp_triggers['surprise']) ? (int) $fpp_triggers['surprise'] : 0;
+
+        // Get popular songs from Remote Falcon stats (if available)
+        $rf_stats = get_option('lof_rf_song_stats', []);
+        $popular_tonight = isset($rf_stats['popular_tonight']) ? $rf_stats['popular_tonight'] : '';
+        $popular_alltime = isset($rf_stats['popular_alltime']) ? $rf_stats['popular_alltime'] : '';
+
+        return rest_ensure_response([
+            'success' => true,
+            'counts' => [
+                'mailbox'         => $mailbox_count,
+                'glow'            => $glow_count,
+                'button'          => $button_count,
+                'surprise'        => $surprise_count,
+                'speaker'         => $speaker_count,
+                'popular_tonight' => $popular_tonight,
+                'popular_alltime' => $popular_alltime,
+            ],
+        ]);
+    }
+
     /* -------------------
      * FRONTEND
      * ------------------- */
@@ -398,73 +442,23 @@ class RF_Viewer_Plugin {
     public function shortcode_viewer($atts, $content = '') {
         ob_start(); ?>
         <div id="rf-viewer" class="rf-viewer">
-            <!-- V1.5: UNIFIED HERO SECTION -->
-            <div class="rf-hero" id="rf-hero">
-                <h1 class="rf-hero-title">Tonight at Lights on Falcon</h1>
-                
-                <!-- State Banner: Shows current show state -->
-                <div class="rf-hero-banner" id="rf-hero-banner">
-                    <div class="rf-hero-banner-title" id="rf-hero-banner-title"></div>
-                    <div class="rf-hero-banner-body" id="rf-hero-banner-body"></div>
-                </div>
-                
-                <!-- Smart Time Message -->
-                <div class="rf-hero-time" id="rf-hero-time"></div>
-                
-                <!-- CTA: Main call to action -->
-                <div class="rf-hero-cta" id="rf-hero-cta">
-                    <div class="rf-hero-cta-title" id="rf-hero-cta-title"></div>
-                    <div class="rf-hero-cta-body" id="rf-hero-cta-body"></div>
-                </div>
-                
-                <!-- Now Playing Status -->
-                <div class="rf-now" id="rf-now">
+            <div class="rf-status-panel">
+                <div class="rf-now">
                     <div class="rf-label">Now Playing</div>
-                    <div class="rf-now-title" id="rf-now-title">Loading…</div>
+                    <div class="rf-now-title" id="rf-now-title">Loadingâ€¦</div>
                     <div class="rf-now-artist" id="rf-now-artist"></div>
-                    <div class="rf-now-progress">
-                        <div class="rf-now-progress-bar">
-                            <div class="rf-now-progress-fill"></div>
-                        </div>
-                        <div class="rf-now-progress-label"></div>
-                    </div>
                 </div>
-                
-                <!-- Next Up -->
-                <div class="rf-next" id="rf-next">
+                <div class="rf-next">
                     <div class="rf-label">Next Up</div>
-                    <div class="rf-next-title" id="rf-next-title">—</div>
+                    <div class="rf-next-title" id="rf-next-title">â€”</div>
                 </div>
-                
-                <!-- My Status: Personalized queue position -->
-                <div class="rf-hero-mystatus" id="rf-hero-mystatus"></div>
-                
-                <!-- Geo Status: Location check inline -->
-                <div class="rf-hero-geo" id="rf-hero-geo"></div>
-                
-                <!-- Controls Row -->
-                <div class="rf-controls-row" id="rf-controls-row"></div>
-            </div>
-
-            <!-- Main Content Area -->
-            <div class="rf-main-layout">
-                <div class="rf-main-left">
-                    <div class="rf-grid" id="rf-grid"></div>
+                <div class="rf-mode">
+                    <div class="rf-label">Mode</div>
+                    <div class="rf-mode-value" id="rf-mode-value">â€”</div>
                 </div>
-                <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
 
-            <!-- Footer: Send a Glow -->
-            <div class="rf-footer">
-                <div id="rf-footer-glow"></div>
-            </div>
-
-            <!-- Audio Stream Footer -->
-            <div
-                id="lof-stream-footer"
-                class="rf-stream-footer"
-                data-src="https://player.pulsemesh.io/d/G073">
-            </div>
+            <div class="rf-grid" id="rf-grid"></div>
         </div>
         <?php
         return ob_get_clean();

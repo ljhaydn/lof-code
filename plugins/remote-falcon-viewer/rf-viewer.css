@@ -1126,16 +1126,18 @@
  * ---------------------------------------------------------------- */
 
 .rf-card-chip {
-  position: relative;
-  margin-top: 14px;
-  padding: 8px 18px;
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 700;
   background: var(--lof-pink);
   border: 2px solid var(--lof-gold);
   color: var(--lof-white);
   text-align: center;
+  z-index: 10;
   
   box-shadow:
     var(--glow-pink),
