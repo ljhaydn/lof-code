@@ -267,6 +267,7 @@ function lof_speaker_get_song_remaining_seconds() {
 
         // Try a few likely field names (varies by FPP version)
         $keys = [
+            'seconds_remaining',
             'mediaSecondsRemaining',
             'MediaSecondsRemaining',
             'media_seconds_remaining',
