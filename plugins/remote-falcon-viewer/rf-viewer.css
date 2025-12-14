@@ -2625,6 +2625,41 @@
   margin-left: 0.5rem;
 }
 
+/* Queue total duration display */
+.rf-queue-duration {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin: 0.5rem 0;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  font-size: 0.85rem;
+}
+
+.rf-queue-duration-label {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.rf-queue-duration-value {
+  color: var(--accent, #c9a227);
+  font-weight: 600;
+}
+
+/* Empty queue message */
+.rf-queue-empty {
+  text-align: center;
+  padding: 1rem 0;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Next up subtitle in hero */
+.rf-next-subtitle {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.25rem;
+}
+
 /* Enhanced queue item layout */
 .rf-queue-item {
   display: flex;

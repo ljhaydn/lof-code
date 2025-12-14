@@ -2089,13 +2089,26 @@ function updateSmartTimeMessage(showState) {
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'Requested by a guest';
         } else if (state.isIntermission && !hasAnyQueue) {
-          // Intermission with empty queue
-          nextTitleEl.textContent = '🎶 Your call — pick a song or catch the show';
-          nextSubtitle = '';
+          // Intermission with empty queue - include next show time
+          const showTime = nextShow !== 'soon' ? nextShow : (state.nextShowTime || '');
+          if (showTime) {
+            nextTitleEl.textContent = '🎶 Your call — pick a song or catch the ' + showTime + ' show';
+          } else {
+            nextTitleEl.textContent = '🎶 Your call — pick a song below';
+          }
+          nextSubtitle = 'Music resumes when you request one!';
         } else if (state.isShowPlaylist && !hasAnyQueue) {
-          // Show playlist (random inserts) with no queue
+          // Show playlist with no queue - DJ Falcon picking
           nextTitleEl.textContent = '🎲 DJ Falcon\'s picking next...';
           nextSubtitle = 'Or request your own below';
+        } else if (!hasAnyQueue && viewerState.nextUp && viewerState.nextUp.source === 'playlist') {
+          // Sequential playlist (no random inserts) - we know the next song
+          nextTitleEl.textContent = '🎵 ' + (viewerState.nextUp.displayName || 'Next from playlist');
+          nextSubtitle = 'From tonight\'s playlist';
+        } else if (!hasAnyQueue && isPlayingReal) {
+          // Playing but no queue and no next info - generic fallback
+          nextTitleEl.textContent = '🎶 Request a song below';
+          nextSubtitle = 'Your pick plays next!';
         }
         // If none of the above, keep the existing nextDisplay value
         
@@ -2280,8 +2293,24 @@ function updateSmartTimeMessage(showState) {
       }
 
       const isNow  = nowKey  && (seq.name === nowKey  || seq.displayName === nowKey);
-      // V1.5 FIX: Only show "Next up" badge if song is from RF queue, not FPP's playingNext
-      const isNext = nextIsFromQueue && nextKey && (seq.name === nextKey || seq.displayName === nextKey);
+      // V1.5 FIX: Show "Next up" badge for:
+      // 1. Queue items (nextIsFromQueue = true)
+      // 2. Sequential playlists where we know the next song (viewerState.nextUp.source === 'playlist')
+      // But NOT for random insert playlists where DJ is picking
+      let isNext = false;
+      if (nextKey && (seq.name === nextKey || seq.displayName === nextKey)) {
+        if (nextIsFromQueue) {
+          // Queue determines next - always show badge
+          isNext = true;
+        } else if (viewerState && viewerState.nextUp && viewerState.nextUp.source === 'playlist') {
+          // Sequential playlist - show badge for known next song
+          // But only if we're NOT in a show playlist (random inserts)
+          const state = viewerState.state;
+          if (state && !state.isShowPlaylist) {
+            isNext = true;
+          }
+        }
+      }
 
       if (isNow) {
         card.classList.add('rf-card--now-playing');
@@ -2674,6 +2703,20 @@ function renderQueue(extra, data) {
   `;
   wrapper.appendChild(header);
 
+  // V1.5: Add total queue duration if we have items
+  if (rawRequests.length > 0 && viewerState) {
+    const queueDuration = viewerState.queueDurationSeconds || 0;
+    const nowRemaining = viewerState.now?.secondsRemaining || 0;
+    const totalSeconds = queueDuration + nowRemaining;
+    if (totalSeconds > 0) {
+      const totalMin = Math.ceil(totalSeconds / 60);
+      const durationDiv = document.createElement('div');
+      durationDiv.className = 'rf-queue-duration';
+      durationDiv.innerHTML = `<span class="rf-queue-duration-label">Total queue time:</span> <span class="rf-queue-duration-value">~${totalMin} min</span>`;
+      wrapper.appendChild(durationDiv);
+    }
+  }
+
   // V1.5: Add reset warning banner if within 15 minutes of reset
   if (viewerState && viewerState.state) {
     const state = viewerState.state;
@@ -2711,9 +2754,8 @@ function renderQueue(extra, data) {
   // No requests – keep the card compact with a single explanatory line
   if (!rawRequests.length) {
     const empty = document.createElement('div');
-    empty.className = 'rf-extra-sub';
-    empty.textContent =
-      'Requests are handled behind the scenes by Remote Falcon. When your pick is ready, you’ll see it glow as “Next Up.”';
+    empty.className = 'rf-extra-sub rf-queue-empty';
+    empty.innerHTML = '✨ Queue is clear — your request plays next!';
     wrapper.appendChild(empty);
     extra.appendChild(wrapper);
     return;
@@ -2737,7 +2779,10 @@ function renderQueue(extra, data) {
     let waitTimeStr = '';
     if (enhancedQueue && enhancedQueue[idx]) {
       const waitSeconds = enhancedQueue[idx].waitSeconds || 0;
-      waitTimeStr = formatWaitTime(waitSeconds);
+      waitTimeStr = formatWaitTime(waitSeconds, pos);
+    } else {
+      // Fallback: show position-based text
+      waitTimeStr = pos === 1 ? 'up next' : '';
     }
 
     const li = document.createElement('li');
@@ -4137,11 +4182,13 @@ function addSurpriseCard() {
   }
   
   // V1.5: Format wait time for queue display
-  function formatWaitTime(seconds) {
+  function formatWaitTime(seconds, position) {
+    // Position 1 (first in queue) shows "up next" regardless of wait time
+    if (position === 1 || position === 0) return 'up next';
     if (!seconds || seconds <= 0) return 'up next';
     const min = Math.ceil(seconds / 60);
-    if (min < 1) return '<1 min wait';
-    return '~' + min + ' min wait';
+    if (min < 1) return '<1 min';
+    return '~' + min + ' min';
   }
 
 /* -------------------------
