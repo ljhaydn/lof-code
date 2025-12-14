@@ -2725,6 +2725,12 @@ async function fetchTriggerCounts() {
     // Render device stats card with trigger counts
     renderDeviceStatsCard(extra, queueLength);
 
+    // V1.5: Always show wearables card during show hours (not just off-hours)
+    // This is key FOMO content that should be visible to visitors!
+    if (!isOffHours) {
+      renderWearablesCard(extra);
+    }
+
     // IMPORTANT: Do NOT add the in-panel Glow teaser anymore.
     // The full Glow form lives in the footer only, so viewers have a single,
     // consistent place to send a Glow.
@@ -2986,13 +2992,14 @@ function renderDeviceStatsCard(extra, queueLength) {
   }
 
   const card = document.createElement('div');
-  card.className = 'rf-card rf-card--device-stats';
+  card.className = 'rf-info-card rf-info-card--device-stats';
 
   card.innerHTML = `
-    <div class="rf-device-stats-title">
-      ${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}
+    <div class="rf-info-card-header">
+      <span class="rf-info-card-icon">📱</span>
+      <span class="rf-info-card-title">${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}</span>
     </div>
-    <div class="rf-device-stats-body">
+    <div class="rf-info-card-body rf-device-stats-body">
       <div class="rf-stat-item">
         <span class="rf-stat-label">${escapeHtml(lofCopy('stats_requests_label', 'Requests sent'))}</span>
         <span class="rf-stat-value">${stats.requests}</span>
@@ -3183,37 +3190,18 @@ function renderOffHoursPanel(extra) {
   const wrapper = document.createElement('div');
   wrapper.className = 'rf-offhours-panel';
   
-  // --- WEARABLES CARD (the unique differentiator!) ---
-  const wearablesCard = document.createElement('div');
-  wearablesCard.className = 'rf-card rf-card--wearables';
-  wearablesCard.innerHTML = `
-    <div class="rf-wearables-header">
-      <span class="rf-wearables-icon">⚡</span>
-      <span class="rf-wearables-title">Sync Up & Glow</span>
-    </div>
-    <div class="rf-wearables-body">
-      <p class="rf-wearables-main">
-        Every night we set out <strong>synchronized wristbands and light sticks</strong> for guests. 
-        Put one on. Become the show. Watch the kids absolutely lose it. It's a whole thing.
-      </p>
-      <p class="rf-wearables-detail">
-        Just return them when you leave (they need their beauty sleep on the charger). 
-        Or <a href="https://www.lightsonfalcon.com/support-the-show/" target="_blank" class="rf-wearables-link">make a small donation</a> and keep the magic forever. 
-        We don't judge. 💫
-      </p>
-    </div>
-  `;
-  wrapper.appendChild(wearablesCard);
+  // --- WEARABLES CARD ---
+  wrapper.appendChild(createWearablesCardElement());
   
   // --- SEASON STATS CARD ---
   const statsCard = document.createElement('div');
-  statsCard.className = 'rf-card rf-card--season-stats';
+  statsCard.className = 'rf-info-card rf-info-card--stats';
   statsCard.innerHTML = `
-    <div class="rf-season-stats-header">
-      <span class="rf-season-stats-icon">🎄</span>
-      <span class="rf-season-stats-title">Season So Far</span>
+    <div class="rf-info-card-header">
+      <span class="rf-info-card-icon">🎄</span>
+      <span class="rf-info-card-title">Season So Far</span>
     </div>
-    <div class="rf-season-stats-body">
+    <div class="rf-info-card-body rf-season-stats-body">
       <div class="rf-season-stat-loading">Loading the magic... ✨</div>
     </div>
   `;
@@ -3225,33 +3213,46 @@ function renderOffHoursPanel(extra) {
   fetchTriggerCounts()
     .then((triggers) => {
       const body = statsCard.querySelector('.rf-season-stats-body');
-      if (!body || !triggers) return;
+      if (!body) return;
+      
+      // Even if triggers is null/undefined, show fallback stats
+      if (!triggers) {
+        body.innerHTML = `
+          <div class="rf-season-stat-row">
+            <span class="rf-season-stat-icon">🎵</span>
+            <span class="rf-season-stat-label">Songs requested</span>
+            <span class="rf-season-stat-value">1,200+</span>
+          </div>
+          <div class="rf-season-stat-row">
+            <span class="rf-season-stat-icon">💛</span>
+            <span class="rf-season-stat-label">Glows of kindness</span>
+            <span class="rf-season-stat-value">400+</span>
+          </div>
+        `;
+        return;
+      }
       
       body.innerHTML = ''; // Clear loading message
       
-      // Season requests (with FOMO padding)
-      const seasonRequests = triggers.requests_season || 0;
+      // Season requests (with FOMO padding already applied by API)
+      const seasonRequests = triggers.requests_season || 800;
       addSeasonStatRow(body, '🎵', 'Songs requested', seasonRequests.toLocaleString());
       
-      // Glows
-      const glowCount = triggers.glow || 0;
-      const boostedGlow = 300 + glowCount + Math.round(glowCount * 1.25);
-      addSeasonStatRow(body, '💛', 'Glows of kindness', boostedGlow.toLocaleString());
+      // Glows (already padded)
+      const glowCount = triggers.glow || 300;
+      addSeasonStatRow(body, '💛', 'Glows of kindness', glowCount.toLocaleString());
       
-      // Speaker activations
-      const speakerCount = triggers.speaker || 0;
-      const boostedSpeaker = 200 + speakerCount;
-      addSeasonStatRow(body, '📻', 'Speaker activations', boostedSpeaker.toLocaleString());
+      // Speaker activations (already padded)
+      const speakerCount = triggers.speaker || 200;
+      addSeasonStatRow(body, '📻', 'Speaker activations', speakerCount.toLocaleString());
       
-      // Surprise rolls
-      const surpriseCount = triggers.surprise || 0;
-      const boostedSurprise = 100 + surpriseCount;
-      addSeasonStatRow(body, '🎁', 'Surprise rolls', boostedSurprise.toLocaleString());
+      // Surprise rolls (already padded)
+      const surpriseCount = triggers.surprise || 100;
+      addSeasonStatRow(body, '🎁', 'Surprise rolls', surpriseCount.toLocaleString());
       
       // Letters to Santa
       if (triggers.mailbox) {
-        const boostedMailbox = 50 + triggers.mailbox + Math.round(triggers.mailbox * 1.5);
-        addSeasonStatRow(body, '🎅', 'Letters to Santa', boostedMailbox.toLocaleString());
+        addSeasonStatRow(body, '🎅', 'Letters to Santa', triggers.mailbox.toLocaleString());
       }
       
       // Divider before leaderboard
@@ -3286,7 +3287,24 @@ function renderOffHoursPanel(extra) {
       console.warn('[LOF] Off-hours stats failed:', err);
       const body = statsCard.querySelector('.rf-season-stats-body');
       if (body) {
-        body.innerHTML = '<div class="rf-season-stat-error">Stats taking a break too 😴</div>';
+        // Show fallback stats instead of error
+        body.innerHTML = `
+          <div class="rf-season-stat-row">
+            <span class="rf-season-stat-icon">🎵</span>
+            <span class="rf-season-stat-label">Songs requested</span>
+            <span class="rf-season-stat-value">1,200+</span>
+          </div>
+          <div class="rf-season-stat-row">
+            <span class="rf-season-stat-icon">💛</span>
+            <span class="rf-season-stat-label">Glows of kindness</span>
+            <span class="rf-season-stat-value">400+</span>
+          </div>
+          <div class="rf-season-stat-row">
+            <span class="rf-season-stat-icon">📻</span>
+            <span class="rf-season-stat-label">Speaker activations</span>
+            <span class="rf-season-stat-value">300+</span>
+          </div>
+        `;
       }
     });
   
@@ -3296,7 +3314,7 @@ function renderOffHoursPanel(extra) {
       if (!vibe) return;
       
       const vibeCard = document.createElement('div');
-      vibeCard.className = 'rf-card rf-card--vibe rf-card--vibe-' + (vibe.level || 'setup');
+      vibeCard.className = 'rf-info-card rf-info-card--vibe rf-info-card--vibe-' + (vibe.level || 'setup');
       vibeCard.innerHTML = `
         <div class="rf-vibe-content">
           <span class="rf-vibe-emoji">${vibe.emoji || '🔧'}</span>
@@ -3312,6 +3330,41 @@ function renderOffHoursPanel(extra) {
     });
 }
 
+/**
+ * Create wearables card element (reusable for both off-hours and show panels)
+ */
+function createWearablesCardElement() {
+  const card = document.createElement('div');
+  card.className = 'rf-info-card rf-info-card--wearables';
+  card.innerHTML = `
+    <div class="rf-info-card-header">
+      <span class="rf-info-card-icon rf-info-card-icon--pulse">⚡</span>
+      <span class="rf-info-card-title">Sync Up & Glow</span>
+    </div>
+    <div class="rf-info-card-body">
+      <p class="rf-wearables-main">
+        Every night we set out <strong>synchronized wristbands and light sticks</strong> for guests. 
+        Put one on. Become the show. Watch the kids absolutely lose it. ✨
+      </p>
+      <p class="rf-wearables-detail">
+        Just return them when you leave (they need their beauty sleep on the charger). 
+        Or keep the magic forever with a small donation. We don't judge. 💫
+      </p>
+      <a href="https://www.lightsonfalcon.com/support-the-show/" target="_blank" class="rf-wearables-btn">
+        Support the Show 🎁
+      </a>
+    </div>
+  `;
+  return card;
+}
+
+/**
+ * Render wearables card in the extras panel (during show hours)
+ */
+function renderWearablesCard(extra) {
+  extra.appendChild(createWearablesCardElement());
+}
+
 // Helper to add a stat row
 function addSeasonStatRow(container, icon, label, value) {
   const row = document.createElement('div');
@@ -3319,7 +3372,7 @@ function addSeasonStatRow(container, icon, label, value) {
   row.innerHTML = `
     <span class="rf-season-stat-icon">${icon}</span>
     <span class="rf-season-stat-label">${escapeHtml(label)}</span>
-    <span class="rf-season-stat-value">${escapeHtml(value)}</span>
+    <span class="rf-season-stat-value">${escapeHtml(String(value))}</span>
   `;
   container.appendChild(row);
 }
@@ -4396,20 +4449,27 @@ function addSurpriseCard() {
   
   // V1.5: Format wait time for queue display
   function formatWaitTime(seconds, position) {
-    // If no wait time data, show "up next" for position 1
-    if (!seconds && seconds !== 0) {
+    // If no wait time data at all, show position-based text
+    if (seconds === null || seconds === undefined) {
       return position === 1 ? 'up next' : '';
     }
     
-    // Position 1 with minimal wait (< 30 seconds) shows "up next"
-    if ((position === 1 || position === 0) && seconds < 30) {
+    // Convert to number in case it's a string
+    seconds = parseInt(seconds, 10) || 0;
+    
+    // Zero or negative = truly up next
+    if (seconds <= 0) {
       return 'up next';
     }
     
-    // Otherwise show actual wait time (important during intermission!)
-    if (seconds <= 0) return 'up next';
+    // Less than 30 seconds = effectively "up next" 
+    if (seconds < 30) {
+      return 'up next';
+    }
+    
+    // Otherwise show actual wait time - ALWAYS, even for position 1
+    // This is important during intermission when position 1 might have a 3+ minute wait
     const min = Math.ceil(seconds / 60);
-    if (min < 1) return '<1 min';
     return '~' + min + ' min';
   }
 
@@ -4447,20 +4507,16 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// V1.5: Check and reset device stats at midnight
-function checkMidnightReset() {
-  const today = new Date().toDateString();
-  try {
-    const storedDate = localStorage.getItem('lofStatsDate');
-    if (storedDate !== today) {
-      console.log('[LOF] New day - resetting device stats');
-      localStorage.setItem('lofStatsDate', today);
-      localStorage.setItem('lofStatsRequests', '0');
-      localStorage.setItem('lofStatsSurprise', '0');
-      viewerStats = { requests: 0, surprise: 0 };
-    }
-  } catch (e) {}
+// V1.5: Force check day on visibility (handles case where user left tab open overnight)
+// The loadStats() function already handles day reset, but this ensures it runs again
+function ensureDayReset() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (viewerStats.day !== today) {
+    console.log('[LOF] Day changed - resetting device stats');
+    viewerStats = { day: today, requests: 0, surprise: 0 };
+    saveStats();
+  }
 }
-checkMidnightReset();
+ensureDayReset();
 
 })();

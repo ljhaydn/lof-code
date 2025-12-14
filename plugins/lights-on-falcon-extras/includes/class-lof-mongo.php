@@ -32,8 +32,15 @@ class LOF_Mongo {
      */
     private static function get_client() {
         if (self::$client === null) {
+            // Check if MongoDB extension is loaded
             if (!extension_loaded('mongodb')) {
                 error_log('[LOF Mongo] MongoDB extension not loaded');
+                return null;
+            }
+            
+            // Check if MongoDB library is installed (via Composer)
+            if (!class_exists('MongoDB\Client')) {
+                error_log('[LOF Mongo] MongoDB library not installed. Run: composer require mongodb/mongodb');
                 return null;
             }
             

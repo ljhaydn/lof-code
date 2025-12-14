@@ -144,6 +144,7 @@ function lof_viewer_trigger_hit(WP_REST_Request $request) {
  * GET /wp-json/lof-viewer/v1/trigger-counts
  * 
  * Enhanced with MongoDB data for accurate stats and leaderboard.
+ * Falls back gracefully if MongoDB is unavailable.
  */
 function lof_viewer_get_trigger_counts(WP_REST_Request $request) {
     $counts = get_option('lof_viewer_trigger_counts', array());
@@ -169,25 +170,32 @@ function lof_viewer_get_trigger_counts(WP_REST_Request $request) {
         $counts['surprise'] = (int) $surprise_count;
     }
 
-    // V1.5: Get MongoDB stats if available
-    $mongo_available = class_exists('LOF_Mongo');
+    // V1.5: Try to get MongoDB stats if available (fail gracefully)
+    $mongo_available = class_exists('LOF_Mongo') && extension_loaded('mongodb');
     
     if ($mongo_available) {
         try {
             // Real request counts from RF database
-            $counts['requests_tonight'] = LOF_Mongo::get_requests_tonight();
-            $counts['requests_season'] = LOF_Mongo::get_requests_season();
+            $requests_tonight = LOF_Mongo::get_requests_tonight();
+            $requests_season = LOF_Mongo::get_requests_season();
+            
+            if ($requests_tonight !== null) {
+                $counts['requests_tonight'] = $requests_tonight;
+            }
+            if ($requests_season !== null) {
+                $counts['requests_season'] = $requests_season;
+            }
             
             // Top songs
             $top_tonight = LOF_Mongo::get_top_songs_tonight(3);
             $top_season = LOF_Mongo::get_top_songs_season(1);
             
-            if (!empty($top_tonight)) {
+            if (!empty($top_tonight) && isset($top_tonight[0]['displayName'])) {
                 $counts['popular_tonight'] = $top_tonight[0]['displayName'];
                 $counts['popular_tonight_count'] = $top_tonight[0]['count'];
             }
             
-            if (!empty($top_season)) {
+            if (!empty($top_season) && isset($top_season[0]['displayName'])) {
                 $counts['popular_alltime'] = $top_season[0]['displayName'];
                 $counts['popular_alltime_count'] = $top_season[0]['count'];
             }
@@ -197,10 +205,12 @@ function lof_viewer_get_trigger_counts(WP_REST_Request $request) {
             
         } catch (Exception $e) {
             error_log('[LOF Trigger API] MongoDB query failed: ' . $e->getMessage());
+            // Continue without MongoDB data - don't break the endpoint
         }
     }
 
-    // V1.5: Apply FOMO padding to season stats
+    // V1.5: Apply FOMO padding to season stats for display
+    // Use _raw prefix for actual values, padded values for display
     $padding = array(
         'requests_season' => 800,
         'glow'            => 300,
@@ -211,21 +221,21 @@ function lof_viewer_get_trigger_counts(WP_REST_Request $request) {
 
     $display_counts = array();
     foreach ($counts as $key => $value) {
-        if (isset($padding[$key])) {
+        if (isset($padding[$key]) && is_numeric($value)) {
             $display_counts[$key] = (int) $value + $padding[$key];
         } else {
             $display_counts[$key] = $value;
         }
     }
 
-    // Also include raw counts for internal use
+    // Include raw counts for internal use
     $display_counts['_raw'] = $counts;
+    $display_counts['_mongo'] = $mongo_available;
 
     return new WP_REST_Response(
         array(
             'success' => true,
             'counts'  => $display_counts,
-            'mongo'   => $mongo_available,
         ),
         200
     );
@@ -235,15 +245,21 @@ function lof_viewer_get_trigger_counts(WP_REST_Request $request) {
  * GET /wp-json/lof-viewer/v1/leaderboard
  * 
  * Returns song leaderboards for tonight and season.
+ * Returns empty arrays if MongoDB unavailable (graceful degradation).
  */
 function lof_viewer_get_leaderboard(WP_REST_Request $request) {
-    if (!class_exists('LOF_Mongo')) {
+    $mongo_available = class_exists('LOF_Mongo') && extension_loaded('mongodb');
+    
+    if (!$mongo_available) {
+        // Return empty but valid response
         return new WP_REST_Response(
             array(
-                'success' => false,
-                'message' => 'MongoDB not available',
+                'success' => true,
+                'tonight' => array(),
+                'season'  => array(),
+                '_note'   => 'MongoDB not available'
             ),
-            503
+            200
         );
     }
 
@@ -254,18 +270,21 @@ function lof_viewer_get_leaderboard(WP_REST_Request $request) {
         return new WP_REST_Response(
             array(
                 'success' => true,
-                'tonight' => $top_tonight,
-                'season'  => $top_season,
+                'tonight' => $top_tonight ?: array(),
+                'season'  => $top_season ?: array(),
             ),
             200
         );
     } catch (Exception $e) {
+        error_log('[LOF Leaderboard] Error: ' . $e->getMessage());
         return new WP_REST_Response(
             array(
-                'success' => false,
-                'message' => $e->getMessage(),
+                'success' => true,
+                'tonight' => array(),
+                'season'  => array(),
+                '_error'  => 'Query failed'
             ),
-            500
+            200
         );
     }
 }
@@ -274,24 +293,32 @@ function lof_viewer_get_leaderboard(WP_REST_Request $request) {
  * GET /wp-json/lof-viewer/v1/vibe-check
  * 
  * Returns vibe level based on global activity.
+ * Falls back gracefully if MongoDB is unavailable.
  */
 function lof_viewer_get_vibe(WP_REST_Request $request) {
-    $timezone = new DateTimeZone('America/Los_Angeles');
-    $now = new DateTime('now', $timezone);
-    $hour = (int) $now->format('G');
+    try {
+        $timezone = new DateTimeZone('America/Los_Angeles');
+        $now = new DateTime('now', $timezone);
+        $hour = (int) $now->format('G');
+    } catch (Exception $e) {
+        // Fallback if timezone fails
+        $hour = (int) date('G');
+    }
 
     // Default activity score
     $activity_score = 0;
     $requests_per_hour = 0;
 
-    // Get real data from MongoDB if available
-    if (class_exists('LOF_Mongo')) {
+    // Get real data from MongoDB if available (fail gracefully)
+    $mongo_available = class_exists('LOF_Mongo') && extension_loaded('mongodb');
+    
+    if ($mongo_available) {
         try {
             $requests_per_hour = LOF_Mongo::get_requests_per_hour_tonight();
             $requests_tonight = LOF_Mongo::get_requests_tonight();
             
             // Base score from recent activity
-            $activity_score = $requests_per_hour;
+            $activity_score = (float) $requests_per_hour;
             
             // Boost for overall night activity
             if ($requests_tonight > 30) {
@@ -301,10 +328,11 @@ function lof_viewer_get_vibe(WP_REST_Request $request) {
             }
         } catch (Exception $e) {
             error_log('[LOF Vibe] MongoDB query failed: ' . $e->getMessage());
+            // Continue with fallback data
         }
     }
 
-    // Fallback: use trigger counts
+    // Fallback: use trigger counts from WordPress options
     $counts = get_option('lof_viewer_trigger_counts', array());
     $glow_count = get_option('lof_viewer_extras_glow_stats', array('total' => 0));
     $glow = isset($glow_count['total']) ? (int) $glow_count['total'] : 0;

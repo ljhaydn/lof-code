@@ -2714,38 +2714,32 @@
 }
 
 /* ===========================================
- * V1.5 WEARABLES CARD
+ * V1.5 INFO CARDS (Non-song cards)
+ * These use rf-info-card to avoid inheriting song card wiggle/glow
  * =========================================== */
 
-.rf-card--wearables {
-  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(233, 30, 99, 0.1) 100%);
-  border: 1px solid rgba(156, 39, 176, 0.3);
+.rf-info-card {
+  background: rgba(0, 30, 20, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
   padding: 1.25rem;
-  position: relative;
-  overflow: hidden;
+  /* NO transform, NO hover effects - these are NOT song cards */
 }
 
-.rf-card--wearables::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  right: -30%;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
-  pointer-events: none;
-}
-
-.rf-wearables-header {
+.rf-info-card-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.rf-wearables-icon {
-  font-size: 1.5rem;
+.rf-info-card-icon {
+  font-size: 1.3rem;
+}
+
+.rf-info-card-icon--pulse {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
@@ -2754,17 +2748,39 @@
   50% { opacity: 0.8; transform: scale(1.1); }
 }
 
-.rf-wearables-title {
-  font-size: 1.1rem;
+.rf-info-card-title {
+  font-size: 1rem;
   font-weight: 700;
   color: #fff;
   letter-spacing: 0.02em;
 }
 
-.rf-wearables-body {
+.rf-info-card-body {
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+/* ===========================================
+ * V1.5 WEARABLES CARD
+ * =========================================== */
+
+.rf-info-card--wearables {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(233, 30, 99, 0.1) 100%);
+  border: 1px solid rgba(156, 39, 176, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.rf-info-card--wearables::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .rf-wearables-main {
@@ -2778,47 +2794,36 @@
 .rf-wearables-detail {
   font-size: 0.85rem;
   color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 1rem;
 }
 
-.rf-wearables-link {
-  color: #ce93d8;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.rf-wearables-btn {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(135deg, #9c27b0 0%, #e91e63 100%);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  border-radius: 2rem;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.rf-wearables-link:hover {
-  color: #f48fb1;
+.rf-wearables-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(156, 39, 176, 0.4);
+  color: #fff;
 }
 
 /* ===========================================
  * V1.5 SEASON STATS CARD
  * =========================================== */
 
-.rf-card--season-stats {
+.rf-info-card--stats {
   background: linear-gradient(135deg, rgba(0, 100, 50, 0.2) 0%, rgba(0, 50, 30, 0.3) 100%);
   border: 1px solid rgba(76, 175, 80, 0.3);
-  border-radius: 1rem;
-  padding: 1.25rem;
-}
-
-.rf-season-stats-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.rf-season-stats-icon {
-  font-size: 1.3rem;
-}
-
-.rf-season-stats-title {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #fff;
-  letter-spacing: 0.02em;
 }
 
 .rf-season-stats-body {
@@ -2896,13 +2901,21 @@
 }
 
 /* ===========================================
+ * V1.5 DEVICE STATS CARD
+ * =========================================== */
+
+.rf-info-card--device-stats {
+  background: linear-gradient(135deg, rgba(201, 162, 39, 0.1) 0%, rgba(150, 120, 30, 0.08) 100%);
+  border: 1px solid rgba(201, 162, 39, 0.25);
+}
+
+/* ===========================================
  * V1.5 VIBE CHECK CARD
  * =========================================== */
 
-.rf-card--vibe {
+.rf-info-card--vibe {
   background: linear-gradient(135deg, rgba(33, 33, 33, 0.4) 0%, rgba(66, 66, 66, 0.3) 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 0.75rem;
   padding: 0.75rem 1rem;
   text-align: center;
 }
@@ -2925,33 +2938,33 @@
 }
 
 /* Vibe level variants */
-.rf-card--vibe-setup {
+.rf-info-card--vibe-setup {
   background: linear-gradient(135deg, rgba(100, 100, 100, 0.3) 0%, rgba(80, 80, 80, 0.2) 100%);
   border-color: rgba(150, 150, 150, 0.3);
 }
 
-.rf-card--vibe-warming {
+.rf-info-card--vibe-warming {
   background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%);
   border-color: rgba(255, 193, 7, 0.3);
 }
 
-.rf-card--vibe-forming {
+.rf-info-card--vibe-forming {
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(56, 142, 60, 0.1) 100%);
   border-color: rgba(76, 175, 80, 0.3);
 }
 
-.rf-card--vibe-lit {
+.rf-info-card--vibe-lit {
   background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(229, 57, 53, 0.1) 100%);
   border-color: rgba(244, 67, 54, 0.3);
 }
 
-.rf-card--vibe-fullsend {
+.rf-info-card--vibe-fullsend {
   background: linear-gradient(135deg, rgba(156, 39, 176, 0.2) 0%, rgba(103, 58, 183, 0.15) 100%);
   border-color: rgba(156, 39, 176, 0.4);
   animation: vibe-pulse 2s ease-in-out infinite;
 }
 
-.rf-card--vibe-legendary {
+.rf-info-card--vibe-legendary {
   background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 152, 0, 0.2) 100%);
   border-color: rgba(255, 215, 0, 0.5);
   animation: vibe-pulse 1.5s ease-in-out infinite;

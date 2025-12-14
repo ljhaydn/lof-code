@@ -17,9 +17,12 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-lof-speaker.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-glow.php';
 
 // V1.5: MongoDB integration for RF data (song stats, leaderboards)
-$mongo_class = plugin_dir_path(__FILE__) . 'includes/class-lof-mongo.php';
-if (file_exists($mongo_class)) {
-    require_once $mongo_class;
+// Only load if both extension AND library are available
+if (extension_loaded('mongodb') && class_exists('MongoDB\Client')) {
+    $mongo_class = plugin_dir_path(__FILE__) . 'includes/class-lof-mongo.php';
+    if (file_exists($mongo_class)) {
+        require_once $mongo_class;
+    }
 }
 
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-viewer-trigger-api.php';
