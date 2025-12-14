@@ -170,6 +170,9 @@ let currentQueueCounts = {};
 let lastCountedNowKey = null;
 let lastExtraSignature = null;
 
+// V1.5.1: Track previous now-playing key to detect when songs finish
+let previousPlayingNowKey = null;
+
 // V1.5: Current computed show state
 let currentShowState = 'offhours';
 
@@ -1408,7 +1411,11 @@ function updateSmartTimeMessage(showState) {
       nowMatches.push(nowLabel || nowKeyName);
     }
 
-    // V1.5 Bundle B: Get current song's remaining time for wait calculation
+    // V1.5.1: Use backend-calculated wait times from viewerState.queue when available
+    // This ensures consistency with the queue panel display
+    const enhancedQueue = (viewerState && viewerState.queue) ? viewerState.queue : null;
+
+    // Fallback: Get current song's remaining time for local wait calculation
     let currentSongRemaining = 0;
     if (window.LOFNowTiming && typeof window.LOFNowTiming.duration === 'number') {
       const timing = window.LOFNowTiming;
@@ -1433,12 +1440,18 @@ function updateSmartTimeMessage(showState) {
         if (requestedSongNames.includes(key)) {
           const pos = i + 1;
           
-          // V1.5 Bundle B: Calculate estimated wait time including current song
-          let estimatedWaitSec = currentSongRemaining; // Start with current song's remaining time
-          for (let j = 0; j < i; j++) {
-            const prevItem = queue[j];
-            if (prevItem && prevItem.sequence) {
-              estimatedWaitSec += (prevItem.sequence.duration || 180); // default 3 min
+          // V1.5.1: Prefer backend wait times, fallback to local calculation
+          let estimatedWaitSec;
+          if (enhancedQueue && enhancedQueue[i] && typeof enhancedQueue[i].waitSeconds === 'number') {
+            estimatedWaitSec = enhancedQueue[i].waitSeconds;
+          } else {
+            // Fallback: Calculate locally
+            estimatedWaitSec = currentSongRemaining;
+            for (let j = 0; j < i; j++) {
+              const prevItem = queue[j];
+              if (prevItem && prevItem.sequence) {
+                estimatedWaitSec += (prevItem.sequence.duration || 180);
+              }
             }
           }
           
@@ -2066,6 +2079,27 @@ function updateSmartTimeMessage(showState) {
     if (isPlayingReal && nowKey && nowKey !== lastCountedNowKey) {
       incrementPlayedCount(nowKey);
       lastCountedNowKey = nowKey;
+    }
+
+    // V1.5.1: Clear played song from requestedSongNames when it finishes
+    // Detect song transition: previous song was playing, now a different song is playing
+    if (previousPlayingNowKey && nowKey !== previousPlayingNowKey) {
+      // The previous song has finished - remove it from requested lists
+      const prevKey = previousPlayingNowKey;
+      if (requestedSongNames.includes(prevKey)) {
+        requestedSongNames = requestedSongNames.filter(function(name) { return name !== prevKey; });
+        saveRequestedSongs();
+        console.log('[LOF V1.5.1] Cleared finished song from requests:', prevKey);
+      }
+      // Also clear from session set
+      sessionRequestedNames.delete(prevKey);
+    }
+    // Update tracking for next transition
+    if (isPlayingReal && nowKey) {
+      previousPlayingNowKey = nowKey;
+    } else if (!isPlayingReal) {
+      // During intermission/standby, don't track as "playing"
+      previousPlayingNowKey = null;
     }
 
     if (viewerRoot) {
@@ -2741,8 +2775,8 @@ function getSongBadge(songName) {
   var songData = songBadgesCache[songName];
   if (!songData || !songData.badges || songData.badges.length === 0) return null;
   
-  // Priority: hot > favorite > gem
-  var priority = ['hot', 'favorite', 'gem'];
+  // V1.5.1: Priority: favorite > hot > gem (season champion is most prestigious)
+  var priority = ['favorite', 'hot', 'gem'];
   for (var i = 0; i < priority.length; i++) {
     var type = priority[i];
     for (var j = 0; j < songData.badges.length; j++) {
@@ -3055,35 +3089,10 @@ function renderQueue(extra, data) {
 function renderDeviceStatsCard(extra, queueLength) {
   const stats = viewerStats || { requests: 0, surprise: 0 };
 
-  // V1.5 ENHANCED: Vibe check factors in multiple signals, not just queue
-  const vibeLabel = lofCopy('stats_vibe_label', 'Falcon vibe check');
-  
-  // Calculate activity score from multiple sources
-  const deviceRequests = stats.requests || 0;
-  const deviceSurprises = stats.surprise || 0;
-  const baseActivity = queueLength + (deviceRequests * 0.3) + (deviceSurprises * 0.5);
-  
-  // Time-based boost: later = more energy (after 8 PM = +1, after 10 PM = +2)
-  const hour = new Date().getHours();
-  const timeBoost = hour >= 22 ? 2 : (hour >= 20 ? 1 : 0);
-  
-  const activityScore = baseActivity + timeBoost;
-  
-  let vibeText;
-  if (activityScore >= 8) {
-    vibeText = lofCopy('stats_vibe_high', 'Full-send Falcon 🔥');
-  } else if (activityScore >= 4) {
-    vibeText = lofCopy('stats_vibe_med', 'Party forming 🕺');
-  } else if (activityScore >= 2) {
-    vibeText = lofCopy('stats_vibe_warming', 'Warming up ✨');
-  } else {
-    vibeText = lofCopy('stats_vibe_low', 'Cozy & chill 😌');
-  }
-
   const card = document.createElement('div');
   card.className = 'rf-info-card rf-info-card--device-stats';
 
-  // V1.5.1: Updated titles and labels
+  // V1.5.1: Updated titles and labels - vibe will be lazy-loaded from API
   card.innerHTML = '<div class="rf-info-card-header">' +
       '<span class="rf-info-card-icon">✨</span>' +
       '<span class="rf-info-card-title">' + escapeHtml(lofCopy('device_stats_title', 'Your Session')) + '</span>' +
@@ -3097,13 +3106,46 @@ function renderDeviceStatsCard(extra, queueLength) {
         '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_surprise_label', 'Surprises rolled')) + '</span>' +
         '<span class="rf-stat-value">' + stats.surprise + '</span>' +
       '</div>' +
-      '<div class="rf-stat-item rf-stat-item--vibe">' +
-        '<span class="rf-stat-label">' + escapeHtml(vibeLabel) + '</span>' +
-        '<span class="rf-stat-value">' + escapeHtml(vibeText) + '</span>' +
+      '<div class="rf-stat-item rf-stat-item--vibe" id="rf-vibe-row">' +
+        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_vibe_label', 'Falcon vibe')) + '</span>' +
+        '<span class="rf-stat-value rf-stat-value--vibe-loading">checking...</span>' +
       '</div>' +
     '</div>';
 
   extra.appendChild(card);
+
+  // V1.5.1: Lazy-load vibe from API (global show data, not local)
+  fetchVibeCheck()
+    .then(function(vibe) {
+      const vibeRow = card.querySelector('#rf-vibe-row .rf-stat-value');
+      if (vibeRow && vibe) {
+        vibeRow.textContent = (vibe.emoji || '') + ' ' + (vibe.text || 'Vibes unknown');
+        vibeRow.classList.remove('rf-stat-value--vibe-loading');
+      } else if (vibeRow) {
+        // Fallback to local calculation if API fails
+        const baseActivity = queueLength + ((stats.requests || 0) * 0.3);
+        let fallbackText;
+        if (baseActivity >= 8) {
+          fallbackText = 'Full-send Falcon 🔥';
+        } else if (baseActivity >= 4) {
+          fallbackText = 'Party forming 🕺';
+        } else if (baseActivity >= 2) {
+          fallbackText = 'Warming up ✨';
+        } else {
+          fallbackText = 'Cozy & chill 😌';
+        }
+        vibeRow.textContent = fallbackText;
+        vibeRow.classList.remove('rf-stat-value--vibe-loading');
+      }
+    })
+    .catch(function(err) {
+      console.warn('[LOF V1.5.1] Vibe check failed:', err);
+      const vibeRow = card.querySelector('#rf-vibe-row .rf-stat-value');
+      if (vibeRow) {
+        vibeRow.textContent = 'Cozy & chill 😌';
+        vibeRow.classList.remove('rf-stat-value--vibe-loading');
+      }
+    });
 
   // Lazy-load Show Activity counts and enhance the card in-place
   fetchTriggerCounts()
@@ -3240,30 +3282,7 @@ function renderDeviceStatsCard(extra, queueLength) {
         body.appendChild(row);
       }
 
-      // V1.5 Bundle B: Add popular songs if available
-      if (triggers.popular_tonight) {
-        const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--popular';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_popular_tonight', '🎵 Most requested tonight:'))}
-          </span>
-          <span class="rf-stat-value rf-stat-value--song">${escapeHtml(triggers.popular_tonight)}</span>
-        `;
-        body.appendChild(row);
-      }
-
-      if (triggers.popular_alltime) {
-        const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--popular';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_popular_alltime', '👑 All-time favorite:'))}
-          </span>
-          <span class="rf-stat-value rf-stat-value--song">${escapeHtml(triggers.popular_alltime)}</span>
-        `;
-        body.appendChild(row);
-      }
+      // V1.5.1: Removed popular songs from here - they're in Hot Right Now card
     })
     .catch((err) => {
       console.warn('[LOF V1.5] Trigger counts update failed:', err);

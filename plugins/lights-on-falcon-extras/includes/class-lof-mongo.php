@@ -117,7 +117,7 @@ class LOF_Mongo {
                     ]
                 ]],
                 ['$group' => [
-                    '_id' => '$stats.jukebox.sequence',
+                    '_id' => '$stats.jukebox.name',
                     'count' => ['$sum' => 1]
                 ]],
                 ['$sort' => ['count' => -1]],
@@ -195,7 +195,7 @@ class LOF_Mongo {
                     ]
                 ]],
                 ['$group' => [
-                    '_id' => '$stats.jukebox.sequence',
+                    '_id' => '$stats.jukebox.name',
                     'count' => ['$sum' => 1]
                 ]],
                 ['$sort' => ['count' => -1]],
@@ -250,12 +250,17 @@ class LOF_Mongo {
     public static function get_all_song_counts_season() {
         $cache_key = 'lof_mongo_all_counts_season';
         $cached = get_transient($cache_key);
-        if ($cached !== false) {
+        
+        // V1.5.1: Only use cache if it's a non-empty array
+        if (is_array($cached) && !empty($cached)) {
             return $cached;
         }
         
         $client = self::get_client();
-        if (!$client) return [];
+        if (!$client) {
+            error_log('[LOF Mongo] get_all_song_counts_season: No client');
+            return [];
+        }
         
         try {
             $collection = $client->selectCollection(self::$database, 'show');
@@ -272,7 +277,7 @@ class LOF_Mongo {
                     ]
                 ]],
                 ['$group' => [
-                    '_id' => '$stats.jukebox.sequence',
+                    '_id' => '$stats.jukebox.name',
                     'count' => ['$sum' => 1]
                 ]]
             ];
@@ -282,10 +287,18 @@ class LOF_Mongo {
             
             foreach ($results as $result) {
                 $result_array = json_decode(json_encode($result), true);
-                $counts[$result_array['_id']] = $result_array['count'];
+                if (isset($result_array['_id']) && $result_array['_id'] !== null) {
+                    $counts[$result_array['_id']] = $result_array['count'];
+                }
             }
             
-            set_transient($cache_key, $counts, 300); // 5 min cache
+            // V1.5.1: Only cache if we got actual data
+            if (!empty($counts)) {
+                set_transient($cache_key, $counts, 300); // 5 min cache
+            } else {
+                error_log('[LOF Mongo] get_all_song_counts_season: Empty counts, not caching');
+            }
+            
             return $counts;
             
         } catch (Exception $e) {
