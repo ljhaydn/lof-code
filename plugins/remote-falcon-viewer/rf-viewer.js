@@ -3383,151 +3383,30 @@ function renderHotRightNowCard(extra) {
 
 /**
  * V1.5: Render engaging off-hours panel
- * Shows season stats, leaderboard, wearables info - the FOMO generator content!
+ * Shows wearables info - the FOMO generator content!
+ * V1.5.1: Uses same card rendering functions as show hours for consistency
  */
 function renderOffHoursPanel(extra) {
-  // Create a wrapper for all off-hours content
+  // Create a wrapper for wearables
   const wrapper = document.createElement('div');
   wrapper.className = 'rf-offhours-panel';
   
   // --- WEARABLES CARD ---
   wrapper.appendChild(createWearablesCardElement());
   
-  // --- SEASON STATS CARD ---
-  const statsCard = document.createElement('div');
-  statsCard.className = 'rf-info-card rf-info-card--stats';
-  statsCard.innerHTML = `
-    <div class="rf-info-card-header">
-      <span class="rf-info-card-icon">🎄</span>
-      <span class="rf-info-card-title">Season So Far</span>
-    </div>
-    <div class="rf-info-card-body rf-season-stats-body">
-      <div class="rf-season-stat-loading">Loading the magic... ✨</div>
-    </div>
-  `;
-  wrapper.appendChild(statsCard);
-  
   extra.appendChild(wrapper);
   
-  // Lazy-load the actual stats from the API
-  fetchTriggerCounts()
-    .then((triggers) => {
-      const body = statsCard.querySelector('.rf-season-stats-body');
-      if (!body) return;
-      
-      // Even if triggers is null/undefined, show fallback stats
-      if (!triggers) {
-        body.innerHTML = `
-          <div class="rf-season-stat-row">
-            <span class="rf-season-stat-icon">🎵</span>
-            <span class="rf-season-stat-label">Songs requested</span>
-            <span class="rf-season-stat-value">1,200+</span>
-          </div>
-          <div class="rf-season-stat-row">
-            <span class="rf-season-stat-icon">💛</span>
-            <span class="rf-season-stat-label">Glows of kindness</span>
-            <span class="rf-season-stat-value">400+</span>
-          </div>
-        `;
-        return;
-      }
-      
-      body.innerHTML = ''; // Clear loading message
-      
-      // Season requests (with FOMO padding already applied by API)
-      const seasonRequests = triggers.requests_season || 800;
-      addSeasonStatRow(body, '🎵', 'Songs requested', seasonRequests.toLocaleString());
-      
-      // Glows (already padded)
-      const glowCount = triggers.glow || 300;
-      addSeasonStatRow(body, '💛', 'Glows of kindness', glowCount.toLocaleString());
-      
-      // Speaker activations (already padded)
-      const speakerCount = triggers.speaker || 200;
-      addSeasonStatRow(body, '📻', 'Speaker activations', speakerCount.toLocaleString());
-      
-      // Surprise rolls (already padded)
-      const surpriseCount = triggers.surprise || 100;
-      addSeasonStatRow(body, '🎁', 'Surprise rolls', surpriseCount.toLocaleString());
-      
-      // Letters to Santa
-      if (triggers.mailbox) {
-        addSeasonStatRow(body, '🎅', 'Letters to Santa', triggers.mailbox.toLocaleString());
-      }
-      
-      // Divider before leaderboard
-      const divider = document.createElement('div');
-      divider.className = 'rf-season-stat-divider';
-      body.appendChild(divider);
-      
-      // Top songs
-      if (triggers.popular_alltime) {
-        const topRow = document.createElement('div');
-        topRow.className = 'rf-season-stat-row rf-season-stat-row--highlight';
-        topRow.innerHTML = `
-          <span class="rf-season-stat-icon">👑</span>
-          <span class="rf-season-stat-label">Season favorite:</span>
-          <span class="rf-season-stat-value rf-season-stat-value--song">${escapeHtml(triggers.popular_alltime)}</span>
-        `;
-        body.appendChild(topRow);
-      }
-      
-      if (triggers.popular_tonight) {
-        const hotRow = document.createElement('div');
-        hotRow.className = 'rf-season-stat-row rf-season-stat-row--hot';
-        hotRow.innerHTML = `
-          <span class="rf-season-stat-icon">🔥</span>
-          <span class="rf-season-stat-label">Hot tonight:</span>
-          <span class="rf-season-stat-value rf-season-stat-value--song">${escapeHtml(triggers.popular_tonight)}</span>
-        `;
-        body.appendChild(hotRow);
-      }
-    })
-    .catch((err) => {
-      console.warn('[LOF] Off-hours stats failed:', err);
-      const body = statsCard.querySelector('.rf-season-stats-body');
-      if (body) {
-        // Show fallback stats instead of error
-        body.innerHTML = `
-          <div class="rf-season-stat-row">
-            <span class="rf-season-stat-icon">🎵</span>
-            <span class="rf-season-stat-label">Songs requested</span>
-            <span class="rf-season-stat-value">1,200+</span>
-          </div>
-          <div class="rf-season-stat-row">
-            <span class="rf-season-stat-icon">💛</span>
-            <span class="rf-season-stat-label">Glows of kindness</span>
-            <span class="rf-season-stat-value">400+</span>
-          </div>
-          <div class="rf-season-stat-row">
-            <span class="rf-season-stat-icon">📻</span>
-            <span class="rf-season-stat-label">Speaker activations</span>
-            <span class="rf-season-stat-value">300+</span>
-          </div>
-        `;
-      }
-    });
+  // V1.5.1: Use the SAME card rendering functions as show hours
+  // This ensures consistent styling and data sources
   
-  // Also fetch and display the vibe check
-  fetchVibeCheck()
-    .then((vibe) => {
-      if (!vibe) return;
-      
-      const vibeCard = document.createElement('div');
-      vibeCard.className = 'rf-info-card rf-info-card--vibe rf-info-card--vibe-' + (vibe.level || 'setup');
-      vibeCard.innerHTML = `
-        <div class="rf-vibe-content">
-          <span class="rf-vibe-emoji">${vibe.emoji || '🔧'}</span>
-          <span class="rf-vibe-text">${escapeHtml(vibe.text || 'System status unknown')}</span>
-        </div>
-      `;
-      
-      // Insert vibe card at the top of the off-hours panel
-      wrapper.insertBefore(vibeCard, wrapper.firstChild);
-    })
-    .catch((err) => {
-      console.warn('[LOF] Vibe check failed:', err);
-    });
+  // Your Session card (device stats)
+  renderDeviceStatsCard(extra, 0);
+  
+  // Season Stats card (community counters) - SAME as during show
+  renderSeasonStatsCard(extra);
+  
+  // Hot Right Now card (top songs)
+  renderHotRightNowCard(extra);
 }
 
 /**
