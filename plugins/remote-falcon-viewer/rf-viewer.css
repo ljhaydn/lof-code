@@ -2702,3 +2702,481 @@
   flex-shrink: 0;
   margin-left: auto;
 }
+
+/* ===========================================
+ * V1.5 OFF-HOURS PANEL
+ * =========================================== */
+
+.rf-offhours-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ===========================================
+ * V1.5 WEARABLES CARD
+ * =========================================== */
+
+.rf-card--wearables {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(233, 30, 99, 0.1) 100%);
+  border: 1px solid rgba(156, 39, 176, 0.3);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.rf-card--wearables::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -30%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.rf-wearables-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.rf-wearables-icon {
+  font-size: 1.5rem;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+.rf-wearables-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.rf-wearables-body {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.rf-wearables-main {
+  margin-bottom: 0.75rem;
+}
+
+.rf-wearables-main strong {
+  color: #e1bee7;
+}
+
+.rf-wearables-detail {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.rf-wearables-link {
+  color: #ce93d8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.rf-wearables-link:hover {
+  color: #f48fb1;
+}
+
+/* ===========================================
+ * V1.5 SEASON STATS CARD
+ * =========================================== */
+
+.rf-card--season-stats {
+  background: linear-gradient(135deg, rgba(0, 100, 50, 0.2) 0%, rgba(0, 50, 30, 0.3) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+
+.rf-season-stats-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rf-season-stats-icon {
+  font-size: 1.3rem;
+}
+
+.rf-season-stats-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.02em;
+}
+
+.rf-season-stats-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rf-season-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+}
+
+.rf-season-stat-icon {
+  font-size: 1rem;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.rf-season-stat-label {
+  flex: 1;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.rf-season-stat-value {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--accent, #c9a227);
+}
+
+.rf-season-stat-value--song {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #fff;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rf-season-stat-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0;
+}
+
+.rf-season-stat-row--highlight {
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 -0.5rem;
+}
+
+.rf-season-stat-row--hot {
+  background: rgba(244, 67, 54, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin: 0 -0.5rem;
+}
+
+.rf-season-stat-loading {
+  text-align: center;
+  padding: 1rem 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.rf-season-stat-error {
+  text-align: center;
+  padding: 1rem 0;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ===========================================
+ * V1.5 VIBE CHECK CARD
+ * =========================================== */
+
+.rf-card--vibe {
+  background: linear-gradient(135deg, rgba(33, 33, 33, 0.4) 0%, rgba(66, 66, 66, 0.3) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+.rf-vibe-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.rf-vibe-emoji {
+  font-size: 1.3rem;
+}
+
+.rf-vibe-text {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Vibe level variants */
+.rf-card--vibe-setup {
+  background: linear-gradient(135deg, rgba(100, 100, 100, 0.3) 0%, rgba(80, 80, 80, 0.2) 100%);
+  border-color: rgba(150, 150, 150, 0.3);
+}
+
+.rf-card--vibe-warming {
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%);
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+.rf-card--vibe-forming {
+  background: linear-gradient(135deg, rgba(76, 175, 80, 0.15) 0%, rgba(56, 142, 60, 0.1) 100%);
+  border-color: rgba(76, 175, 80, 0.3);
+}
+
+.rf-card--vibe-lit {
+  background: linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(229, 57, 53, 0.1) 100%);
+  border-color: rgba(244, 67, 54, 0.3);
+}
+
+.rf-card--vibe-fullsend {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.2) 0%, rgba(103, 58, 183, 0.15) 100%);
+  border-color: rgba(156, 39, 176, 0.4);
+  animation: vibe-pulse 2s ease-in-out infinite;
+}
+
+.rf-card--vibe-legendary {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(255, 152, 0, 0.2) 100%);
+  border-color: rgba(255, 215, 0, 0.5);
+  animation: vibe-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes vibe-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1); }
+  50% { transform: scale(1.01); box-shadow: 0 0 20px 2px rgba(255, 255, 255, 0.05); }
+}
+
+/* ===========================================
+ * V1.5 CATEGORY PILLS - SCROLLABLE
+ * =========================================== */
+
+.rf-category-pills-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.rf-category-pills {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.rf-category-pills::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fade edges to indicate scroll */
+.rf-category-pills-wrapper::before,
+.rf-category-pills-wrapper::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rf-category-pills-wrapper::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg-dark, #0d1a14), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.rf-category-pills-wrapper::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg-dark, #0d1a14), transparent);
+  opacity: 1;
+}
+
+.rf-category-pills-wrapper.scrolled-left::before {
+  opacity: 1;
+}
+
+.rf-category-pills-wrapper.scrolled-right::after {
+  opacity: 0;
+}
+
+.rf-category-pill {
+  flex-shrink: 0;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.rf-category-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.rf-category-pill.active {
+  background: var(--accent, #c9a227);
+  color: #000;
+  border-color: var(--accent, #c9a227);
+  box-shadow: 0 0 12px rgba(201, 162, 39, 0.3);
+}
+
+.rf-category-pill-count {
+  display: inline-block;
+  margin-left: 0.35rem;
+  padding: 0.1rem 0.4rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 1rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.rf-category-pill.active .rf-category-pill-count {
+  background: rgba(0, 0, 0, 0.3);
+  color: #000;
+}
+
+/* Scroll indicator dots */
+.rf-category-scroll-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
+.rf-category-scroll-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transition: background 0.2s;
+}
+
+.rf-category-scroll-dot.active {
+  background: var(--accent, #c9a227);
+}
+
+/* ===========================================
+ * V1.5 SONG BADGES
+ * =========================================== */
+
+.rf-song-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-left: 0.35rem;
+}
+
+.rf-song-badge--hot {
+  background: rgba(244, 67, 54, 0.2);
+  color: #ff6659;
+}
+
+.rf-song-badge--favorite {
+  background: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+}
+
+.rf-song-badge--gem {
+  background: rgba(0, 188, 212, 0.2);
+  color: #4dd0e1;
+}
+
+.rf-song-badge--fresh {
+  background: rgba(76, 175, 80, 0.2);
+  color: #81c784;
+}
+
+/* ===========================================
+ * V1.5 PAUSE PANEL (during show lockout)
+ * =========================================== */
+
+.rf-extra-panel--pause {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.rf-extra-panel--pause .rf-extra-title {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.rf-extra-panel--pause .rf-extra-sub {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===========================================
+ * V1.5 ENHANCED SURPRISE ME TOAST
+ * =========================================== */
+
+.rf-toast--surprise {
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.95) 0%, rgba(103, 58, 183, 0.95) 100%);
+}
+
+.rf-toast--surprise .rf-toast-icon {
+  font-size: 1.5rem;
+  animation: dice-roll 0.6s ease-out;
+}
+
+@keyframes dice-roll {
+  0% { transform: rotate(0deg) scale(0.5); opacity: 0; }
+  50% { transform: rotate(180deg) scale(1.2); }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+
+/* ===========================================
+ * V1.5 MOBILE OPTIMIZATIONS
+ * =========================================== */
+
+@media (max-width: 600px) {
+  .rf-offhours-panel {
+    gap: 0.75rem;
+  }
+  
+  .rf-card--wearables,
+  .rf-card--season-stats {
+    padding: 1rem;
+  }
+  
+  .rf-wearables-body {
+    font-size: 0.85rem;
+  }
+  
+  .rf-season-stat-value--song {
+    max-width: 100px;
+  }
+  
+  .rf-category-pill {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+}

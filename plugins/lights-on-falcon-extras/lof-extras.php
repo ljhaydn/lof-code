@@ -2,7 +2,7 @@
 /*
 Plugin Name: Lights On Falcon - Extras
 Description: Core logic, APIs, settings, and viewer enhancements for the the Lights on Falcon experience.
-Version: 1.0.0
+Version: 1.5.0
 Author: Lights on Falcon
 */
 
@@ -15,6 +15,13 @@ require_once plugin_dir_path(__FILE__) . 'includes/class-lof-settings.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-api.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-speaker.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-glow.php';
+
+// V1.5: MongoDB integration for RF data (song stats, leaderboards)
+$mongo_class = plugin_dir_path(__FILE__) . 'includes/class-lof-mongo.php';
+if (file_exists($mongo_class)) {
+    require_once $mongo_class;
+}
+
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-viewer-trigger-api.php';
 require_once plugin_dir_path(__FILE__) . 'includes/class-lof-viewer-state.php';
 

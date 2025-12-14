@@ -657,17 +657,30 @@ function showGeoMessage(distance, city, extra) {
     extra.prepend(card);
     return;
   } else {
-    // Fallback – no reliable distance; err on the side of granting access
-    noticeClass = 'rf-geo-notice--fallback';
-    message = lofCopy(
-      'geo_fallback_message',
-      'Location services unavailable - full access granted'
-    );
+    // Fallback – no reliable distance data
+    // Default to remote (require "I'm here" button) to prevent abuse
+    // Only show this if user hasn't already confirmed local status
+    if (!userConfirmedLocal) {
+      noticeClass = 'rf-geo-notice--far';
+      message = lofCopy('geo_fallback_message', 'Near the display? Tap below to unlock full access');
 
-    userConfirmedLocal = true;
-    try {
-      localStorage.setItem('lofUserConfirmedLocal', 'true');
-    } catch (e) {}
+      const confirmBtnText = lofCopy('geo_confirm_btn', 'I\'m here - full access');
+
+      card.innerHTML = `
+        <div class="rf-geo-notice ${noticeClass}">
+          <div class="rf-geo-message">${escapeHtml(message)}</div>
+          <button class="rf-geo-confirm-btn" onclick="window.lofConfirmLocal()">
+            ${escapeHtml(confirmBtnText)}
+          </button>
+        </div>
+      `;
+      extra.prepend(card);
+      return;
+    }
+    
+    // User already confirmed - show local message
+    noticeClass = 'rf-geo-notice--local';
+    message = lofCopy('geo_local_message', 'Welcome neighbor! 🎄');
   }
 
   card.innerHTML = `
@@ -720,10 +733,18 @@ window.lofConfirmLocal = function() {
   );
 };
 
-// Check localStorage on load
+// Check localStorage on load - but validate it's from today's session
 try {
-  if (localStorage.getItem('lofUserConfirmedLocal') === 'true') {
+  const geoSessionDate = localStorage.getItem('lofGeoSessionDate');
+  const today = new Date().toDateString();
+  
+  if (geoSessionDate === today && localStorage.getItem('lofUserConfirmedLocal') === 'true') {
     userConfirmedLocal = true;
+  } else {
+    // New day or no session - clear old geo status
+    localStorage.removeItem('lofUserConfirmedLocal');
+    localStorage.setItem('lofGeoSessionDate', today);
+    userConfirmedLocal = false;
   }
 } catch (e) {}
 
@@ -2101,12 +2122,13 @@ function updateSmartTimeMessage(showState) {
           // Queue has items - show next requested song
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'Requested by a guest';
-        } else if (state.isShowPlaylist && !hasAnyQueue) {
-          // Show playlist (random inserts) with no queue - DJ is picking
+        } else if (state.djFalconMode || (state.isShowPlaylist && !hasAnyQueue)) {
+          // DJ Falcon mode: show playlist with random inserts, no queue
+          // We genuinely don't know what's next - DJ Falcon is in control!
           nextTitleEl.textContent = '🎲 DJ Falcon\'s picking next...';
           nextSubtitle = 'Or request your own below';
-        } else if (viewerState.nextUp && viewerState.nextUp.displayName && viewerState.nextUp.source === 'playlist') {
-          // Sequential playlist - we know the actual next song
+        } else if (viewerState.nextUp && viewerState.nextUp.displayName && viewerState.nextUp.source === 'playlist' && !state.isShowPlaylist) {
+          // Sequential playlist (NOT show playlist) - we know the actual next song
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'From tonight\'s playlist — or pick your own!';
         } else if (state.isIntermission && !hasAnyQueue) {
@@ -2664,14 +2686,28 @@ async function fetchTriggerCounts() {
     // Check if we have queued songs - if so, ALWAYS show the queue even during lockout
     const hasQueuedSongs = data && Array.isArray(data.requests) && data.requests.length > 0;
     
+    // V1.5: During off-hours, show engaging content instead of boring "paused" message
+    const isOffHours = viewerState && viewerState.state && viewerState.state.isAfterHours;
+    
     if (!enabled && !hasQueuedSongs) {
-      // No requests allowed AND no songs queued - show paused message
-      extra.innerHTML = `
-        <div class="rf-extra-title">Viewer control paused</div>
-        <div class="rf-extra-sub">
-          When interactive mode is back on, you'll see the live request queue or top-voted songs here.
-        </div>
-      `;
+      // No requests allowed AND no songs queued
+      if (isOffHours) {
+        // OFF-HOURS: Show the good stuff - stats, leaderboard, wearables (FOMO content!)
+        // The hero already shows "lights are resting" - this panel shows why they should come back
+        renderOffHoursPanel(extra);
+      } else {
+        // During show hours but control paused (rare edge case)
+        const state = viewerState && viewerState.state ? viewerState.state : {};
+        const nextShow = state.nextShowTime || state.nextResetTime || 'soon';
+        extra.innerHTML = `
+          <div class="rf-extra-panel rf-extra-panel--pause">
+            <div class="rf-extra-title">✨ Quick breather</div>
+            <div class="rf-extra-sub">
+              The ${nextShow} show is about to begin! Queue opens back up after.
+            </div>
+          </div>
+        `;
+      }
     } else if (mode === 'JUKEBOX' || hasQueuedSongs) {
       // JUKEBOX mode OR we have songs queued - always show the queue
       renderQueue(extra, data);
@@ -3136,6 +3172,172 @@ function renderDeviceStatsCard(extra, queueLength) {
     .catch((err) => {
       console.warn('[LOF V1.5] Trigger counts update failed:', err);
     });
+}
+
+/**
+ * V1.5: Render engaging off-hours panel
+ * Shows season stats, leaderboard, wearables info - the FOMO generator content!
+ */
+function renderOffHoursPanel(extra) {
+  // Create a wrapper for all off-hours content
+  const wrapper = document.createElement('div');
+  wrapper.className = 'rf-offhours-panel';
+  
+  // --- WEARABLES CARD (the unique differentiator!) ---
+  const wearablesCard = document.createElement('div');
+  wearablesCard.className = 'rf-card rf-card--wearables';
+  wearablesCard.innerHTML = `
+    <div class="rf-wearables-header">
+      <span class="rf-wearables-icon">⚡</span>
+      <span class="rf-wearables-title">Sync Up & Glow</span>
+    </div>
+    <div class="rf-wearables-body">
+      <p class="rf-wearables-main">
+        Every night we set out <strong>synchronized wristbands and light sticks</strong> for guests. 
+        Put one on. Become the show. Watch the kids absolutely lose it. It's a whole thing.
+      </p>
+      <p class="rf-wearables-detail">
+        Just return them when you leave (they need their beauty sleep on the charger). 
+        Or <a href="https://www.lightsonfalcon.com/support-the-show/" target="_blank" class="rf-wearables-link">make a small donation</a> and keep the magic forever. 
+        We don't judge. 💫
+      </p>
+    </div>
+  `;
+  wrapper.appendChild(wearablesCard);
+  
+  // --- SEASON STATS CARD ---
+  const statsCard = document.createElement('div');
+  statsCard.className = 'rf-card rf-card--season-stats';
+  statsCard.innerHTML = `
+    <div class="rf-season-stats-header">
+      <span class="rf-season-stats-icon">🎄</span>
+      <span class="rf-season-stats-title">Season So Far</span>
+    </div>
+    <div class="rf-season-stats-body">
+      <div class="rf-season-stat-loading">Loading the magic... ✨</div>
+    </div>
+  `;
+  wrapper.appendChild(statsCard);
+  
+  extra.appendChild(wrapper);
+  
+  // Lazy-load the actual stats from the API
+  fetchTriggerCounts()
+    .then((triggers) => {
+      const body = statsCard.querySelector('.rf-season-stats-body');
+      if (!body || !triggers) return;
+      
+      body.innerHTML = ''; // Clear loading message
+      
+      // Season requests (with FOMO padding)
+      const seasonRequests = triggers.requests_season || 0;
+      addSeasonStatRow(body, '🎵', 'Songs requested', seasonRequests.toLocaleString());
+      
+      // Glows
+      const glowCount = triggers.glow || 0;
+      const boostedGlow = 300 + glowCount + Math.round(glowCount * 1.25);
+      addSeasonStatRow(body, '💛', 'Glows of kindness', boostedGlow.toLocaleString());
+      
+      // Speaker activations
+      const speakerCount = triggers.speaker || 0;
+      const boostedSpeaker = 200 + speakerCount;
+      addSeasonStatRow(body, '📻', 'Speaker activations', boostedSpeaker.toLocaleString());
+      
+      // Surprise rolls
+      const surpriseCount = triggers.surprise || 0;
+      const boostedSurprise = 100 + surpriseCount;
+      addSeasonStatRow(body, '🎁', 'Surprise rolls', boostedSurprise.toLocaleString());
+      
+      // Letters to Santa
+      if (triggers.mailbox) {
+        const boostedMailbox = 50 + triggers.mailbox + Math.round(triggers.mailbox * 1.5);
+        addSeasonStatRow(body, '🎅', 'Letters to Santa', boostedMailbox.toLocaleString());
+      }
+      
+      // Divider before leaderboard
+      const divider = document.createElement('div');
+      divider.className = 'rf-season-stat-divider';
+      body.appendChild(divider);
+      
+      // Top songs
+      if (triggers.popular_alltime) {
+        const topRow = document.createElement('div');
+        topRow.className = 'rf-season-stat-row rf-season-stat-row--highlight';
+        topRow.innerHTML = `
+          <span class="rf-season-stat-icon">👑</span>
+          <span class="rf-season-stat-label">Season favorite:</span>
+          <span class="rf-season-stat-value rf-season-stat-value--song">${escapeHtml(triggers.popular_alltime)}</span>
+        `;
+        body.appendChild(topRow);
+      }
+      
+      if (triggers.popular_tonight) {
+        const hotRow = document.createElement('div');
+        hotRow.className = 'rf-season-stat-row rf-season-stat-row--hot';
+        hotRow.innerHTML = `
+          <span class="rf-season-stat-icon">🔥</span>
+          <span class="rf-season-stat-label">Hot tonight:</span>
+          <span class="rf-season-stat-value rf-season-stat-value--song">${escapeHtml(triggers.popular_tonight)}</span>
+        `;
+        body.appendChild(hotRow);
+      }
+    })
+    .catch((err) => {
+      console.warn('[LOF] Off-hours stats failed:', err);
+      const body = statsCard.querySelector('.rf-season-stats-body');
+      if (body) {
+        body.innerHTML = '<div class="rf-season-stat-error">Stats taking a break too 😴</div>';
+      }
+    });
+  
+  // Also fetch and display the vibe check
+  fetchVibeCheck()
+    .then((vibe) => {
+      if (!vibe) return;
+      
+      const vibeCard = document.createElement('div');
+      vibeCard.className = 'rf-card rf-card--vibe rf-card--vibe-' + (vibe.level || 'setup');
+      vibeCard.innerHTML = `
+        <div class="rf-vibe-content">
+          <span class="rf-vibe-emoji">${vibe.emoji || '🔧'}</span>
+          <span class="rf-vibe-text">${escapeHtml(vibe.text || 'System status unknown')}</span>
+        </div>
+      `;
+      
+      // Insert vibe card at the top of the off-hours panel
+      wrapper.insertBefore(vibeCard, wrapper.firstChild);
+    })
+    .catch((err) => {
+      console.warn('[LOF] Vibe check failed:', err);
+    });
+}
+
+// Helper to add a stat row
+function addSeasonStatRow(container, icon, label, value) {
+  const row = document.createElement('div');
+  row.className = 'rf-season-stat-row';
+  row.innerHTML = `
+    <span class="rf-season-stat-icon">${icon}</span>
+    <span class="rf-season-stat-label">${escapeHtml(label)}</span>
+    <span class="rf-season-stat-value">${escapeHtml(value)}</span>
+  `;
+  container.appendChild(row);
+}
+
+// Fetch vibe check from API
+async function fetchVibeCheck() {
+  try {
+    const res = await fetch('/wp-json/lof-viewer/v1/vibe-check', {
+      method: 'GET',
+      credentials: 'same-origin'
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.success ? data.vibe : null;
+  } catch (e) {
+    console.warn('[LOF] Vibe API error:', e);
+    return null;
+  }
 }
 
   /* -------------------------
@@ -4235,5 +4437,30 @@ setInterval(tickNowProgress, 1000);
 
 // V1.5: Speaker protection check every 3s
 setInterval(checkSpeakerProtection, 3000);
+
+// V1.5: Refresh data when tab regains focus (fixes stale state after browser switch)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    console.log('[LOF] Tab visible - refreshing data');
+    fetchShowDetails();
+    fetchFppStatus();
+  }
+});
+
+// V1.5: Check and reset device stats at midnight
+function checkMidnightReset() {
+  const today = new Date().toDateString();
+  try {
+    const storedDate = localStorage.getItem('lofStatsDate');
+    if (storedDate !== today) {
+      console.log('[LOF] New day - resetting device stats');
+      localStorage.setItem('lofStatsDate', today);
+      localStorage.setItem('lofStatsRequests', '0');
+      localStorage.setItem('lofStatsSurprise', '0');
+      viewerStats = { requests: 0, surprise: 0 };
+    }
+  } catch (e) {}
+}
+checkMidnightReset();
 
 })();

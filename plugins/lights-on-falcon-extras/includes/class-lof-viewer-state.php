@@ -212,7 +212,15 @@ class LOF_Viewer_State {
 
         // Build next up info
         $next_up = null;
+        
+        // During show playlist mode (random inserts), we genuinely don't know what's next
+        // RF's playingNext is unreliable - it reports the scheduled song but FPP may play
+        // a random insert instead. So we intentionally leave nextUp null to trigger
+        // "DJ Falcon's picking..." messaging in the frontend.
+        $dj_falcon_mode = $is_show_playlist && count($requests) === 0;
+        
         if (count($queue) > 0) {
+            // Queue has items - we DO know what's next (the first queued song)
             $next_up = [
                 'sequence'    => $queue[0]['sequence'],
                 'displayName' => $queue[0]['displayName'],
@@ -221,8 +229,8 @@ class LOF_Viewer_State {
                 'isRequest'   => true,
                 'source'      => 'queue',
             ];
-        } elseif (!empty($rf_playing_next) || !empty($rf_playing_next_from_schedule)) {
-            // RF has a playingNext that's not from queue - try both sources
+        } elseif (!$dj_falcon_mode && (!empty($rf_playing_next) || !empty($rf_playing_next_from_schedule))) {
+            // NOT in DJ Falcon mode - we can trust RF's playingNext (sequential playlist)
             $next_song_name = !empty($rf_playing_next) ? $rf_playing_next : $rf_playing_next_from_schedule;
             
             // Skip if it's just "Intermission" or similar non-song values
@@ -239,10 +247,12 @@ class LOF_Viewer_State {
                     'artist'      => $next_seq ? (isset($next_seq['artist']) ? $next_seq['artist'] : '') : '',
                     'waitSeconds' => $fpp_seconds_remaining,
                     'isRequest'   => false,
-                    'source'      => $is_show_playlist ? 'show_playlist' : 'playlist',
+                    'source'      => 'playlist',
                 ];
             }
         }
+        // If $dj_falcon_mode is true and queue is empty, nextUp stays null
+        // This triggers the "DJ Falcon's picking..." UI in the frontend
 
         // Determine if requests are allowed
         $requests_allowed = $viewer_control_enabled && !$is_lockout && !$is_after_hours && !$is_preshow && !$is_reset_playlist;
@@ -284,6 +294,7 @@ class LOF_Viewer_State {
                 'mode'                   => $mode,
                 'playlistName'           => $playlist_name,
                 'isShowPlaylist'         => $is_show_playlist,
+                'djFalconMode'           => $dj_falcon_mode,  // V1.5: When true, show "DJ Falcon's picking..."
                 'isIntermission'         => $is_intermission,
                 'isReset'                => $is_reset_playlist,
                 'isShowHours'            => $is_show_hours,

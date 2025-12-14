@@ -420,11 +420,17 @@ class RF_Viewer_Plugin {
         global $post;
         if (!$post || strpos($post->post_content, '[rf_viewer]') === false) return;
 
+        // V1.5: Use filemtime for automatic cache busting on file changes
+        $js_file = plugin_dir_path(__FILE__) . 'rf-viewer.js';
+        $css_file = plugin_dir_path(__FILE__) . 'rf-viewer.css';
+        $js_version = file_exists($js_file) ? filemtime($js_file) : '1.5.0';
+        $css_version = file_exists($css_file) ? filemtime($css_file) : '1.5.0';
+
         wp_enqueue_script(
             'rf-viewer-js',
             plugin_dir_url(__FILE__) . 'rf-viewer.js',
             [],
-            '1.2.0',
+            $js_version,
             true
         );
         wp_localize_script('rf-viewer-js', 'RFViewer', [
@@ -435,7 +441,7 @@ class RF_Viewer_Plugin {
             'rf-viewer-css',
             plugin_dir_url(__FILE__) . 'rf-viewer.css',
             [],
-            '1.2.0'
+            $css_version
         );
     }
 
