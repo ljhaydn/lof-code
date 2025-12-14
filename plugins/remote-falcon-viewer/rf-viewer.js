@@ -2255,7 +2255,7 @@ function updateSmartTimeMessage(showState) {
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'From tonight\'s playlist — or pick your own!';
         } else if (state.isIntermission && !hasAnyQueue) {
-          // Intermission with empty queue - include next show time
+          // Intermission sequence playing, no queue - show next showtime
           const showTime = state.nextShowTime || state.nextResetTime || '';
           if (showTime && showTime !== 'soon') {
             nextTitleEl.textContent = '🎶 Your call — pick a song or catch the ' + showTime + ' show';
@@ -2263,18 +2263,13 @@ function updateSmartTimeMessage(showState) {
             nextTitleEl.textContent = '🎶 Your call — request a song below';
           }
           nextSubtitle = 'Music plays when you pick one!';
-        } else if (currentShowState === 'intermission' && !hasAnyQueue && isPlayingReal) {
-          // V1.5.1: During intermission time, even with a song playing, show next showtime
-          const showTime = state.nextShowTime || state.nextResetTime || '';
-          if (showTime && showTime !== 'soon') {
-            nextTitleEl.textContent = '🎶 Coming up: the ' + showTime + ' show';
-            nextSubtitle = 'Or request another song now!';
-          } else {
-            nextTitleEl.textContent = '🎶 Request another song';
-            nextSubtitle = 'Your pick plays next!';
-          }
+        } else if (!hasAnyQueue && isPlayingReal && state.nextShowTime && state.nextShowTime !== 'soon') {
+          // V1.5.1: Playing an RF request during intermission TIME (between scheduled shows)
+          // Queue is empty, nextShowTime is set = we're in intermission window
+          nextTitleEl.textContent = '🎶 Coming up: the ' + state.nextShowTime + ' show';
+          nextSubtitle = 'Or request another song now!';
         } else if (!hasAnyQueue && isPlayingReal) {
-          // Playing but no queue and no next info - friendly fallback
+          // Playing but no queue and no next show info - friendly fallback
           nextTitleEl.textContent = '🎶 Request a song below';
           nextSubtitle = 'Your pick plays next!';
         }
@@ -3252,6 +3247,11 @@ function renderSeasonStatsCard(extra) {
       }
 
       body.innerHTML = ''; // Clear loading message
+
+      // V1.5.1: Songs requested this season (prominent FOMO stat)
+      if (typeof triggers.requests_season !== 'undefined') {
+        addSeasonStatRow(body, '🎵', 'Songs requested', triggers.requests_season.toLocaleString());
+      }
 
       // Letters to Santa (with padding)
       if (typeof triggers.mailbox !== 'undefined') {
