@@ -75,6 +75,7 @@ class LOF_Viewer_State {
         $requests = isset($rf_data['requests']) && is_array($rf_data['requests']) ? $rf_data['requests'] : [];
         $rf_playing_now = isset($rf_data['playingNow']) ? $rf_data['playingNow'] : '';
         $rf_playing_next = isset($rf_data['playingNext']) ? $rf_data['playingNext'] : '';
+        $rf_playing_next_from_schedule = isset($rf_data['playingNextFromSchedule']) ? $rf_data['playingNextFromSchedule'] : '';
         $viewer_control_enabled = !empty($prefs['viewerControlEnabled']);
 
         // Extract FPP Status fields (real-time)
@@ -122,7 +123,8 @@ class LOF_Viewer_State {
         $queue_duration = self::calculate_queue_duration($requests);
         $is_queue_lockout = false;
         
-        if ($is_show_hours && $time_until_reset !== null && !$is_time_lockout) {
+        // Check queue lockout during show hours OR in test mode when viewer control is on
+        if (($is_show_hours || ($is_test_mode && $viewer_control_enabled)) && $time_until_reset !== null && !$is_time_lockout) {
             $total_with_new_song = $fpp_seconds_remaining + $queue_duration + self::$default_song_duration + 60; // 60s buffer
             if ($total_with_new_song > $time_until_reset) {
                 $is_queue_lockout = true;
@@ -211,17 +213,23 @@ class LOF_Viewer_State {
                 'isRequest'   => true,
                 'source'      => 'queue',
             ];
-        } elseif (!empty($rf_playing_next)) {
-            // RF has a playingNext that's not from queue
-            $next_seq = self::find_sequence($sequences, $rf_playing_next, $rf_playing_next);
-            $next_up = [
-                'sequence'    => $rf_playing_next,
-                'displayName' => $next_seq ? ($next_seq['displayName'] ?: $next_seq['name']) : $rf_playing_next,
-                'artist'      => $next_seq ? (isset($next_seq['artist']) ? $next_seq['artist'] : '') : '',
-                'waitSeconds' => $fpp_seconds_remaining,
-                'isRequest'   => false,
-                'source'      => 'playlist',
-            ];
+        } elseif (!empty($rf_playing_next) || !empty($rf_playing_next_from_schedule)) {
+            // RF has a playingNext that's not from queue - try both sources
+            $next_song_name = !empty($rf_playing_next) ? $rf_playing_next : $rf_playing_next_from_schedule;
+            
+            // Skip if it's just "Intermission" or similar non-song values
+            $skip_values = ['intermission', 'idle', 'standby', ''];
+            if (!in_array(strtolower(trim($next_song_name)), $skip_values)) {
+                $next_seq = self::find_sequence($sequences, $next_song_name, $next_song_name);
+                $next_up = [
+                    'sequence'    => $next_song_name,
+                    'displayName' => $next_seq ? ($next_seq['displayName'] ?: $next_seq['name']) : $next_song_name,
+                    'artist'      => $next_seq ? (isset($next_seq['artist']) ? $next_seq['artist'] : '') : '',
+                    'waitSeconds' => $fpp_seconds_remaining,
+                    'isRequest'   => false,
+                    'source'      => $is_show_playlist ? 'show_playlist' : 'playlist',
+                ];
+            }
         }
 
         // Determine if requests are allowed
@@ -293,6 +301,7 @@ class LOF_Viewer_State {
             'requests'    => $requests,  // RF's raw queue array - JS needs this for renderQueue()
             'playingNow'  => $rf_playing_now,
             'playingNext' => $rf_playing_next,
+            'playingNextFromSchedule' => $rf_playing_next_from_schedule,
             'votes'       => isset($rf_data['votes']) ? $rf_data['votes'] : [],
         ];
 

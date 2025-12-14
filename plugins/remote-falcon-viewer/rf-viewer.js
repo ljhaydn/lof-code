@@ -2060,19 +2060,20 @@ function updateSmartTimeMessage(showState) {
         
         if (state.isAfterHours) {
           // After hours - warm, inviting
-          const showTime = state.nextShowTime || '5pm';
-          if (showTime.includes('tomorrow')) {
-            nextTitleEl.textContent = 'The lights are resting 🌙';
-            nextSubtitle = 'See you at ' + showTime.replace(' tomorrow', '') + ' tomorrow!';
+          const lightsTime = state.nextLightsOpenTime || '5pm';
+          const isTomorrow = lightsTime.toLowerCase().includes('tomorrow');
+          if (isTomorrow) {
+            nextTitleEl.textContent = '🌙 The lights are resting';
+            nextSubtitle = 'Back tomorrow at 5pm!';
           } else {
-            nextTitleEl.textContent = 'Show starts at ' + showTime + ' ☕';
-            nextSubtitle = 'Grab a cocoa and come back!';
+            nextTitleEl.textContent = '🌙 The lights are resting';
+            nextSubtitle = 'See you at ' + lightsTime + '!';
           }
         } else if (state.isPreshow) {
-          // Pre-show - anticipation
-          const showTime = state.nextShowTime || '5pm';
-          nextTitleEl.textContent = 'Show starts at ' + showTime + ' 🎄';
-          nextSubtitle = 'Request your favorites when we\'re live';
+          // Pre-show - lights come on at 5pm, shows at 6pm
+          const lightsTime = state.nextLightsOpenTime || '5pm';
+          nextTitleEl.textContent = '✨ See you at ' + lightsTime;
+          nextSubtitle = 'Lights on, requests open!';
         } else if (state.mode === 'time_lockout') {
           // Time-based lockout - playful urgency
           nextTitleEl.textContent = 'Hold that thought — ' + nextShow + ' show\'s about to begin 🎄';
@@ -2088,25 +2089,25 @@ function updateSmartTimeMessage(showState) {
           // Queue has items - show next requested song
           nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
           nextSubtitle = 'Requested by a guest';
-        } else if (state.isIntermission && !hasAnyQueue) {
-          // Intermission with empty queue - include next show time
-          const showTime = nextShow !== 'soon' ? nextShow : (state.nextShowTime || '');
-          if (showTime) {
-            nextTitleEl.textContent = '🎶 Your call — pick a song or catch the ' + showTime + ' show';
-          } else {
-            nextTitleEl.textContent = '🎶 Your call — pick a song below';
-          }
-          nextSubtitle = 'Music resumes when you request one!';
         } else if (state.isShowPlaylist && !hasAnyQueue) {
-          // Show playlist with no queue - DJ Falcon picking
+          // Show playlist (random inserts) with no queue - DJ is picking
           nextTitleEl.textContent = '🎲 DJ Falcon\'s picking next...';
           nextSubtitle = 'Or request your own below';
-        } else if (!hasAnyQueue && viewerState.nextUp && viewerState.nextUp.source === 'playlist') {
-          // Sequential playlist (no random inserts) - we know the next song
-          nextTitleEl.textContent = '🎵 ' + (viewerState.nextUp.displayName || 'Next from playlist');
-          nextSubtitle = 'From tonight\'s playlist';
+        } else if (viewerState.nextUp && viewerState.nextUp.displayName && viewerState.nextUp.source === 'playlist') {
+          // Sequential playlist - we know the actual next song
+          nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
+          nextSubtitle = 'From tonight\'s playlist — or pick your own!';
+        } else if (state.isIntermission && !hasAnyQueue) {
+          // Intermission with empty queue - include next show time
+          const showTime = state.nextShowTime || state.nextResetTime || '';
+          if (showTime && showTime !== 'soon') {
+            nextTitleEl.textContent = '🎶 Your call — pick a song or catch the ' + showTime + ' show';
+          } else {
+            nextTitleEl.textContent = '🎶 Your call — request a song below';
+          }
+          nextSubtitle = 'Music plays when you pick one!';
         } else if (!hasAnyQueue && isPlayingReal) {
-          // Playing but no queue and no next info - generic fallback
+          // Playing but no queue and no next info - friendly fallback
           nextTitleEl.textContent = '🎶 Request a song below';
           nextSubtitle = 'Your pick plays next!';
         }
@@ -2295,8 +2296,8 @@ function updateSmartTimeMessage(showState) {
       const isNow  = nowKey  && (seq.name === nowKey  || seq.displayName === nowKey);
       // V1.5 FIX: Show "Next up" badge for:
       // 1. Queue items (nextIsFromQueue = true)
-      // 2. Sequential playlists where we know the next song (viewerState.nextUp.source === 'playlist')
-      // But NOT for random insert playlists where DJ is picking
+      // 2. Sequential playlists where we know the next song (source === 'playlist')
+      // But NOT for show playlists (random inserts) where the next song is unpredictable
       let isNext = false;
       if (nextKey && (seq.name === nextKey || seq.displayName === nextKey)) {
         if (nextIsFromQueue) {
@@ -2304,12 +2305,9 @@ function updateSmartTimeMessage(showState) {
           isNext = true;
         } else if (viewerState && viewerState.nextUp && viewerState.nextUp.source === 'playlist') {
           // Sequential playlist - show badge for known next song
-          // But only if we're NOT in a show playlist (random inserts)
-          const state = viewerState.state;
-          if (state && !state.isShowPlaylist) {
-            isNext = true;
-          }
+          isNext = true;
         }
+        // Note: source === 'show_playlist' means random inserts, don't show badge
       }
 
       if (isNow) {
@@ -2703,18 +2701,13 @@ function renderQueue(extra, data) {
   `;
   wrapper.appendChild(header);
 
-  // V1.5: Add total queue duration if we have items
-  if (rawRequests.length > 0 && viewerState) {
-    const queueDuration = viewerState.queueDurationSeconds || 0;
-    const nowRemaining = viewerState.now?.secondsRemaining || 0;
-    const totalSeconds = queueDuration + nowRemaining;
-    if (totalSeconds > 0) {
-      const totalMin = Math.ceil(totalSeconds / 60);
-      const durationDiv = document.createElement('div');
-      durationDiv.className = 'rf-queue-duration';
-      durationDiv.innerHTML = `<span class="rf-queue-duration-label">Total queue time:</span> <span class="rf-queue-duration-value">~${totalMin} min</span>`;
-      wrapper.appendChild(durationDiv);
-    }
+  // V1.5: Show queue song count (not duration - that's confusing)
+  if (rawRequests.length > 0) {
+    const countDiv = document.createElement('div');
+    countDiv.className = 'rf-queue-count';
+    const songWord = rawRequests.length === 1 ? 'song' : 'songs';
+    countDiv.innerHTML = `<span class="rf-queue-count-value">${rawRequests.length}</span> <span class="rf-queue-count-label">${songWord} queued</span>`;
+    wrapper.appendChild(countDiv);
   }
 
   // V1.5: Add reset warning banner if within 15 minutes of reset
