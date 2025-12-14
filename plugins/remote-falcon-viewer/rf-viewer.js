@@ -1,7 +1,7 @@
 (function () {
   const base = (window.RFViewer && RFViewer.base) ? RFViewer.base : '';
   
-  console.log('[LOF viewer] rf-viewer.js V1.5.0 loaded');
+  console.log('[LOF viewer] rf-viewer.js V1.5.1 loaded');
   
   const viewerRoot  = document.getElementById('rf-viewer');
   const gridEl      = document.getElementById('rf-grid');
@@ -67,6 +67,12 @@ let speakerCountdownState = null; // { remainingBase, updatedAt }
 // V1.5: Unified viewer state from /wp-json/lof/v1/viewer-state
 // Contains derived state (isLockout, isIntermission, waitSeconds, etc.)
 let viewerState = null;
+
+// V1.5.1: Song badge cache from /wp-json/lof-viewer/v1/song-badges
+// Contains { songName: { badges: [...], tonight_rank, season_rank } }
+let songBadgesCache = null;
+let songBadgesCacheTime = 0;
+const SONG_BADGES_CACHE_TTL = 300000; // 5 minutes
 
   // -----------------------------
   // LOF EXTRAS CONFIG
@@ -2354,20 +2360,29 @@ function updateSmartTimeMessage(showState) {
       const displayTitle = seq.displayName || seq.name || 'Untitled';
       const artist       = seq.artist || '';
 
-      card.innerHTML = `
-        <div class="rf-card-title">${escapeHtml(displayTitle)}</div>
-        <div class="rf-card-artist">${escapeHtml(artist)}</div>
-        <div class="rf-card-meta">
-          <span class="rf-card-duration">Runtime ${niceDuration}</span>
-        </div>
-        <div class="rf-card-actions">
-          <button class="rf-card-btn" ${!currentControlEnabled ? 'disabled' : ''}>
-            ${escapeHtml(buttonLabel)}
-          </button>
-        </div>
-      `;
-
+      // V1.5.1: Get popularity badge for this song
       const keyName = seq.name || '';
+      const popularityBadge = getSongBadge(keyName);
+      let popularityPillHtml = '';
+      if (popularityBadge) {
+        const pillClass = 'rf-card-popularity rf-card-popularity--' + popularityBadge.type;
+        popularityPillHtml = '<span class="' + pillClass + '">' + popularityBadge.icon + ' ' + popularityBadge.label + '</span>';
+      }
+
+      card.innerHTML = '\
+        <div class="rf-card-title">' + escapeHtml(displayTitle) + '</div>\
+        <div class="rf-card-artist">' + escapeHtml(artist) + '</div>\
+        <div class="rf-card-meta">\
+          <span class="rf-card-duration">Runtime ' + niceDuration + '</span>\
+          ' + popularityPillHtml + '\
+        </div>\
+        <div class="rf-card-actions">\
+          <button class="rf-card-btn" ' + (!currentControlEnabled ? 'disabled' : '') + '>\
+            ' + escapeHtml(buttonLabel) + '\
+          </button>\
+        </div>\
+      ';
+
       const labelName = seq.displayName || '';
 
       // Check the persistent requested list first
@@ -2662,6 +2677,55 @@ async function fetchTriggerCounts() {
     console.warn('[LOF V1.5] Trigger counts fetch failed:', err);
     return null;
   }
+}
+
+// V1.5.1: Fetch song badges (popularity indicators)
+async function fetchSongBadges(forceRefresh) {
+  var now = Date.now();
+  
+  // Return cached if still valid
+  if (!forceRefresh && songBadgesCache && (now - songBadgesCacheTime) < SONG_BADGES_CACHE_TTL) {
+    return songBadgesCache;
+  }
+  
+  try {
+    var res = await fetch('/wp-json/lof-viewer/v1/song-badges', {
+      credentials: 'same-origin'
+    });
+    if (!res.ok) {
+      console.warn('[LOF V1.5.1] Song badges fetch failed:', res.status);
+      return songBadgesCache;
+    }
+    var json = await res.json();
+    if (json && json.success && json.badges) {
+      songBadgesCache = json.badges;
+      songBadgesCacheTime = now;
+      console.log('[LOF V1.5.1] Song badges loaded:', Object.keys(json.badges).length, 'songs');
+      return songBadgesCache;
+    }
+    return songBadgesCache;
+  } catch (err) {
+    console.warn('[LOF V1.5.1] Song badges fetch error:', err);
+    return songBadgesCache;
+  }
+}
+
+// V1.5.1: Get badge for a specific song (returns first badge by priority)
+function getSongBadge(songName) {
+  if (!songBadgesCache || !songName) return null;
+  
+  var songData = songBadgesCache[songName];
+  if (!songData || !songData.badges || songData.badges.length === 0) return null;
+  
+  // Priority: hot > favorite > gem
+  var priority = ['hot', 'favorite', 'gem'];
+  for (var i = 0; i < priority.length; i++) {
+    var type = priority[i];
+    var badge = songData.badges.find(function(b) { return b.type === type; });
+    if (badge) return badge;
+  }
+  
+  return songData.badges[0];
 }
 
   function renderExtraPanel(mode, enabled, data, queueLength) {
@@ -4475,6 +4539,9 @@ function addSurpriseCard() {
 // LOF Extras config
 lofLoadConfig();
 
+// V1.5.1: Fetch song badges on init (for popularity pills)
+fetchSongBadges();
+
 // V1.5: Set initial poll interval
 currentPollInterval = POLL_INTERVAL_ACTIVE;
 
@@ -4484,6 +4551,9 @@ window.LOF_MAIN_POLL_INTERVAL = setInterval(fetchShowDetails, POLL_INTERVAL_ACTI
 
 // Check polling adjustment every 30s
 setInterval(adjustPollingInterval, 30000);
+
+// V1.5.1: Refresh song badges every 5 minutes
+setInterval(function() { fetchSongBadges(true); }, SONG_BADGES_CACHE_TTL);
 
 // FPP timing (for Now Playing progress bar + speaker protection)
 fetchFppStatus();
