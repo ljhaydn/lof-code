@@ -2074,6 +2074,10 @@ function updateSmartTimeMessage(showState) {
           const lightsTime = state.nextLightsOpenTime || '5pm';
           nextTitleEl.textContent = '✨ See you at ' + lightsTime;
           nextSubtitle = 'Lights on, requests open!';
+        } else if (state.isIdleShowHours) {
+          // Within show hours but nothing playing - encourage requests!
+          nextTitleEl.textContent = '🎶 The show\'s ready when you are';
+          nextSubtitle = 'Request a song to start the music!';
         } else if (state.mode === 'time_lockout') {
           // Time-based lockout - playful urgency
           nextTitleEl.textContent = 'Hold that thought — ' + nextShow + ' show\'s about to begin 🎄';
@@ -4176,9 +4180,18 @@ function addSurpriseCard() {
   
   // V1.5: Format wait time for queue display
   function formatWaitTime(seconds, position) {
-    // Position 1 (first in queue) shows "up next" regardless of wait time
-    if (position === 1 || position === 0) return 'up next';
-    if (!seconds || seconds <= 0) return 'up next';
+    // If no wait time data, show "up next" for position 1
+    if (!seconds && seconds !== 0) {
+      return position === 1 ? 'up next' : '';
+    }
+    
+    // Position 1 with minimal wait (< 30 seconds) shows "up next"
+    if ((position === 1 || position === 0) && seconds < 30) {
+      return 'up next';
+    }
+    
+    // Otherwise show actual wait time (important during intermission!)
+    if (seconds <= 0) return 'up next';
     const min = Math.ceil(seconds / 60);
     if (min < 1) return '<1 min';
     return '~' + min + ' min';

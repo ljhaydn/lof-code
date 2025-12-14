@@ -142,10 +142,18 @@ class LOF_Viewer_State {
 
         // Determine after hours (not in show hours and nothing playing OR viewer control disabled)
         $is_playing = $fpp_status_name === 'playing' && !empty($fpp_sequence);
-        $is_after_hours = !$is_show_hours && !$is_playing && !$is_test_mode;
         
-        // Override: if viewer control is disabled by RF, treat as after hours (unless testing)
+        // New state: idle during show hours (lights should be on, but nothing playing)
+        // This is different from "after hours" - the show is supposed to be running
+        $is_idle_show_hours = $is_show_hours && !$is_playing && $viewer_control_enabled;
+        
+        // After hours: outside show hours window, or viewer control disabled
+        $is_after_hours = false;
         if (!$viewer_control_enabled && !$is_test_mode) {
+            // RF says viewer control is off - treat as after hours
+            $is_after_hours = true;
+        } elseif (!$is_show_hours && !$is_playing && !$is_test_mode) {
+            // Outside scheduled show hours and nothing playing
             $is_after_hours = true;
         }
 
@@ -218,8 +226,12 @@ class LOF_Viewer_State {
             $next_song_name = !empty($rf_playing_next) ? $rf_playing_next : $rf_playing_next_from_schedule;
             
             // Skip if it's just "Intermission" or similar non-song values
-            $skip_values = ['intermission', 'idle', 'standby', ''];
-            if (!in_array(strtolower(trim($next_song_name)), $skip_values)) {
+            $skip_values = ['intermission', 'idle', 'standby', 'nothing', 'none', ''];
+            $next_lower = strtolower(trim($next_song_name));
+            // Also skip if the name CONTAINS "intermission" (e.g., "Christmas Intermission")
+            $is_intermission_name = strpos($next_lower, 'intermission') !== false;
+            
+            if (!in_array($next_lower, $skip_values) && !$is_intermission_name) {
                 $next_seq = self::find_sequence($sequences, $next_song_name, $next_song_name);
                 $next_up = [
                     'sequence'    => $next_song_name,
@@ -275,6 +287,7 @@ class LOF_Viewer_State {
                 'isIntermission'         => $is_intermission,
                 'isReset'                => $is_reset_playlist,
                 'isShowHours'            => $is_show_hours,
+                'isIdleShowHours'        => $is_idle_show_hours,  // In show hours but nothing playing
                 'isTestMode'             => $is_test_mode,
                 'isLockout'              => $is_lockout,
                 'lockoutReason'          => $lockout_reason,
