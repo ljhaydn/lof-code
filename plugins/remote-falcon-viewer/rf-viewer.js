@@ -2078,12 +2078,20 @@ function updateSmartTimeMessage(showState) {
           // Within show hours but nothing playing - encourage requests!
           nextTitleEl.textContent = '🎶 The show\'s ready when you are';
           nextSubtitle = 'Request a song to start the music!';
+        } else if (state.mode === 'time_lockout' && hasAnyQueue && viewerState.nextUp) {
+          // Time lockout BUT queue has songs - show next song with lockout subtitle
+          nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
+          nextSubtitle = 'Requests paused — ' + nextShow + ' show starting soon!';
+        } else if (state.mode === 'queue_lockout' && hasAnyQueue && viewerState.nextUp) {
+          // Queue lockout BUT queue has songs - show next song with lockout subtitle
+          nextTitleEl.textContent = '🎵 ' + viewerState.nextUp.displayName;
+          nextSubtitle = 'Queue full — catch the ' + nextShow + ' show for more!';
         } else if (state.mode === 'time_lockout') {
-          // Time-based lockout - playful urgency
+          // Time-based lockout, no queue
           nextTitleEl.textContent = 'Hold that thought — ' + nextShow + ' show\'s about to begin 🎄';
           nextSubtitle = '';
         } else if (state.mode === 'queue_lockout') {
-          // Queue-based lockout - whimsical
+          // Queue-based lockout, no queue (edge case)
           nextTitleEl.textContent = 'This hour\'s dance card is full ✨';
           nextSubtitle = 'Catch the ' + nextShow + ' show 🧝';
         } else if (state.isReset || state.mode === 'resetting') {
@@ -2653,14 +2661,19 @@ async function fetchTriggerCounts() {
       console.warn('[LOF V1.5] Geo check failed:', e);
     }
 
-    if (!enabled) {
+    // Check if we have queued songs - if so, ALWAYS show the queue even during lockout
+    const hasQueuedSongs = data && Array.isArray(data.requests) && data.requests.length > 0;
+    
+    if (!enabled && !hasQueuedSongs) {
+      // No requests allowed AND no songs queued - show paused message
       extra.innerHTML = `
         <div class="rf-extra-title">Viewer control paused</div>
         <div class="rf-extra-sub">
           When interactive mode is back on, you'll see the live request queue or top-voted songs here.
         </div>
       `;
-    } else if (mode === 'JUKEBOX') {
+    } else if (mode === 'JUKEBOX' || hasQueuedSongs) {
+      // JUKEBOX mode OR we have songs queued - always show the queue
       renderQueue(extra, data);
     } else if (mode === 'VOTING') {
       renderLeaderboard(extra, data);
@@ -2724,24 +2737,25 @@ function renderQueue(extra, data) {
       warningDiv.className = 'rf-queue-warning';
       
       if (state.isLockout) {
+        warningDiv.className = 'rf-queue-warning rf-queue-warning--lockout';
         if (state.lockoutReason === 'queue') {
-          // Queue-based lockout - brand voice
+          // Queue-based lockout - requests paused, but queue still plays
           warningDiv.innerHTML = `
             <span class="rf-queue-warning-icon">✨</span>
-            <span>This hour's dance card is full — catch the ${nextShow} show 🧝</span>
+            <span>Requests paused — queue full! Catch the ${nextShow} show for more 🧝</span>
           `;
         } else {
-          // Time-based lockout - brand voice
+          // Time-based lockout - requests paused, queue still plays
           warningDiv.innerHTML = `
             <span class="rf-queue-warning-icon">🎄</span>
-            <span>Hold that thought — ${nextShow} show's about to begin!</span>
+            <span>Requests paused — ${nextShow} show starting soon!</span>
           `;
         }
       } else {
         // Warning but not locked out yet
         warningDiv.innerHTML = `
           <span class="rf-queue-warning-icon">⏱️</span>
-          <span>Queue resets at ${nextShow} (${resetMin} min) — request now!</span>
+          <span>Queue resets for ${nextShow} show (${resetMin} min) — request now!</span>
         `;
       }
       wrapper.appendChild(warningDiv);
