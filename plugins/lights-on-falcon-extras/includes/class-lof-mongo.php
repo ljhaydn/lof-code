@@ -7,6 +7,7 @@
  * 
  * @package Lights_On_Falcon
  * @since 1.5.0
+ * @updated 1.5.1 - Fixed badge logic to fetch ALL song counts
  */
 
 if (!defined('ABSPATH')) {
@@ -235,7 +236,60 @@ class LOF_Mongo {
             return $top_songs;
             
         } catch (Exception $e) {
-            error_log('[LOF Mongo] Season songs query failed: ' . $e->getMessage());
+            error_log('[LOF Mongo] Top songs season query failed: ' . $e->getMessage());
+        }
+        
+        return [];
+    }
+    
+    /**
+     * V1.5.1: Get ALL song request counts for the season (for proper badge calculation)
+     * 
+     * @return array Map of sequence name => request count
+     */
+    public static function get_all_song_counts_season() {
+        $cache_key = 'lof_mongo_all_counts_season';
+        $cached = get_transient($cache_key);
+        if ($cached !== false) {
+            return $cached;
+        }
+        
+        $client = self::get_client();
+        if (!$client) return [];
+        
+        try {
+            $collection = $client->selectCollection(self::$database, 'show');
+            
+            // Season starts December 1st
+            $timezone = new DateTimeZone('America/Los_Angeles');
+            $season_start = new DateTime('2025-12-01 00:00:00', $timezone);
+            
+            $pipeline = [
+                ['$unwind' => '$stats.jukebox'],
+                ['$match' => [
+                    'stats.jukebox.dateTime' => [
+                        '$gte' => new MongoDB\BSON\UTCDateTime($season_start->getTimestamp() * 1000)
+                    ]
+                ]],
+                ['$group' => [
+                    '_id' => '$stats.jukebox.sequence',
+                    'count' => ['$sum' => 1]
+                ]]
+            ];
+            
+            $results = $collection->aggregate($pipeline)->toArray();
+            $counts = [];
+            
+            foreach ($results as $result) {
+                $result_array = json_decode(json_encode($result), true);
+                $counts[$result_array['_id']] = $result_array['count'];
+            }
+            
+            set_transient($cache_key, $counts, 300); // 5 min cache
+            return $counts;
+            
+        } catch (Exception $e) {
+            error_log('[LOF Mongo] All song counts query failed: ' . $e->getMessage());
         }
         
         return [];
@@ -332,6 +386,7 @@ class LOF_Mongo {
     
     /**
      * Get sequences with category data for badges
+     * V1.5.1: Fixed to use ALL song counts, not just top 10
      * 
      * @return array Sequences with metadata
      */
@@ -341,28 +396,38 @@ class LOF_Mongo {
             return [];
         }
         
+        // V1.5.1: Get ALL song counts, not just top 10
+        $all_counts = self::get_all_song_counts_season();
         $top_tonight = self::get_top_songs_tonight(10);
         $top_season = self::get_top_songs_season(10);
         
-        // Build lookup maps
+        // Build tonight lookup map (for "Hot Tonight" badge - top 3)
         $tonight_map = [];
         foreach ($top_tonight as $i => $song) {
             $tonight_map[$song['sequence']] = $i + 1; // 1-indexed rank
         }
         
-        $season_map = [];
+        // Build season rank lookup (for "Crowd Favorite" badge - #1 only)
+        $season_rank_map = [];
         foreach ($top_season as $i => $song) {
-            $season_map[$song['sequence']] = [
-                'rank' => $i + 1,
-                'count' => $song['count']
-            ];
+            $season_rank_map[$song['sequence']] = $i + 1;
         }
         
-        // Find the 48-hour threshold for "fresh" songs
-        // We'd need createdDate on sequences, but RF doesn't track that
-        // For now, we'll mark songs with low play counts as "hidden gems"
+        // Calculate thresholds for "Hidden Gem"
+        // A song is a "hidden gem" if it has 0-2 requests AND there's enough data to be meaningful
         $total_requests = self::get_requests_season();
-        $avg_per_song = $total_requests / max(count($show['sequences']), 1);
+        $total_songs = 0;
+        foreach ($show['sequences'] as $seq) {
+            if (isset($seq['visible']) && $seq['visible'] && isset($seq['active']) && $seq['active']) {
+                $total_songs++;
+            }
+        }
+        
+        // Only show "Hidden Gem" badges if we have meaningful data (at least 20 total requests)
+        $show_gem_badges = ($total_requests >= 20);
+        
+        // Gem threshold: songs with <= 2 requests are hidden gems (if we have enough data)
+        $gem_threshold = 2;
         
         $sequences = [];
         foreach ($show['sequences'] as $seq) {
@@ -375,41 +440,33 @@ class LOF_Mongo {
             
             $name = $seq['name'];
             $badges = [];
+            $song_count = isset($all_counts[$name]) ? $all_counts[$name] : 0;
             
-            // Hot Tonight badge (top 3)
+            // Hot Tonight badge (top 3 tonight)
             if (isset($tonight_map[$name]) && $tonight_map[$name] <= 3) {
                 $badges[] = [
                     'type' => 'hot',
                     'icon' => '🔥',
-                    'label' => 'Hot Tonight'
+                    'label' => 'Hot tonight'
                 ];
             }
             
             // Crowd Favorite badge (#1 this season)
-            if (isset($season_map[$name]) && $season_map[$name]['rank'] === 1) {
+            if (isset($season_rank_map[$name]) && $season_rank_map[$name] === 1) {
                 $badges[] = [
                     'type' => 'favorite',
                     'icon' => '👑',
-                    'label' => 'Crowd Favorite'
+                    'label' => 'Crowd fave'
                 ];
             }
             
-            // Hidden Gem (bottom 25% by season requests)
-            if (isset($season_map[$name])) {
-                $song_count = $season_map[$name]['count'];
-                if ($song_count < $avg_per_song * 0.25) {
-                    $badges[] = [
-                        'type' => 'gem',
-                        'icon' => '💎',
-                        'label' => 'Hidden Gem'
-                    ];
-                }
-            } elseif (!isset($season_map[$name])) {
-                // Never requested = definitely a hidden gem
+            // Hidden Gem: only if we have enough data AND song has very few requests
+            // AND song doesn't already have a "hot" or "favorite" badge
+            if ($show_gem_badges && $song_count <= $gem_threshold && empty($badges)) {
                 $badges[] = [
                     'type' => 'gem',
-                    'icon' => '💎', 
-                    'label' => 'Hidden Gem'
+                    'icon' => '💎',
+                    'label' => 'Hidden gem'
                 ];
             }
             
@@ -417,8 +474,8 @@ class LOF_Mongo {
                 'displayName' => $seq['displayName'] ?? $name,
                 'badges' => $badges,
                 'tonight_rank' => $tonight_map[$name] ?? null,
-                'season_rank' => isset($season_map[$name]) ? $season_map[$name]['rank'] : null,
-                'season_count' => isset($season_map[$name]) ? $season_map[$name]['count'] : 0
+                'season_rank' => isset($season_rank_map[$name]) ? $season_rank_map[$name] : null,
+                'season_count' => $song_count
             ];
         }
         

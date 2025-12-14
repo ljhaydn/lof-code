@@ -69,10 +69,9 @@ let speakerCountdownState = null; // { remainingBase, updatedAt }
 let viewerState = null;
 
 // V1.5.1: Song badge cache from /wp-json/lof-viewer/v1/song-badges
-// Contains { songName: { badges: [...], tonight_rank, season_rank } }
 let songBadgesCache = null;
 let songBadgesCacheTime = 0;
-const SONG_BADGES_CACHE_TTL = 300000; // 5 minutes
+var SONG_BADGES_CACHE_TTL = 300000; // 5 minutes
 
   // -----------------------------
   // LOF EXTRAS CONFIG
@@ -1768,12 +1767,12 @@ function updateSmartTimeMessage(showState) {
     if (!container) return;
     
     // Remove existing tabs wrapper (includes title)
-    const existingWrapper = container.querySelector('.rf-category-section');
+    var existingWrapper = container.querySelector('.rf-category-section');
     if (existingWrapper) {
       existingWrapper.remove();
     }
     // Also remove old-style tabs without wrapper
-    const existingTabs = container.querySelector('.rf-category-tabs');
+    var existingTabs = container.querySelector('.rf-category-tabs');
     if (existingTabs) {
       existingTabs.remove();
     }
@@ -1784,52 +1783,70 @@ function updateSmartTimeMessage(showState) {
       return;
     }
 
+    // V1.5.1: Restore category filter from sessionStorage
+    var savedCategory = sessionStorage.getItem('lof_category_filter');
+    if (savedCategory !== null) {
+      if (savedCategory === 'null' || savedCategory === '') {
+        activeCategoryFilter = null;
+      } else if (categories.includes(savedCategory)) {
+        activeCategoryFilter = savedCategory;
+      } else {
+        activeCategoryFilter = null;
+      }
+    }
+
     // Create wrapper for title + tabs
-    const sectionWrapper = document.createElement('div');
+    var sectionWrapper = document.createElement('div');
     sectionWrapper.className = 'rf-category-section';
 
     // Add title
-    const title = document.createElement('div');
+    var title = document.createElement('div');
     title.className = 'rf-category-title';
     title.textContent = lofCopy('category_section_title', 'Tonight\'s Songs');
     sectionWrapper.appendChild(title);
 
-    // V1.5 Bundle B: Add scroll wrapper for fade indicator
-    const scrollWrapper = document.createElement('div');
+    // V1.5 Bundle B: Add scroll wrapper for fade indicators
+    var scrollWrapper = document.createElement('div');
     scrollWrapper.className = 'rf-category-tabs-wrapper';
 
-    const tabsWrapper = document.createElement('div');
+    var tabsWrapper = document.createElement('div');
     tabsWrapper.className = 'rf-category-tabs';
 
-    // Handle scroll to toggle fade indicator
-    tabsWrapper.addEventListener('scroll', () => {
-      const isAtEnd = tabsWrapper.scrollLeft + tabsWrapper.clientWidth >= tabsWrapper.scrollWidth - 10;
+    // V1.5.1: Handle scroll to toggle fade indicators at BOTH ends
+    tabsWrapper.addEventListener('scroll', function() {
+      var isAtStart = tabsWrapper.scrollLeft <= 10;
+      var isAtEnd = tabsWrapper.scrollLeft + tabsWrapper.clientWidth >= tabsWrapper.scrollWidth - 10;
+      scrollWrapper.classList.toggle('scrolled-start', !isAtStart);
       scrollWrapper.classList.toggle('scrolled-end', isAtEnd);
     });
 
+    // Helper to save category and update state
+    function selectCategory(cat) {
+      activeCategoryFilter = cat;
+      sessionStorage.setItem('lof_category_filter', cat === null ? 'null' : cat);
+      updateCategoryTabStates(tabsWrapper);
+      filterGridByCategory(cat);
+    }
+
     // "All" tab
-    const allTab = document.createElement('button');
+    var allTab = document.createElement('button');
     allTab.type = 'button';
     allTab.className = 'rf-category-tab' + (activeCategoryFilter === null ? ' rf-category-tab--active' : '');
     allTab.textContent = 'All';
-    allTab.addEventListener('click', () => {
-      activeCategoryFilter = null;
-      updateCategoryTabStates(tabsWrapper);
-      filterGridByCategory(null);
+    allTab.addEventListener('click', function() {
+      selectCategory(null);
     });
     tabsWrapper.appendChild(allTab);
 
     // Category tabs
-    categories.forEach(cat => {
-      const tab = document.createElement('button');
+    categories.forEach(function(cat) {
+      var tab = document.createElement('button');
       tab.type = 'button';
       tab.className = 'rf-category-tab' + (activeCategoryFilter === cat ? ' rf-category-tab--active' : '');
       tab.textContent = cat;
       tab.dataset.category = cat;
-      tab.addEventListener('click', () => {
-        activeCategoryFilter = cat;
-        updateCategoryTabStates(tabsWrapper);
-        filterGridByCategory(cat);
+      tab.addEventListener('click', function() {
+        selectCategory(cat);
       });
       tabsWrapper.appendChild(tab);
     });
@@ -1839,6 +1856,16 @@ function updateSmartTimeMessage(showState) {
 
     // Insert section before the grid
     container.insertBefore(sectionWrapper, container.firstChild);
+
+    // V1.5.1: Scroll active tab into view and trigger initial scroll check
+    setTimeout(function() {
+      var activeTab = tabsWrapper.querySelector('.rf-category-tab--active');
+      if (activeTab) {
+        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+      // Trigger scroll event to set initial fade states
+      tabsWrapper.dispatchEvent(new Event('scroll'));
+    }, 100);
   }
 
   /**
@@ -1846,10 +1873,10 @@ function updateSmartTimeMessage(showState) {
    */
   function updateCategoryTabStates(tabsWrapper) {
     if (!tabsWrapper) return;
-    const tabs = tabsWrapper.querySelectorAll('.rf-category-tab');
-    tabs.forEach(tab => {
-      const isAll = !tab.dataset.category;
-      const isActive = isAll 
+    var tabs = tabsWrapper.querySelectorAll('.rf-category-tab');
+    tabs.forEach(function(tab) {
+      var isAll = !tab.dataset.category;
+      var isActive = isAll 
         ? activeCategoryFilter === null 
         : tab.dataset.category === activeCategoryFilter;
       tab.classList.toggle('rf-category-tab--active', isActive);
@@ -2363,25 +2390,22 @@ function updateSmartTimeMessage(showState) {
       // V1.5.1: Get popularity badge for this song
       const keyName = seq.name || '';
       const popularityBadge = getSongBadge(keyName);
-      let popularityPillHtml = '';
+      var popularityPillHtml = '';
       if (popularityBadge) {
-        const pillClass = 'rf-card-popularity rf-card-popularity--' + popularityBadge.type;
-        popularityPillHtml = '<span class="' + pillClass + '">' + popularityBadge.icon + ' ' + popularityBadge.label + '</span>';
+        popularityPillHtml = '<span class="rf-card-popularity rf-card-popularity--' + popularityBadge.type + '">' + popularityBadge.icon + ' ' + popularityBadge.label + '</span>';
       }
 
-      card.innerHTML = '\
-        <div class="rf-card-title">' + escapeHtml(displayTitle) + '</div>\
-        <div class="rf-card-artist">' + escapeHtml(artist) + '</div>\
-        <div class="rf-card-meta">\
-          <span class="rf-card-duration">Runtime ' + niceDuration + '</span>\
-          ' + popularityPillHtml + '\
-        </div>\
-        <div class="rf-card-actions">\
-          <button class="rf-card-btn" ' + (!currentControlEnabled ? 'disabled' : '') + '>\
-            ' + escapeHtml(buttonLabel) + '\
-          </button>\
-        </div>\
-      ';
+      card.innerHTML = '<div class="rf-card-title">' + escapeHtml(displayTitle) + '</div>' +
+        '<div class="rf-card-artist">' + escapeHtml(artist) + '</div>' +
+        '<div class="rf-card-meta">' +
+          '<span class="rf-card-duration">Runtime ' + niceDuration + '</span>' +
+          popularityPillHtml +
+        '</div>' +
+        '<div class="rf-card-actions">' +
+          '<button class="rf-card-btn" ' + (!currentControlEnabled ? 'disabled' : '') + '>' +
+            escapeHtml(buttonLabel) +
+          '</button>' +
+        '</div>';
 
       const labelName = seq.displayName || '';
 
@@ -2721,8 +2745,11 @@ function getSongBadge(songName) {
   var priority = ['hot', 'favorite', 'gem'];
   for (var i = 0; i < priority.length; i++) {
     var type = priority[i];
-    var badge = songData.badges.find(function(b) { return b.type === type; });
-    if (badge) return badge;
+    for (var j = 0; j < songData.badges.length; j++) {
+      if (songData.badges[j].type === type) {
+        return songData.badges[j];
+      }
+    }
   }
   
   return songData.badges[0];
@@ -2783,6 +2810,9 @@ function getSongBadge(songName) {
 
     // Render device stats card with trigger counts
     renderDeviceStatsCard(extra, queueLength);
+
+    // V1.5.1: Hot Right Now card (tonight's top songs + season champion)
+    renderHotRightNowCard(extra);
 
     // V1.5: Always show wearables card during show hours (not just off-hours)
     // This is key FOMO content that should be visible to visitors!
@@ -3053,26 +3083,25 @@ function renderDeviceStatsCard(extra, queueLength) {
   const card = document.createElement('div');
   card.className = 'rf-info-card rf-info-card--device-stats';
 
-  card.innerHTML = `
-    <div class="rf-info-card-header">
-      <span class="rf-info-card-icon">📱</span>
-      <span class="rf-info-card-title">${escapeHtml(lofCopy('device_stats_title', 'Tonight From This Device'))}</span>
-    </div>
-    <div class="rf-info-card-body rf-device-stats-body">
-      <div class="rf-stat-item">
-        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_requests_label', 'Requests sent'))}</span>
-        <span class="rf-stat-value">${stats.requests}</span>
-      </div>
-      <div class="rf-stat-item">
-        <span class="rf-stat-label">${escapeHtml(lofCopy('stats_surprise_label', '"Surprise me" taps'))}</span>
-        <span class="rf-stat-value">${stats.surprise}</span>
-      </div>
-      <div class="rf-stat-item rf-stat-item--vibe">
-        <span class="rf-stat-label">${escapeHtml(vibeLabel)}</span>
-        <span class="rf-stat-value">${escapeHtml(vibeText)}</span>
-      </div>
-    </div>
-  `;
+  // V1.5.1: Updated titles and labels
+  card.innerHTML = '<div class="rf-info-card-header">' +
+      '<span class="rf-info-card-icon">✨</span>' +
+      '<span class="rf-info-card-title">' + escapeHtml(lofCopy('device_stats_title', 'Your Session')) + '</span>' +
+    '</div>' +
+    '<div class="rf-info-card-body rf-device-stats-body">' +
+      '<div class="rf-stat-item">' +
+        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_requests_label', 'Songs picked')) + '</span>' +
+        '<span class="rf-stat-value">' + stats.requests + '</span>' +
+      '</div>' +
+      '<div class="rf-stat-item">' +
+        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_surprise_label', 'Surprises rolled')) + '</span>' +
+        '<span class="rf-stat-value">' + stats.surprise + '</span>' +
+      '</div>' +
+      '<div class="rf-stat-item rf-stat-item--vibe">' +
+        '<span class="rf-stat-label">' + escapeHtml(vibeLabel) + '</span>' +
+        '<span class="rf-stat-value">' + escapeHtml(vibeText) + '</span>' +
+      '</div>' +
+    '</div>';
 
   extra.appendChild(card);
 
@@ -3088,9 +3117,10 @@ function renderDeviceStatsCard(extra, queueLength) {
       divider.className = 'rf-stat-divider';
       body.appendChild(divider);
 
+      // V1.5.1: Updated section label
       const sectionLabel = document.createElement('div');
       sectionLabel.className = 'rf-stat-section-label';
-      sectionLabel.textContent = lofCopy('trigger_overall_label', 'Show Activity');
+      sectionLabel.textContent = lofCopy('trigger_overall_label', '🎄 Season Stats');
       body.appendChild(sectionLabel);
 
       if (typeof triggers.mailbox !== 'undefined') {
@@ -3237,6 +3267,92 @@ function renderDeviceStatsCard(extra, queueLength) {
     })
     .catch((err) => {
       console.warn('[LOF V1.5] Trigger counts update failed:', err);
+    });
+}
+
+/**
+ * V1.5.1: Render "Hot Right Now" card showing tonight's top songs + season champion
+ */
+function renderHotRightNowCard(extra) {
+  var card = document.createElement('div');
+  card.className = 'rf-info-card rf-info-card--hot-right-now';
+  card.innerHTML = '<div class="rf-info-card-header">' +
+      '<span class="rf-info-card-icon">🎵</span>' +
+      '<span class="rf-info-card-title">Hot Right Now</span>' +
+    '</div>' +
+    '<div class="rf-info-card-body rf-hot-right-now-body">' +
+      '<div class="rf-hot-loading">Loading tonight\'s hits... ✨</div>' +
+    '</div>';
+
+  extra.appendChild(card);
+
+  // Lazy-load the data
+  fetchTriggerCounts()
+    .then(function(triggers) {
+      var body = card.querySelector('.rf-hot-right-now-body');
+      if (!body) return;
+
+      // Clear loading message
+      body.innerHTML = '';
+
+      var hasContent = false;
+
+      // Tonight's top 3 (from song badges cache)
+      if (songBadgesCache) {
+        // Build list of songs with tonight_rank
+        var tonightSongs = [];
+        for (var name in songBadgesCache) {
+          if (songBadgesCache[name].tonight_rank && songBadgesCache[name].tonight_rank <= 3) {
+            tonightSongs.push({
+              name: name,
+              displayName: songBadgesCache[name].displayName || name,
+              rank: songBadgesCache[name].tonight_rank,
+              count: songBadgesCache[name].season_count || 0
+            });
+          }
+        }
+
+        // Sort by rank
+        tonightSongs.sort(function(a, b) { return a.rank - b.rank; });
+
+        if (tonightSongs.length > 0) {
+          hasContent = true;
+          var list = document.createElement('div');
+          list.className = 'rf-hot-list';
+
+          for (var i = 0; i < tonightSongs.length; i++) {
+            var song = tonightSongs[i];
+            var row = document.createElement('div');
+            row.className = 'rf-hot-item';
+            row.innerHTML = '<span class="rf-hot-rank">#' + song.rank + '</span>' +
+              '<span class="rf-hot-name">' + escapeHtml(song.displayName) + '</span>';
+            list.appendChild(row);
+          }
+
+          body.appendChild(list);
+        }
+      }
+
+      // Season champion from trigger counts
+      if (triggers && triggers.popular_alltime) {
+        hasContent = true;
+        var championDiv = document.createElement('div');
+        championDiv.className = 'rf-hot-champion';
+        championDiv.innerHTML = '<span class="rf-hot-champion-label">👑 Season Champion</span>' +
+          '<span class="rf-hot-champion-name">' + escapeHtml(triggers.popular_alltime) + '</span>';
+        body.appendChild(championDiv);
+      }
+
+      if (!hasContent) {
+        body.innerHTML = '<div class="rf-hot-empty">Be the first to request tonight! 🌟</div>';
+      }
+    })
+    .catch(function(err) {
+      console.warn('[LOF V1.5.1] Hot Right Now failed:', err);
+      var body = card.querySelector('.rf-hot-right-now-body');
+      if (body) {
+        body.innerHTML = '<div class="rf-hot-empty">Check back soon! 🎄</div>';
+      }
     });
 }
 
@@ -4393,96 +4509,164 @@ function addSurpriseCard() {
   }
 
   /* -------------------------
-   * Surprise Me
+   * Surprise Me - V1.5.1: Uses backend API for personality-driven picks
    * ------------------------- */
 
-  function handleSurpriseMe() {
-  if (!currentControlEnabled) {
-    const disabledMsg = lofCopy('surprise_disabled', 'Viewer control is currently paused.');
-    showToast(disabledMsg, 'error');
-    return;
+  async function handleSurpriseMe() {
+    if (!currentControlEnabled) {
+      var disabledMsg = lofCopy('surprise_disabled', 'Viewer control is currently paused.');
+      showToast(disabledMsg, 'error');
+      return;
+    }
+
+    if (!currentVisibleSequences.length) {
+      showToast('No songs available right now.', 'error');
+      return;
+    }
+
+    // V1.5: Check geo restriction
+    var config = getLofConfig();
+    if (config && config.geoCheckEnabled && !userConfirmedLocal) {
+      var geoMsg = lofCopy(
+        'geo_request_blocked',
+        'Song requests are reserved for guests at the show. Tap "I\'m here - full access" above.'
+      );
+      showToast(geoMsg, 'error');
+      return;
+    }
+
+    // V1.5.1: Try backend API first for personality-driven picks
+    try {
+      var res = await fetch('/wp-json/lof-viewer/v1/surprise-me', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      var json = await res.json();
+
+      if (res.ok && json && json.success) {
+        // API succeeded - it already queued the request to RF
+        var seqName = json.sequence ? (json.sequence.name || json.sequence.displayName) : '';
+        var seqLabel = json.sequence ? (json.sequence.displayName || json.sequence.name) : '';
+
+        // Track as requested
+        if (seqName) {
+          sessionRequestedNames.add(seqName);
+          addRequestedSongName(seqName);
+        }
+        if (seqLabel && seqLabel !== seqName) {
+          sessionRequestedNames.add(seqLabel);
+          addRequestedSongName(seqLabel);
+        }
+
+        // Update local stats
+        viewerStats.surprise = (viewerStats.surprise || 0) + 1;
+        saveStats();
+
+        // Show personality toast from API
+        var toastMsg = json.message || lofCopy('surprise_success', 'Surprise incoming! 🎲');
+        showToast(toastMsg, 'success');
+
+        // Fourth-time easter egg
+        if (viewerStats.surprise === 4) {
+          setTimeout(function() {
+            var fourthMsg = lofCopy('surprise_fourth_time', 'You like chaos. We respect that. 😈');
+            showToast(fourthMsg, 'success');
+          }, 2000);
+        }
+
+        // Refresh to show updated queue
+        fetchShowDetails();
+        return;
+      }
+
+      // API returned error - fall back to local logic
+      console.warn('[LOF V1.5.1] Surprise API error, falling back to local:', json.message || 'Unknown error');
+      handleSurpriseMeFallback();
+
+    } catch (err) {
+      console.warn('[LOF V1.5.1] Surprise API failed, falling back to local:', err);
+      handleSurpriseMeFallback();
+    }
   }
 
-  if (!currentVisibleSequences.length) {
-    showToast('No songs available right now.', 'error');
-    return;
-  }
+  // V1.5.1: Fallback to local surprise logic if API fails
+  function handleSurpriseMeFallback() {
+    var pool = currentVisibleSequences.slice();
 
-  // V1.5: Smart exclusion logic
-  let pool = currentVisibleSequences.slice();
-  
-  // Exclude currently playing
-  if (currentNowKey) {
-    pool = pool.filter(seq => {
-      const key = seq.name || seq.displayName;
-      return key !== currentNowKey;
+    // Exclude currently playing
+    if (currentNowKey) {
+      pool = pool.filter(function(seq) {
+        var key = seq.name || seq.displayName;
+        return key !== currentNowKey;
+      });
+    }
+
+    // Exclude top of queue
+    if (currentQueueCounts && Object.keys(currentQueueCounts).length > 0) {
+      pool = pool.filter(function(seq) {
+        var key = seq.name || seq.displayName;
+        return !currentQueueCounts[key];
+      });
+    }
+
+    // Exclude session-requested songs
+    if (sessionRequestedNames.size > 0) {
+      pool = pool.filter(function(seq) {
+        var key = seq.name || seq.displayName;
+        var label = seq.displayName || seq.name;
+        return !sessionRequestedNames.has(key) && !sessionRequestedNames.has(label);
+      });
+    }
+
+    // If all excluded, use original pool
+    if (!pool.length) {
+      pool = currentVisibleSequences.slice();
+    }
+
+    // Prefer unrequested songs
+    var unrequested = pool.filter(function(seq) {
+      var key = seq.name || seq.displayName;
+      return !requestedSongNames.includes(key);
     });
-  }
-  
-  // Exclude top of queue
-  if (currentQueueCounts && Object.keys(currentQueueCounts).length > 0) {
-    pool = pool.filter(seq => {
-      const key = seq.name || seq.displayName;
-      return !currentQueueCounts[key];
+
+    if (unrequested.length) {
+      pool = unrequested;
+    }
+
+    // Prefer least-played songs
+    var minPlay = Infinity;
+    pool.forEach(function(seq) {
+      var key = seq.name || seq.displayName;
+      var c = key ? getPlayedCount(key) : 0;
+      if (c < minPlay) minPlay = c;
     });
-  }
-  
-  // V1.5 FIX: Exclude ALL session-requested songs, not just the last one
-  if (sessionRequestedNames.size > 0) {
-    pool = pool.filter(seq => {
-      const key = seq.name || seq.displayName;
-      const label = seq.displayName || seq.name;
-      return !sessionRequestedNames.has(key) && !sessionRequestedNames.has(label);
+
+    var lowPlayed = pool.filter(function(seq) {
+      var key = seq.name || seq.displayName;
+      var c = key ? getPlayedCount(key) : 0;
+      return c <= minPlay + 1;
     });
-  }
-  
-  // If all excluded, use original pool
-  if (!pool.length) {
-    pool = currentVisibleSequences.slice();
-  }
-  
-  // Prefer unrequested songs
-  const unrequested = pool.filter(seq => {
-    const key = seq.name || seq.displayName;
-    return !requestedSongNames.includes(key);
-  });
-  
-  if (unrequested.length) {
-    pool = unrequested;
-  }
-  
-  // Prefer least-played songs
-  let minPlay = Infinity;
-  pool.forEach(seq => {
-    const key = seq.name || seq.displayName;
-    const c = key ? getPlayedCount(key) : 0;
-    if (c < minPlay) minPlay = c;
-  });
-  
-  const lowPlayed = pool.filter(seq => {
-    const key = seq.name || seq.displayName;
-    const c = key ? getPlayedCount(key) : 0;
-    return c <= minPlay + 1;
-  });
-  
-  const finalPool = lowPlayed.length ? lowPlayed : pool;
-  
-  viewerStats.surprise += 1;
-  saveStats();
 
-  if (viewerStats.surprise === 4) {
-    const fourthMsg = lofCopy(
-      'surprise_fourth_time',
-      'You like chaos. We respect that. 😈'
-    );
-    showToast(fourthMsg, 'success');
+    var finalPool = lowPlayed.length ? lowPlayed : pool;
+
+    viewerStats.surprise = (viewerStats.surprise || 0) + 1;
+    saveStats();
+
+    if (viewerStats.surprise === 4) {
+      var fourthMsg = lofCopy('surprise_fourth_time', 'You like chaos. We respect that. 😈');
+      showToast(fourthMsg, 'success');
+    }
+
+    var randomIndex = Math.floor(Math.random() * finalPool.length);
+    var seq = finalPool[randomIndex];
+
+    handleAction(currentMode, seq, null);
   }
-
-  const randomIndex = Math.floor(Math.random() * finalPool.length);
-  const seq = finalPool[randomIndex];
-
-  handleAction(currentMode, seq, null);
-}
 
   /* -------------------------
    * Utils
