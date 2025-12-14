@@ -3399,7 +3399,7 @@
 
 /* ================================================================
  * V1.5.1: REDESIGNED CATEGORY NAVIGATION
- * Floating pills with glass morphism effect
+ * Ghost outlined pills - elegant & minimal
  * ================================================================ */
 
 /* Override old styling */
@@ -3421,29 +3421,29 @@
 
 .rf-category-tabs-wrapper {
   position: relative;
-  margin: 0 -16px; /* Bleed to edge */
+  margin: 0 -16px;
   padding: 0 16px;
+  overflow: visible;
 }
 
-/* Elegant fade gradients - stronger visibility */
+/* Strong fade gradients */
 .rf-category-tabs-wrapper::before,
 .rf-category-tabs-wrapper::after {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 60px;
+  width: 48px;
   pointer-events: none;
   z-index: 10;
   opacity: 0;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.3s ease;
 }
 
 .rf-category-tabs-wrapper::before {
   left: 0;
   background: linear-gradient(to right, 
     var(--lof-night, #0d1f17) 0%,
-    var(--lof-night, #0d1f17) 10%,
     transparent 100%
   );
 }
@@ -3452,7 +3452,6 @@
   right: 0;
   background: linear-gradient(to left, 
     var(--lof-night, #0d1f17) 0%,
-    var(--lof-night, #0d1f17) 10%,
     transparent 100%
   );
 }
@@ -3461,7 +3460,7 @@
   opacity: 1;
 }
 
-/* Show right fade by default (indicates scrollable) */
+/* Show right fade by default when there's more to scroll */
 .rf-category-tabs-wrapper:not(.scrolled-end)::after {
   opacity: 1;
 }
@@ -3472,8 +3471,8 @@
 
 .rf-category-tabs {
   display: flex;
-  gap: 10px;
-  padding: 4px 50px 8px 4px; /* Room for fade */
+  gap: 12px;
+  padding: 6px 48px 10px 4px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -3485,16 +3484,14 @@
   display: none;
 }
 
-/* Floating glass pill design */
+/* Ghost outlined pill design */
 .rf-category-tab {
   flex-shrink: 0;
-  padding: 10px 20px;
+  padding: 10px 22px;
   border-radius: 999px;
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: rgba(255, 248, 231, 0.7);
+  border: 1.5px solid rgba(255, 248, 231, 0.25);
+  background: transparent;
+  color: rgba(255, 248, 231, 0.65);
   font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
   font-size: 0.9rem;
   font-weight: 500;
@@ -3502,45 +3499,37 @@
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .rf-category-tab:hover {
-  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 248, 231, 0.5);
   color: var(--lof-white, #fff8e7);
-  transform: translateY(-1px);
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transform: scale(1.02);
 }
 
 .rf-category-tab:active {
-  transform: translateY(0);
+  transform: scale(0.98);
 }
 
-/* Active state - warm glow */
+/* Active state - filled with warm glow */
 .rf-category-tab--active {
   background: linear-gradient(145deg, 
-    rgba(233, 30, 99, 0.9), 
+    rgba(233, 30, 99, 0.95), 
     rgba(156, 39, 76, 0.95)
   );
+  border-color: transparent;
   color: #fff;
   font-weight: 600;
   box-shadow: 
-    0 4px 16px rgba(233, 30, 99, 0.35),
-    0 2px 6px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    0 4px 20px rgba(233, 30, 99, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
 }
 
 .rf-category-tab--active:hover {
-  background: linear-gradient(145deg, 
-    rgba(233, 30, 99, 1), 
-    rgba(156, 39, 76, 1)
-  );
-  color: #fff;
-  transform: translateY(-1px);
+  transform: scale(1.02);
+  box-shadow: 
+    0 6px 24px rgba(233, 30, 99, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset;
 }
 
 /* Mobile optimizations */
@@ -3551,12 +3540,104 @@
   }
   
   .rf-category-tabs {
-    gap: 8px;
-    padding: 4px 45px 8px 4px;
+    gap: 10px;
+    padding: 6px 44px 10px 4px;
   }
   
   .rf-category-tab {
-    padding: 9px 16px;
-    font-size: 0.85rem;
+    padding: 9px 18px;
+    font-size: 0.88rem;
   }
+}
+
+/* ================================================================
+ * V1.5.1: HOT RIGHT NOW CARD - SONG TITLE TRUNCATION
+ * ================================================================ */
+.rf-hot-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.rf-hot-rank {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--lof-gold, #d4a574);
+  min-width: 28px;
+}
+
+.rf-hot-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rf-hot-champion {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 248, 231, 0.1);
+}
+
+.rf-hot-champion-label {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--lof-gold, #d4a574);
+  margin-bottom: 4px;
+}
+
+.rf-hot-champion-name {
+  display: block;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================================================================
+ * V1.5.1: UNIFIED STATS CARD STYLING
+ * Your Session and Season Stats should look the same
+ * ================================================================ */
+.rf-info-card--device-stats .rf-season-stats-body,
+.rf-info-card--season-stats .rf-season-stats-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rf-info-card--device-stats .rf-season-stat-row,
+.rf-info-card--season-stats .rf-season-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.rf-info-card--device-stats .rf-season-stat-icon,
+.rf-info-card--season-stats .rf-season-stat-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.rf-info-card--device-stats .rf-season-stat-label,
+.rf-info-card--season-stats .rf-season-stat-label {
+  flex: 1;
+  color: rgba(255, 248, 231, 0.8);
+  font-size: 0.9rem;
+}
+
+.rf-info-card--device-stats .rf-season-stat-value,
+.rf-info-card--season-stats .rf-season-stat-value {
+  font-weight: 700;
+  color: var(--lof-white, #fff8e7);
+  font-size: 1rem;
+}
+
+.rf-stat-value--vibe-loading {
+  opacity: 0.6;
+  font-style: italic;
 }

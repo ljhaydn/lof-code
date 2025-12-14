@@ -2111,23 +2111,29 @@ function updateSmartTimeMessage(showState) {
     }
 
     // V1.5.1: Clear played song from requestedSongNames when it finishes
-    // Detect song transition: previous song was playing, now a different song is playing
-    if (previousPlayingNowKey && nowKey !== previousPlayingNowKey) {
-      // The previous song has finished - remove it from requested lists
-      const prevKey = previousPlayingNowKey;
-      if (requestedSongNames.includes(prevKey)) {
-        requestedSongNames = requestedSongNames.filter(function(name) { return name !== prevKey; });
-        saveRequestedSongs();
-        console.log('[LOF V1.5.1] Cleared finished song from requests:', prevKey);
+    // Detect when a song transitions OUT of playing state
+    if (previousPlayingNowKey) {
+      // Check if previous song is no longer playing (either new song or intermission)
+      const prevSongStillPlaying = isPlayingReal && nowKey === previousPlayingNowKey;
+      
+      if (!prevSongStillPlaying) {
+        // The previous song has finished - remove it from requested lists
+        const prevKey = previousPlayingNowKey;
+        if (requestedSongNames.includes(prevKey)) {
+          requestedSongNames = requestedSongNames.filter(function(name) { return name !== prevKey; });
+          saveRequestedSongs();
+          console.log('[LOF V1.5.1] Cleared finished song from requests:', prevKey);
+        }
+        // Also clear from session set
+        sessionRequestedNames.delete(prevKey);
       }
-      // Also clear from session set
-      sessionRequestedNames.delete(prevKey);
     }
-    // Update tracking for next transition
+    
+    // Update tracking for next poll
     if (isPlayingReal && nowKey) {
       previousPlayingNowKey = nowKey;
-    } else if (!isPlayingReal) {
-      // During intermission/standby, don't track as "playing"
+    } else {
+      // Nothing playing now - clear tracker
       previousPlayingNowKey = null;
     }
 
@@ -2257,6 +2263,16 @@ function updateSmartTimeMessage(showState) {
             nextTitleEl.textContent = '🎶 Your call — request a song below';
           }
           nextSubtitle = 'Music plays when you pick one!';
+        } else if (currentShowState === 'intermission' && !hasAnyQueue && isPlayingReal) {
+          // V1.5.1: During intermission time, even with a song playing, show next showtime
+          const showTime = state.nextShowTime || state.nextResetTime || '';
+          if (showTime && showTime !== 'soon') {
+            nextTitleEl.textContent = '🎶 Coming up: the ' + showTime + ' show';
+            nextSubtitle = 'Or request another song now!';
+          } else {
+            nextTitleEl.textContent = '🎶 Request another song';
+            nextSubtitle = 'Your pick plays next!';
+          }
         } else if (!hasAnyQueue && isPlayingReal) {
           // Playing but no queue and no next info - friendly fallback
           nextTitleEl.textContent = '🎶 Request a song below';
@@ -2870,6 +2886,15 @@ function getSongBadge(songName) {
         // OFF-HOURS: Show the good stuff - stats, leaderboard, wearables (FOMO content!)
         // The hero already shows "lights are resting" - this panel shows why they should come back
         renderOffHoursPanel(extra);
+        // Off-hours panel has its own stats cards, so skip adding more below
+        addSpeakerCard(extra);
+        
+        // Ensure the full Glow form lives in the footer
+        const footerGlow = document.getElementById('rf-footer-glow');
+        if (footerGlow && !footerGlow.hasChildNodes()) {
+          addGlowCard(footerGlow);
+        }
+        return; // Early return - don't add duplicate cards
       } else {
         // During show hours but control paused (rare edge case)
         const state = viewerState && viewerState.state ? viewerState.state : {};
@@ -2897,8 +2922,11 @@ function getSongBadge(songName) {
       `;
     }
 
-    // Render device stats card with trigger counts
+    // V1.5.1: Render Your Session card (device stats only)
     renderDeviceStatsCard(extra, queueLength);
+    
+    // V1.5.1: Render Season Stats card (community counters)
+    renderSeasonStatsCard(extra);
 
     // V1.5.1: Hot Right Now card (tonight's top songs + season champion)
     renderHotRightNowCard(extra);
@@ -3145,202 +3173,125 @@ function renderDeviceStatsCard(extra, queueLength) {
   const stats = viewerStats || { requests: 0, surprise: 0 };
 
   const card = document.createElement('div');
-  card.className = 'rf-info-card rf-info-card--device-stats';
+  card.className = 'rf-info-card rf-info-card--device-stats rf-info-card--stats';
 
-  // V1.5.1: Updated titles and labels - vibe will be lazy-loaded from API
+  // V1.5.1: Your Session - ONLY device stats, same styling as Season So Far
   card.innerHTML = '<div class="rf-info-card-header">' +
       '<span class="rf-info-card-icon">✨</span>' +
       '<span class="rf-info-card-title">' + escapeHtml(lofCopy('device_stats_title', 'Your Session')) + '</span>' +
     '</div>' +
-    '<div class="rf-info-card-body rf-device-stats-body">' +
-      '<div class="rf-stat-item">' +
-        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_requests_label', 'Songs picked')) + '</span>' +
-        '<span class="rf-stat-value">' + stats.requests + '</span>' +
+    '<div class="rf-info-card-body rf-season-stats-body">' +
+      '<div class="rf-season-stat-row">' +
+        '<span class="rf-season-stat-icon">🎵</span>' +
+        '<span class="rf-season-stat-label">' + escapeHtml(lofCopy('stats_requests_label', 'Songs picked')) + '</span>' +
+        '<span class="rf-season-stat-value">' + stats.requests + '</span>' +
       '</div>' +
-      '<div class="rf-stat-item">' +
-        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_surprise_label', 'Surprises rolled')) + '</span>' +
-        '<span class="rf-stat-value">' + stats.surprise + '</span>' +
+      '<div class="rf-season-stat-row">' +
+        '<span class="rf-season-stat-icon">🎁</span>' +
+        '<span class="rf-season-stat-label">' + escapeHtml(lofCopy('stats_surprise_label', 'Surprises rolled')) + '</span>' +
+        '<span class="rf-season-stat-value">' + stats.surprise + '</span>' +
       '</div>' +
-      '<div class="rf-stat-item rf-stat-item--vibe" id="rf-vibe-row">' +
-        '<span class="rf-stat-label">' + escapeHtml(lofCopy('stats_vibe_label', 'Falcon vibe')) + '</span>' +
-        '<span class="rf-stat-value rf-stat-value--vibe-loading">checking...</span>' +
+      '<div class="rf-season-stat-row rf-season-stat-row--vibe">' +
+        '<span class="rf-season-stat-icon">🌡️</span>' +
+        '<span class="rf-season-stat-label">' + escapeHtml(lofCopy('stats_vibe_label', 'Falcon vibe')) + '</span>' +
+        '<span class="rf-season-stat-value rf-stat-value--vibe-loading" id="rf-vibe-value">checking...</span>' +
       '</div>' +
     '</div>';
 
   extra.appendChild(card);
 
-  // V1.5.1: Lazy-load vibe from API (global show data, not local)
+  // V1.5.1: Lazy-load vibe from API (global show data)
   fetchVibeCheck()
     .then(function(vibe) {
-      const vibeRow = card.querySelector('#rf-vibe-row .rf-stat-value');
+      const vibeRow = card.querySelector('#rf-vibe-value');
       if (vibeRow && vibe) {
         vibeRow.textContent = (vibe.emoji || '') + ' ' + (vibe.text || 'Vibes unknown');
         vibeRow.classList.remove('rf-stat-value--vibe-loading');
       } else if (vibeRow) {
-        // Fallback to local calculation if API fails
-        const baseActivity = queueLength + ((stats.requests || 0) * 0.3);
-        let fallbackText;
-        if (baseActivity >= 8) {
-          fallbackText = 'Full-send Falcon 🔥';
-        } else if (baseActivity >= 4) {
-          fallbackText = 'Party forming 🕺';
-        } else if (baseActivity >= 2) {
-          fallbackText = 'Warming up ✨';
-        } else {
-          fallbackText = 'Cozy & chill 😌';
-        }
-        vibeRow.textContent = fallbackText;
+        // Fallback
+        vibeRow.textContent = '✨ Vibes loading...';
         vibeRow.classList.remove('rf-stat-value--vibe-loading');
       }
     })
     .catch(function(err) {
-      console.warn('[LOF V1.5.1] Vibe check failed:', err);
-      const vibeRow = card.querySelector('#rf-vibe-row .rf-stat-value');
+      const vibeRow = card.querySelector('#rf-vibe-value');
       if (vibeRow) {
-        vibeRow.textContent = 'Cozy & chill 😌';
+        vibeRow.textContent = '😌 Cozy & chill';
         vibeRow.classList.remove('rf-stat-value--vibe-loading');
       }
     });
+}
 
-  // Lazy-load Show Activity counts and enhance the card in-place
+/**
+ * V1.5.1: Render Season Stats card (community counters) - same styling as Season So Far
+ */
+function renderSeasonStatsCard(extra) {
+  const card = document.createElement('div');
+  card.className = 'rf-info-card rf-info-card--stats rf-info-card--season-stats';
+  card.innerHTML = `
+    <div class="rf-info-card-header">
+      <span class="rf-info-card-icon">🎄</span>
+      <span class="rf-info-card-title">Season Stats</span>
+    </div>
+    <div class="rf-info-card-body rf-season-stats-body">
+      <div class="rf-season-stat-loading">Loading the magic... ✨</div>
+    </div>
+  `;
+
+  extra.appendChild(card);
+
+  // Lazy-load the actual stats from the API
   fetchTriggerCounts()
-    .then((triggers) => {
-      if (!triggers) return;
-
-      const body = card.querySelector('.rf-device-stats-body');
+    .then(function(triggers) {
+      const body = card.querySelector('.rf-season-stats-body');
       if (!body) return;
 
-      const divider = document.createElement('div');
-      divider.className = 'rf-stat-divider';
-      body.appendChild(divider);
+      if (!triggers) {
+        body.innerHTML = '<div class="rf-season-stat-row"><span class="rf-season-stat-label">Stats loading...</span></div>';
+        return;
+      }
 
-      // V1.5.1: Updated section label
-      const sectionLabel = document.createElement('div');
-      sectionLabel.className = 'rf-stat-section-label';
-      sectionLabel.textContent = lofCopy('trigger_overall_label', '🎄 Season Stats');
-      body.appendChild(sectionLabel);
+      body.innerHTML = ''; // Clear loading message
 
+      // Letters to Santa (with padding)
       if (typeof triggers.mailbox !== 'undefined') {
-        // New padding logic: start at 32, then add rawMailbox + (rawMailbox * 1.5)
-        const rawMailbox =
-          typeof triggers.mailbox === 'number'
-            ? triggers.mailbox
-            : parseInt(triggers.mailbox, 10) || 0;
-
-        const boostedMailbox =
-          rawMailbox >= 0
-            ? 32 + rawMailbox + Math.round(rawMailbox * 1.5)
-            : 32;
-
-        const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--mischief';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_santa_label', '🎅 Letters to Santa:'))}
-          </span>
-          <span class="rf-stat-value">${boostedMailbox}</span>
-        `;
-        body.appendChild(row);
+        const rawMailbox = typeof triggers.mailbox === 'number' ? triggers.mailbox : parseInt(triggers.mailbox, 10) || 0;
+        const boostedMailbox = rawMailbox >= 0 ? 32 + rawMailbox + Math.round(rawMailbox * 1.5) : 32;
+        addSeasonStatRow(body, '🎅', 'Letters to Santa', boostedMailbox.toLocaleString());
       }
 
-      // --- Begin Glow block ---
-      {
-        let rawGlow = 0;
-
-        if (triggers && Object.prototype.hasOwnProperty.call(triggers, 'glow')) {
-          rawGlow =
-            typeof triggers.glow === 'number'
-              ? triggers.glow
-              : parseInt(triggers.glow, 10) || 0;
-        }
-
-        // If the trigger API doesn't yet expose a glow count (or it's zero),
-        // fall back to the last known nightly total we received from the
-        // Glow endpoint on this device.
-        if (rawGlow <= 0) {
-          try {
-            const storedTotal = getLastGlowTotal();
-            if (storedTotal > 0) {
-              rawGlow = storedTotal;
-            }
-          } catch (e) {
-            // ignore; we'll just use baseline padding
-          }
-        }
-
-        // Light FOMO padding: start at 3, then add rawGlow + (rawGlow * 1.25)
-        // This keeps the real count directionally honest but makes the meter
-        // feel a bit more alive even on lighter nights.
-        const boostedGlow =
-          rawGlow >= 0
-            ? 3 + rawGlow + Math.round(rawGlow * 1.25)
-            : 3;
-
-        const row = document.createElement('div');
-        row.className =
-          'rf-stat-item rf-stats-row--mischief rf-stats-row--glow';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_glow_label', '💚 Glows sent:'))}
-          </span>
-          <span class="rf-stat-value">${boostedGlow}</span>
-        `;
-        body.appendChild(row);
+      // Glows (with padding)
+      let rawGlow = triggers.glow || 0;
+      if (rawGlow <= 0) {
+        try {
+          const storedTotal = getLastGlowTotal();
+          if (storedTotal > 0) rawGlow = storedTotal;
+        } catch (e) {}
       }
-      // --- End Glow block ---
+      const boostedGlow = rawGlow >= 0 ? 3 + rawGlow + Math.round(rawGlow * 1.25) : 3;
+      addSeasonStatRow(body, '💚', 'Glows sent', boostedGlow.toLocaleString());
 
+      // Naughty or Nice checks
       if (typeof triggers.button !== 'undefined') {
-        const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--mischief';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_button_label', '🔴 Naughty or Nice Checks:'))}
-          </span>
-          <span class="rf-stat-value">${triggers.button}</span>
-        `;
-        body.appendChild(row);
+        addSeasonStatRow(body, '🔴', 'Naughty or Nice checks', triggers.button.toLocaleString());
       }
 
-            if (typeof triggers.surprise !== 'undefined') {
-        const rawSurprise =
-          typeof triggers.surprise === 'number'
-            ? triggers.surprise
-            : parseInt(triggers.surprise, 10) || 0;
-
-        const row = document.createElement('div');
-        row.className =
-          'rf-stat-item rf-stats-row--mischief rf-stats-row--surprise';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_surprise_label', '🎁 Surprise songs launched:'))}
-          </span>
-          <span class="rf-stat-value">${rawSurprise}</span>
-        `;
-        body.appendChild(row);
+      // Surprise songs
+      if (typeof triggers.surprise !== 'undefined') {
+        addSeasonStatRow(body, '🎁', 'Surprise songs launched', triggers.surprise.toLocaleString());
       }
 
-      // V1.5 Bundle B: Add speaker presses if available
+      // Speaker taps
       if (typeof triggers.speaker !== 'undefined') {
-        const rawSpeaker =
-          typeof triggers.speaker === 'number'
-            ? triggers.speaker
-            : parseInt(triggers.speaker, 10) || 0;
-
-        const row = document.createElement('div');
-        row.className = 'rf-stat-item rf-stats-row--mischief';
-        row.innerHTML = `
-          <span class="rf-stat-label">
-            ${escapeHtml(lofCopy('trigger_speaker_label', '🔊 Speaker button taps:'))}
-          </span>
-          <span class="rf-stat-value">${rawSpeaker}</span>
-        `;
-        body.appendChild(row);
+        addSeasonStatRow(body, '🔊', 'Speaker button taps', triggers.speaker.toLocaleString());
       }
-
-      // V1.5.1: Removed popular songs from here - they're in Hot Right Now card
     })
-    .catch((err) => {
-      console.warn('[LOF V1.5] Trigger counts update failed:', err);
+    .catch(function(err) {
+      console.warn('[LOF V1.5.1] Season stats failed:', err);
+      const body = card.querySelector('.rf-season-stats-body');
+      if (body) {
+        body.innerHTML = '<div class="rf-season-stat-row"><span class="rf-season-stat-label">Stats unavailable</span></div>';
+      }
     });
 }
 
