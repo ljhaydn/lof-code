@@ -266,6 +266,15 @@ const GLOBAL_ACTION_COOLDOWN = 5000; // 5s between any actions from this device
   // V1.5 FIX: Track ALL requested song names this session (not just the last one)
   // This prevents the "Your pick is playing" badge from disappearing when making additional requests
   const sessionRequestedNames = new Set();
+  
+  // V1.5.1: Initialize sessionRequestedNames from localStorage on page load
+  // This ensures "Your pick is playing" chip shows correctly after page refresh
+  if (Array.isArray(requestedSongNames)) {
+    requestedSongNames.forEach(function(name) {
+      if (name) sessionRequestedNames.add(name);
+    });
+  }
+  
   // cache last phase for banner logic
   let lastPhase = 'idle';
 // V1.5: Screen Wake Lock helpers (to reduce mobile audio interruptions)
@@ -1776,18 +1785,30 @@ function updateSmartTimeMessage(showState) {
    * @param {Array} categories - Sorted category names
    * @param {Element} container - Container to render into
    */
+  // V1.5.1: Track if we've already rendered category tabs this session
+  var categoryTabsRenderedOnce = false;
+
   function renderCategoryTabs(categories, container) {
     if (!container) return;
     
-    // Remove existing tabs wrapper (includes title)
+    // Check if tabs already exist with same categories - skip full re-render
     var existingWrapper = container.querySelector('.rf-category-section');
+    var existingTabs = existingWrapper ? existingWrapper.querySelector('.rf-category-tabs') : null;
+    
+    if (existingTabs && categoryTabsRenderedOnce) {
+      // Just update active states, don't rebuild DOM
+      updateCategoryTabStates(existingTabs);
+      return;
+    }
+    
+    // Remove existing tabs wrapper (includes title)
     if (existingWrapper) {
       existingWrapper.remove();
     }
     // Also remove old-style tabs without wrapper
-    var existingTabs = container.querySelector('.rf-category-tabs');
-    if (existingTabs) {
-      existingTabs.remove();
+    var oldTabs = container.querySelector('.rf-category-tabs');
+    if (oldTabs) {
+      oldTabs.remove();
     }
 
     // Don't render if no categories or only one
@@ -1870,15 +1891,23 @@ function updateSmartTimeMessage(showState) {
     // Insert section before the grid
     container.insertBefore(sectionWrapper, container.firstChild);
 
-    // V1.5.1: Scroll active tab into view and trigger initial scroll check
-    setTimeout(function() {
-      var activeTab = tabsWrapper.querySelector('.rf-category-tab--active');
-      if (activeTab) {
-        activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-      }
-      // Trigger scroll event to set initial fade states
-      tabsWrapper.dispatchEvent(new Event('scroll'));
-    }, 100);
+    // V1.5.1: Only scroll to active tab on FIRST render (prevents page jumping)
+    if (!categoryTabsRenderedOnce) {
+      categoryTabsRenderedOnce = true;
+      setTimeout(function() {
+        var activeTab = tabsWrapper.querySelector('.rf-category-tab--active');
+        if (activeTab) {
+          // Use scrollLeft instead of scrollIntoView to avoid page scroll
+          var tabLeft = activeTab.offsetLeft;
+          var tabWidth = activeTab.offsetWidth;
+          var wrapperWidth = tabsWrapper.clientWidth;
+          var targetScroll = tabLeft - (wrapperWidth / 2) + (tabWidth / 2);
+          tabsWrapper.scrollLeft = Math.max(0, targetScroll);
+        }
+        // Trigger scroll event to set initial fade states
+        tabsWrapper.dispatchEvent(new Event('scroll'));
+      }, 50);
+    }
   }
 
   /**
@@ -2115,6 +2144,32 @@ function updateSmartTimeMessage(showState) {
     if (nowTitleEl)  nowTitleEl.textContent  = nowDisplay;
     if (nextTitleEl) nextTitleEl.textContent = nextDisplay;
     if (nowArtistEl) nowArtistEl.textContent = nowArtist;
+    
+    // V1.5.1: Add popularity badge to hero now playing section
+    if (nowCardEl && nowKey && isPlayingReal) {
+      var heroBadgeEl = nowCardEl.querySelector('.rf-now-badge');
+      var popularityBadge = getSongBadge(nowKey);
+      
+      if (popularityBadge) {
+        if (!heroBadgeEl) {
+          heroBadgeEl = document.createElement('span');
+          heroBadgeEl.className = 'rf-now-badge rf-song-badge rf-song-badge--' + popularityBadge.type;
+          // Insert after title
+          if (nowTitleEl && nowTitleEl.parentNode) {
+            nowTitleEl.parentNode.insertBefore(heroBadgeEl, nowTitleEl.nextSibling);
+          }
+        }
+        heroBadgeEl.className = 'rf-now-badge rf-song-badge rf-song-badge--' + popularityBadge.type;
+        heroBadgeEl.textContent = popularityBadge.label;
+        heroBadgeEl.style.display = '';
+      } else if (heroBadgeEl) {
+        heroBadgeEl.style.display = 'none';
+      }
+    } else if (nowCardEl) {
+      // Hide badge when not playing real song
+      var heroBadgeEl = nowCardEl.querySelector('.rf-now-badge');
+      if (heroBadgeEl) heroBadgeEl.style.display = 'none';
+    }
     
     // V1.5: Enhanced display using unified state (if available)
     if (viewerState && viewerState.state) {
