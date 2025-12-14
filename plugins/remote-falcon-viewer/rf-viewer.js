@@ -637,7 +637,7 @@ function showGeoMessage(distance, city, extra) {
 
     userConfirmedLocal = true;
     try {
-      localStorage.setItem('lofUserConfirmedLocal', 'true');
+      sessionStorage.setItem('lofUserConfirmedLocal', 'true');
     } catch (e) {}
   } else if (distance !== null && distance >= 5) {
     // Far visitor – show "I'm here" button so they can self-confirm
@@ -696,7 +696,7 @@ function showGeoMessage(distance, city, extra) {
 window.lofConfirmLocal = function() {
   userConfirmedLocal = true;
   try {
-    localStorage.setItem('lofUserConfirmedLocal', 'true');
+    sessionStorage.setItem('lofUserConfirmedLocal', 'true');
   } catch (e) {}
 
   // V1.5 Bundle B: Update hero geo line
@@ -733,17 +733,12 @@ window.lofConfirmLocal = function() {
   );
 };
 
-// Check localStorage on load - but validate it's from today's session
+// Check sessionStorage on load - session-based geo confirmation
+// Clears when browser/tab closes (more protective than daily reset)
 try {
-  const geoSessionDate = localStorage.getItem('lofGeoSessionDate');
-  const today = new Date().toDateString();
-  
-  if (geoSessionDate === today && localStorage.getItem('lofUserConfirmedLocal') === 'true') {
+  if (sessionStorage.getItem('lofUserConfirmedLocal') === 'true') {
     userConfirmedLocal = true;
   } else {
-    // New day or no session - clear old geo status
-    localStorage.removeItem('lofUserConfirmedLocal');
-    localStorage.setItem('lofGeoSessionDate', today);
     userConfirmedLocal = false;
   }
 } catch (e) {}
@@ -772,7 +767,7 @@ function updateHeroGeo(distance, city) {
     heroGeoEl.innerHTML = '<span class="rf-hero-geo-local">📍 Welcome neighbor! 🎄</span>';
     userConfirmedLocal = true;
     try {
-      localStorage.setItem('lofUserConfirmedLocal', 'true');
+      sessionStorage.setItem('lofUserConfirmedLocal', 'true');
     } catch (e) {}
   } else if (distance !== null && distance >= 5) {
     // Far visitor – show unlock link
@@ -1166,12 +1161,12 @@ function getSmartTimeMessage(showState) {
     // Smart logic: if it's very late (after midnight, before 5 AM), 
     // the show just ended - say "back tonight" not "back tomorrow"
     if (hour >= 0 && hour < 5) {
-      return lofCopy('time_offhours_latenight', 'Show\'s over for tonight. Lights & requests back at 5 PM!');
+      return lofCopy('time_offhours_latenight', 'Show\'s over for tonight. Lights & requests back at 5pm!');
     }
     
     // Normal daytime - show starts later
     if (hour >= 5 && hour < 17) {
-      return lofCopy('time_offhours_daytime', 'Lights & requests open at 5 PM. First scheduled show at 6 PM!');
+      return lofCopy('time_offhours_daytime', 'Lights & requests open at 5pm. First scheduled show at 6pm!');
     }
     
     // Evening but show hasn't started or ended early
@@ -4502,6 +4497,7 @@ setInterval(checkSpeakerProtection, 3000);
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     console.log('[LOF] Tab visible - refreshing data');
+    ensureDayReset(); // V1.5: Reset stats if day changed while tab was hidden
     fetchShowDetails();
     fetchFppStatus();
   }

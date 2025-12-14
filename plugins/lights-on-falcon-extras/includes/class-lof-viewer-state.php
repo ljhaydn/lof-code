@@ -503,32 +503,47 @@ class LOF_Viewer_State {
      * Extract time portion from FPP's startTimeStr/endTimeStr
      * 
      * FPP format: "Sat Dec 13 @ 05:00 PM" or "Sun @ 20:45:00"
-     * We extract just the time: "5:00 PM" or "8:45 PM"
+     * Brand voice format: "5pm" or "8:45pm" (lowercase, no space, omit :00)
      * 
      * @param string $fpp_time_str The startTimeStr/endTimeStr from FPP
-     * @return string|null Formatted time for display
+     * @return string|null Formatted time for display (brand voice)
      */
     private static function format_time_display($fpp_time_str) {
         if (empty($fpp_time_str)) return null;
         
+        $hour = 0;
+        $minute = 0;
+        $is_pm = false;
+        
         // Pattern 1: "Sat Dec 13 @ 05:00 PM" - has AM/PM
-        if (preg_match('/@\s*(\d{1,2}:\d{2}\s*(?:AM|PM))/i', $fpp_time_str, $matches)) {
-            return trim($matches[1]);
-        }
-        
-        // Pattern 2: "Sun @ 20:45:00" - 24-hour format
-        if (preg_match('/@\s*(\d{1,2}):(\d{2})(?::\d{2})?/', $fpp_time_str, $matches)) {
+        if (preg_match('/@\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i', $fpp_time_str, $matches)) {
             $hour = intval($matches[1]);
-            $minute = $matches[2];
+            $minute = intval($matches[2]);
+            $is_pm = strtoupper($matches[3]) === 'PM';
             
-            if ($hour == 0) return "12:{$minute} AM";
-            if ($hour < 12) return "{$hour}:{$minute} AM";
-            if ($hour == 12) return "12:{$minute} PM";
-            return ($hour - 12) . ":{$minute} PM";
+            // Convert 12-hour to consistent format
+            if ($hour === 12 && !$is_pm) $hour = 0;  // 12 AM = midnight
+            if ($hour !== 12 && $is_pm) $hour += 12; // PM hours
+        }
+        // Pattern 2: "Sun @ 20:45:00" - 24-hour format
+        elseif (preg_match('/@\s*(\d{1,2}):(\d{2})(?::\d{2})?/', $fpp_time_str, $matches)) {
+            $hour = intval($matches[1]);
+            $minute = intval($matches[2]);
+        }
+        else {
+            return $fpp_time_str; // Fallback
         }
         
-        // Fallback: return as-is
-        return $fpp_time_str;
+        // Convert to 12-hour and determine am/pm
+        $suffix = ($hour >= 12) ? 'pm' : 'am';
+        $display_hour = $hour % 12;
+        if ($display_hour === 0) $display_hour = 12;
+        
+        // Brand voice: "5pm" not "5:00 PM", but keep minutes if not :00
+        if ($minute === 0) {
+            return $display_hour . $suffix;
+        }
+        return $display_hour . ':' . str_pad($minute, 2, '0', STR_PAD_LEFT) . $suffix;
     }
 
     /**
