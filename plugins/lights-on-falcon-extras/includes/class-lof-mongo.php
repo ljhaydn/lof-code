@@ -102,9 +102,10 @@ class LOF_Mongo {
         try {
             $collection = $client->selectCollection(self::$database, 'show');
             
-            // Get today's date in the format stored in jukebox stats
-            $today = date('Y-m-d');
+            // V1.5.1 FIX: Get today's date in LA timezone, not server timezone
             $timezone = new DateTimeZone('America/Los_Angeles');
+            $now = new DateTime('now', $timezone);
+            $today = $now->format('Y-m-d');
             $start_of_day = new DateTime($today . ' 00:00:00', $timezone);
             $end_of_day = new DateTime($today . ' 23:59:59', $timezone);
             
@@ -325,8 +326,10 @@ class LOF_Mongo {
         try {
             $collection = $client->selectCollection(self::$database, 'show');
             
-            $today = date('Y-m-d');
+            // V1.5.1 FIX: Get today's date in LA timezone, not server timezone
             $timezone = new DateTimeZone('America/Los_Angeles');
+            $now = new DateTime('now', $timezone);
+            $today = $now->format('Y-m-d');
             $start_of_day = new DateTime($today . ' 00:00:00', $timezone);
             $end_of_day = new DateTime($today . ' 23:59:59', $timezone);
             
