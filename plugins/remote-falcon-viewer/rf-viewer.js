@@ -3311,9 +3311,12 @@ function renderHotRightNowCard(extra) {
 
   extra.appendChild(card);
 
-  // Lazy-load the data
-  fetchTriggerCounts()
-    .then(function(triggers) {
+  // V1.5.1 FIX: Await BOTH song badges AND trigger counts to avoid race condition
+  Promise.all([fetchSongBadges(), fetchTriggerCounts()])
+    .then(function(results) {
+      var badges = results[0]; // songBadgesCache is also updated
+      var triggers = results[1];
+      
       var body = card.querySelector('.rf-hot-right-now-body');
       if (!body) return;
 
@@ -3322,17 +3325,17 @@ function renderHotRightNowCard(extra) {
 
       var hasContent = false;
 
-      // Tonight's top 3 (from song badges cache)
-      if (songBadgesCache) {
+      // Tonight's top 3 (from song badges)
+      if (badges) {
         // Build list of songs with tonight_rank
         var tonightSongs = [];
-        for (var name in songBadgesCache) {
-          if (songBadgesCache[name].tonight_rank && songBadgesCache[name].tonight_rank <= 3) {
+        for (var name in badges) {
+          if (badges[name].tonight_rank && badges[name].tonight_rank <= 3) {
             tonightSongs.push({
               name: name,
-              displayName: songBadgesCache[name].displayName || name,
-              rank: songBadgesCache[name].tonight_rank,
-              count: songBadgesCache[name].season_count || 0
+              displayName: badges[name].displayName || name,
+              rank: badges[name].tonight_rank,
+              count: badges[name].season_count || 0
             });
           }
         }
