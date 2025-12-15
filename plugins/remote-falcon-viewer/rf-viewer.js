@@ -42,7 +42,7 @@ let wakeLockEnabled = false;
 let lastInteractionTime = Date.now();
 const ADAPTIVE_POLL_TIMEOUT = 120000; // 2 minutes idle → slow polling
 const POLL_INTERVAL_ACTIVE = 3000; // 3s when active
-const POLL_INTERVAL_IDLE = 15000; // 15s when idle
+const POLL_INTERVAL_IDLE = 8000; // 8s when idle (was 15s - snappier for live show)
 
 // V1.5: Speaker protection tracking
 let speakerProtectionActive = false;
@@ -3421,16 +3421,14 @@ function createWearablesCardElement() {
   card.innerHTML = `
     <div class="rf-info-card-header">
       <span class="rf-info-card-icon rf-info-card-icon--pulse">⚡</span>
-      <span class="rf-info-card-title">Sync Up & Glow</span>
+      <span class="rf-info-card-title">Glow with the show</span>
     </div>
     <div class="rf-info-card-body">
       <p class="rf-wearables-main">
-        Every night we set out <strong>synchronized wristbands and light sticks</strong> for guests. 
-        Put one on. Become the show. Watch the kids absolutely lose it. ✨
+        Grab a <strong>synced wristband or glow stick</strong> from the basket — they light up with the show! ✨
       </p>
       <p class="rf-wearables-detail">
-        Just return them when you leave (they need their beauty sleep on the charger). 
-        Or keep the magic forever with a small donation. We don't judge. 💫
+        Please return them when you leave so the next family can join the fun. Love yours? They work at home too — a small donation and it's yours to keep.
       </p>
       <a href="https://www.lightsonfalcon.com/support-the-show/" target="_blank" class="rf-wearables-btn">
         Support the Show 🎁
@@ -3666,12 +3664,12 @@ async function fetchVibeCheck() {
 function addSpeakerCard(extra) {
   const btnLabelOn = lofCopy('speaker_btn_on', 'Turn speakers on 🔊');
   const timePrefix = lofCopy('speaker_time_left_prefix', 'Time left:');
-  const fmLabel = lofCopy('speaker_fm_label', 'FM radio');
+  const fmLabel = lofCopy('speaker_fm_label', 'In your car');
   const fmText = lofCopy(
     'speaker_fm_text',
-    'Prefer the car stereo? Tune to 107.7 FM near the show.'
+    'Tune to 107.7 FM — works best within a block of the house.'
   );
-  const streamLabel = lofCopy('speaker_stream_label', 'Listen on your phone');
+  const streamLabel = lofCopy('speaker_stream_label', 'Stream on your phone');
 
   // Use the default PulseMesh URL (can be overridden via footer data-src)
   const pulsemeshUrl = LOF_STREAM_URL_DEFAULT || 'https://player.pulsemesh.io/d/G073';
@@ -3683,11 +3681,11 @@ function addSpeakerCard(extra) {
   // V1.5 Bundle B: State-aware intro text
   let introText;
   if (currentShowState === 'intermission') {
-    introText = lofCopy('speaker_intro_intermission', 'Speakers available when the next song starts. You can also listen on your phone or in your car.');
+    introText = lofCopy('speaker_intro_intermission', 'Sound options are available when a song is playing.');
   } else if (currentShowState === 'offhours' || currentShowState === 'offline') {
-    introText = lofCopy('speaker_intro_offhours', 'The show is currently off. When it\'s running, you can hear the music outside, on your phone, or in your car.');
+    introText = lofCopy('speaker_intro_offhours', 'Sound options are available when the show is running.');
   } else {
-    introText = lofCopy('speaker_intro', 'Choose how you want to hear the show — outside speakers, on your phone, or in your car.');
+    introText = lofCopy('speaker_intro', 'Three ways to hear the music — pick what works for you.');
   }
 
   const card = document.createElement('div');
@@ -3696,7 +3694,7 @@ function addSpeakerCard(extra) {
   card.innerHTML = `
     <div class="rf-speaker-card-inner">
       <div class="rf-speaker-header">
-        <div class="rf-label">${escapeHtml(lofCopy('speaker_label', 'Need sound?'))}</div>
+        <div class="rf-label">${escapeHtml(lofCopy('speaker_label', 'Hear the show'))}</div>
         <div class="rf-speaker-body">
           ${escapeHtml(introText)}
         </div>
@@ -3704,7 +3702,7 @@ function addSpeakerCard(extra) {
 
       <div class="rf-audio-option rf-audio-option--speaker">
         <div class="rf-label">${escapeHtml(
-          lofCopy('speaker_outdoor_label', 'Speakers outside')
+          lofCopy('speaker_outdoor_label', 'Outdoor speakers')
         )}</div>
         <button
           type="button"
@@ -3732,7 +3730,7 @@ function addSpeakerCard(extra) {
           ${escapeHtml(
             lofCopy(
               'speaker_stream_help',
-              'Use the audio bar at the bottom of this page to listen on your phone. Tap play and leave this page open while you explore the controls.'
+              'When music\'s playing, an audio bar appears at the bottom. Tap play and keep this page open.'
             )
           )}
         </div>
