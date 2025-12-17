@@ -113,7 +113,7 @@ class LOF_API {
             'showtimes'       => $showtimes,
             'speaker'         => $speakerConfig,
             // V1.5 geo + Cloudflare data for rf-viewer.js
-            'geoCheckEnabled' => $geo_enabled,
+            'geoCheckEnabled' => false, // emergency disabled,
             'showLatitude'    => $show_lat,
             'showLongitude'   => $show_long,
             'cloudflare'      => $cloudflare,
