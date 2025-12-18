@@ -114,6 +114,8 @@ class LOF_API {
             'speaker'         => $speakerConfig,
             // V1.5 geo + Cloudflare data for rf-viewer.js
             'geoCheckEnabled' => false, // emergency disabled,
+            // V1.5.2: Geo kill switch - set to true to bypass all geo checks during showtime issues
+            'geoForceBypass'  => false,
             'showLatitude'    => $show_lat,
             'showLongitude'   => $show_long,
             'cloudflare'      => $cloudflare,

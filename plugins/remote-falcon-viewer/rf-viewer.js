@@ -1,7 +1,7 @@
 (function () {
   const base = (window.RFViewer && RFViewer.base) ? RFViewer.base : '';
   
-  console.log('[LOF viewer] rf-viewer.js V1.5.1 loaded');
+  console.log('[LOF viewer] rf-viewer.js V1.5.2 loaded');
   
   const viewerRoot  = document.getElementById('rf-viewer');
   const gridEl      = document.getElementById('rf-grid');
@@ -425,6 +425,13 @@ function releaseWakeLock() {
   }
 
 function syncRequestedSongsWithStatus(nowSeq, queue) {
+  // V1.5.2 FIX: Don't clear requested songs during intermission
+  // This prevents "Your pick is playing" chip from disappearing when queue empties
+  // temporarily during intermission
+  if (viewerState && viewerState.state && viewerState.state.isIntermission) {
+    return;
+  }
+
   // Ensure correct array shape
   if (!Array.isArray(requestedSongNames)) {
     requestedSongNames = [];
@@ -523,6 +530,7 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
    * Toast
    * ------------------------- */
 
+  // V1.5.2 FIX: Variable toast duration - errors need more time to read
   function showToast(message, type = 'success') {
     let toast = document.getElementById('rf-toast');
 
@@ -531,6 +539,11 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
       toast.id = 'rf-toast';
       toast.className = 'rf-toast';
       document.body.appendChild(toast);
+    }
+
+    // Clear any existing timeout to prevent flicker
+    if (toast._hideTimeout) {
+      clearTimeout(toast._hideTimeout);
     }
 
     toast.classList.remove('rf-toast--success', 'rf-toast--error');
@@ -544,14 +557,23 @@ function syncRequestedSongsWithStatus(nowSeq, queue) {
     toast.textContent = message;
     toast.classList.add('show');
 
-    setTimeout(() => {
+    // V1.5.2: Error toasts stay longer (5s), success toasts shorter (2.5s)
+    const duration = (type === 'error') ? 5000 : 2500;
+    toast._hideTimeout = setTimeout(() => {
       toast.classList.remove('show');
-    }, 2500);
+    }, duration);
   }
 
   // V1.5: Perform geo check using Cloudflare headers + browser geolocation
   async function performGeoCheck(extra) {
     const config = getLofConfig();
+    // V1.5.2: Geo kill switch - if geoForceBypass is true, skip all geo checking
+    // This allows admin to quickly disable geo if it causes issues during showtime
+    if (config && config.geoForceBypass) {
+      userConfirmedLocal = true;
+      console.log('[LOF V1.5.2] Geo force bypass enabled - auto-granting local access');
+      return;
+    }
     if (!config || !config.geoCheckEnabled) return;
 
     let distance = null;
@@ -788,10 +810,12 @@ function updateHeroGeo(distance, city) {
     } catch (e) {}
   } else if (distance !== null && distance >= 5) {
     // Far visitor – show unlock link
-    heroGeoEl.innerHTML = '📍 Near the display? <span class="rf-hero-geo-link" onclick="window.lofConfirmLocal()">Tap to unlock full access</span>';
+    // V1.5.2 FIX: Use proper button instead of span for accessibility and touch target
+    heroGeoEl.innerHTML = '📍 Near the display? <button type="button" class="rf-hero-geo-btn" onclick="window.lofConfirmLocal()">Tap to unlock full access</button>';
   } else {
     // No distance data – still show unlock option
-    heroGeoEl.innerHTML = '📍 At the show? <span class="rf-hero-geo-link" onclick="window.lofConfirmLocal()">Tap to unlock requests</span>';
+    // V1.5.2 FIX: Use proper button instead of span for accessibility and touch target
+    heroGeoEl.innerHTML = '📍 At the show? <button type="button" class="rf-hero-geo-btn" onclick="window.lofConfirmLocal()">Tap to unlock requests</button>';
   }
 }
 
@@ -2332,6 +2356,8 @@ function updateSmartTimeMessage(showState) {
 
     if (!gridEl) return;
     gridEl.innerHTML = '';
+    // V1.5.2: Remove loading state class when actual content loads
+    gridEl.classList.remove('rf-grid--loading');
 
     // V1.5: Get unique categories first to know if we need category sorting
     const allVisibleSequences = sequences
@@ -2551,24 +2577,38 @@ function updateSmartTimeMessage(showState) {
 
       const btn = card.querySelector('.rf-card-btn');
       if (btn) {
+        // V1.5.2 FIX: Check geo status and show locked state if needed
+        const config = getLofConfig();
+        // V1.5.2: Check geo status - respect kill switch (geoForceBypass)
+        const isGeoLocked = config && config.geoCheckEnabled && !config.geoForceBypass && !userConfirmedLocal;
+        
         if (!currentControlEnabled) {
           // RF says viewer control is off – keep the button visually disabled
           btn.disabled = true;
+        } else if (isGeoLocked) {
+          // V1.5.2: Show geo-locked state - button looks locked but is clickable
+          // Clicking shows helpful message and scrolls to unlock button
+          btn.classList.add('rf-card-btn--geo-locked');
+          btn.innerHTML = '🔒 Unlock to request';
+          btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const geoMsg = lofCopy(
+              'geo_request_blocked',
+              'Song requests are reserved for guests at the show. Tap the unlock button above to enable requests.'
+            );
+            showToast(geoMsg, 'error');
+            // V1.5.2: Auto-scroll to geo unlock button
+            const geoEl = document.getElementById('rf-hero-geo');
+            if (geoEl) {
+              geoEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              // Briefly highlight the geo area
+              geoEl.classList.add('rf-hero-geo--highlight');
+              setTimeout(() => geoEl.classList.remove('rf-hero-geo--highlight'), 2000);
+            }
+          });
         } else {
           btn.disabled = false;
           btn.addEventListener('click', () => {
-            // Optional LOF-side geofence: if enabled and the visitor has not
-            // confirmed they are local, block the request with a friendly toast.
-            const config = getLofConfig();
-            if (config && config.geoCheckEnabled && !userConfirmedLocal) {
-              const msg = lofCopy(
-                'geo_request_blocked',
-                'Song requests are reserved for guests at the show. If you’re here in person, tap “I’m here - full access” above and try again.'
-              );
-              showToast(msg, 'error');
-              return;
-            }
-
             handleAction(currentMode, seq, btn);
           });
         }
@@ -3675,13 +3715,23 @@ function addSpeakerCard(extra) {
   const pulsemeshUrl = LOF_STREAM_URL_DEFAULT || 'https://player.pulsemesh.io/d/G073';
 
   // V1.5: Check if speaker button should be disabled based on show state
-  const speakerBlockedStates = ['intermission', 'offhours', 'offline'];
-  const speakerDisabled = speakerBlockedStates.includes(currentShowState);
+  // V1.5.2 FIX: Allow speakers during intermission if there are items in the queue
+  // (so users can pre-enable speakers for when their queued song plays)
+  const hasQueuedItems = viewerState && viewerState.queue && viewerState.queue.length > 0;
+  const speakerBlockedStates = ['offhours', 'offline'];
+  // During intermission, only block if queue is empty
+  const isIntermissionBlocked = currentShowState === 'intermission' && !hasQueuedItems;
+  const speakerDisabled = speakerBlockedStates.includes(currentShowState) || isIntermissionBlocked;
 
   // V1.5 Bundle B: State-aware intro text
   let introText;
   if (currentShowState === 'intermission') {
-    introText = lofCopy('speaker_intro_intermission', 'Sound options are available when a song is playing.');
+    if (hasQueuedItems) {
+      // V1.5.2: Queue has items - speakers can be enabled
+      introText = lofCopy('speaker_intro_intermission_queue', 'Speakers can be enabled for the next song.');
+    } else {
+      introText = lofCopy('speaker_intro_intermission', 'Sound options are available when a song is playing.');
+    }
   } else if (currentShowState === 'offhours' || currentShowState === 'offline') {
     introText = lofCopy('speaker_intro_offhours', 'Sound options are available when the show is running.');
   } else {
@@ -3708,7 +3758,7 @@ function addSpeakerCard(extra) {
           type="button"
           class="rf-speaker-btn js-speaker-on"
         >
-          ${escapeHtml(speakerDisabled ? 'Speakers unavailable' : btnLabelOn)}
+          ${escapeHtml(speakerDisabled ? 'Speakers unavailable' : (currentShowState === 'intermission' && hasQueuedItems ? 'Enable for next song 🔊' : btnLabelOn))}
         </button>
         <div class="rf-audio-help">
           ${escapeHtml(
@@ -3997,10 +4047,12 @@ function addSpeakerCard(extra) {
 
   if (btn) {
     btn.addEventListener('click', async () => {
-      // V1.5: Block speakers during intermission, offhours, and offline states
-      // Uses the show state machine for consistent behavior across the UI
-      const blockedStates = ['intermission', 'offhours', 'offline'];
-      if (blockedStates.includes(currentShowState)) {
+      // V1.5.2 FIX: Allow speakers during intermission if queue has items
+      const hasQueuedItems = viewerState && viewerState.queue && viewerState.queue.length > 0;
+      const blockedStates = ['offhours', 'offline'];
+      const isIntermissionBlocked = currentShowState === 'intermission' && !hasQueuedItems;
+      
+      if (blockedStates.includes(currentShowState) || isIntermissionBlocked) {
         let msg;
         if (currentShowState === 'intermission') {
           msg = lofCopy(
@@ -4250,9 +4302,11 @@ function addSurpriseCard() {
       if (viewerState && viewerState.state && viewerState.state.isLockout) {
         const nextShow = viewerState.state.nextResetTime || viewerState.state.nextShowTime || 'soon';
         if (viewerState.state.lockoutReason === 'queue') {
-          showToast(`This hour's dance card is full ✨ Catch the ${nextShow} show!`, 'error');
+          // V1.5.2 FIX: Clearer lockout message
+          showToast(`Queue is full for this hour! Requests reopen at ${nextShow} 🎄`, 'error');
         } else {
-          showToast(`Hold that thought — ${nextShow} show's about to begin 🎄`, 'error');
+          // V1.5.2 FIX: Clearer lockout message
+          showToast(`Requests paused until ${nextShow} — the show's about to reset 🎄`, 'error');
         }
       } else {
         const msg = lofCopy(
@@ -4272,9 +4326,11 @@ function addSurpriseCard() {
       // Hard lockout - no requests allowed within 5 min of reset
       if (state.isLockout) {
         if (state.lockoutReason === 'queue') {
-          showToast(`This hour's dance card is full ✨ Catch the ${nextShow} show!`, 'error');
+          // V1.5.2 FIX: Clearer lockout message
+          showToast(`Queue is full for this hour! Requests reopen at ${nextShow} 🎄`, 'error');
         } else {
-          showToast(`Hold that thought — ${nextShow} show's about to begin 🎄`, 'error');
+          // V1.5.2 FIX: Clearer lockout message
+          showToast(`Requests paused until ${nextShow} — the show's about to reset 🎄`, 'error');
         }
         return;
       }
@@ -4430,8 +4486,9 @@ function addSurpriseCard() {
     }
 
     // V1.5: Check geo restriction
+    // V1.5.2: Respect kill switch (geoForceBypass)
     var config = getLofConfig();
-    if (config && config.geoCheckEnabled && !userConfirmedLocal) {
+    if (config && config.geoCheckEnabled && !config.geoForceBypass && !userConfirmedLocal) {
       var geoMsg = lofCopy(
         'geo_request_blocked',
         'Song requests are reserved for guests at the show. Tap "I\'m here - full access" above.'
@@ -4472,8 +4529,12 @@ function addSurpriseCard() {
         viewerStats.surprise = (viewerStats.surprise || 0) + 1;
         saveStats();
 
-        // Show personality toast from API
+        // V1.5.2 FIX: Include song name in surprise toast for immediate feedback
         var toastMsg = json.message || lofCopy('surprise_success', 'Surprise incoming! 🎲');
+        if (seqLabel) {
+          // Append song name to the toast if we have it
+          toastMsg = toastMsg + ' → ' + seqLabel;
+        }
         showToast(toastMsg, 'success');
 
         // Fourth-time easter egg

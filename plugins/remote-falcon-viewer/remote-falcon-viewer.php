@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Remote Falcon Viewer (Native)
  * Description: Native Remote Falcon viewer using the External API via a secure WP proxy + shortcode [rf_viewer].
- * Version: 1.5.0
+ * Version: 1.5.2
  * Author: Lights on Falcon
  */
 
@@ -499,7 +499,29 @@ class RF_Viewer_Plugin {
             <!-- Main Content Area -->
             <div class="rf-main-layout">
                 <div class="rf-main-left">
-                    <div class="rf-grid" id="rf-grid"></div>
+                    <div class="rf-grid rf-grid--loading" id="rf-grid">
+                        <!-- V1.5.2: Loading skeleton cards shown while fetching data -->
+                        <div class="rf-skeleton-card">
+                            <div class="rf-skeleton-title"></div>
+                            <div class="rf-skeleton-artist"></div>
+                            <div class="rf-skeleton-btn"></div>
+                        </div>
+                        <div class="rf-skeleton-card">
+                            <div class="rf-skeleton-title"></div>
+                            <div class="rf-skeleton-artist"></div>
+                            <div class="rf-skeleton-btn"></div>
+                        </div>
+                        <div class="rf-skeleton-card">
+                            <div class="rf-skeleton-title"></div>
+                            <div class="rf-skeleton-artist"></div>
+                            <div class="rf-skeleton-btn"></div>
+                        </div>
+                        <div class="rf-skeleton-card">
+                            <div class="rf-skeleton-title"></div>
+                            <div class="rf-skeleton-artist"></div>
+                            <div class="rf-skeleton-btn"></div>
+                        </div>
+                    </div>
                 </div>
                 <div class="rf-main-right" id="rf-extra-panel"></div>
             </div>
